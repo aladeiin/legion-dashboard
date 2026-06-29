@@ -254,7 +254,7 @@ async function doExtract() {
 
     var payload = {
       action: 'extract',
-      prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","furnishing":"","floor":"","area":"","carpet":"","rate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":""}',
+      prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300). salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field.',
       files: files
     };
 
@@ -280,6 +280,7 @@ async function doExtract() {
     fill('f-cam', d.cam); fill('f-deposit', d.deposit); fill('f-lockin', d.lockin);
     fill('f-tenure', d.tenure); fill('f-escal', d.escal); fill('f-owner', d.owner);
     fill('f-phone', d.phone);
+    fill('f-salerate', d.salerate);
     if (d.status) document.getElementById('f-status').value = d.status;
     if (d.furnishing) document.getElementById('f-furnish').value = d.furnishing;
 
@@ -373,6 +374,7 @@ async function doSubmit() {
       available_area: document.getElementById('f-area').value,
       carpet_area: document.getElementById('f-carpet').value,
       lease_rate_psf: document.getElementById('f-rate').value,
+      sale_rate_psf: document.getElementById('f-salerate').value,
       cam_psf: document.getElementById('f-cam').value,
       security_deposit: document.getElementById('f-deposit').value,
       lockin_years: document.getElementById('f-lockin').value,
@@ -408,6 +410,7 @@ function doClear() {
   var inputs = document.querySelectorAll('#form-section input');
   for (var i = 0; i < inputs.length; i++) { inputs[i].value = ''; inputs[i].classList.remove('ai-filled'); inputs[i].style.borderColor = ''; }
   document.getElementById('f-status').value = 'Available';
+  document.getElementById('f-salerate').value = '';
   document.getElementById('f-furnish').value = '';
   mediaFiles = []; renderMedia();
 }
