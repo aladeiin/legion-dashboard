@@ -13,13 +13,13 @@ input,select,textarea,button{font-family:inherit;outline:none}
 .topbar img{height:32px;object-fit:contain}
 .topbar-title{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);border-left:1px solid rgba(255,255,255,.2);padding-left:12px}
 .container{max-width:600px;margin:0 auto;padding:20px 16px}
-.mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
+.mode-toggle{display:grid;grid-template-columns:1fr 1fr;background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
 .mode-btn{padding:12px;text-align:center;cursor:pointer;border:none;background:transparent;color:var(--text2)}
 .mode-btn.active{background:var(--navy);color:#fff}
-.mode-btn .mb-icon{font-size:20px;display:block;margin-bottom:4px}
-.mode-btn .mb-label{font-size:12px;font-weight:600}
-.mode-btn .mb-sub{font-size:10px;opacity:.7;margin-top:2px}
-.ai-zone{background:var(--white);border:2px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;margin-bottom:12px;transition:.15s}
+.mb-icon{font-size:20px;display:block;margin-bottom:4px}
+.mb-label{font-size:12px;font-weight:600;display:block}
+.mb-sub{font-size:10px;opacity:.7;display:block;margin-top:2px}
+.ai-zone{background:var(--white);border:2px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;margin-bottom:12px}
 .ai-zone:hover{border-color:var(--navy);background:#EEF3FB}
 .az-icon{font-size:36px;display:block;margin-bottom:10px}
 .az-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
@@ -27,8 +27,8 @@ input,select,textarea,button{font-family:inherit;outline:none}
 .az-btn{display:inline-block;margin-top:12px;background:var(--navy);color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:12px;font-weight:600}
 .file-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .chip{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px}
-.chip-remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;line-height:1;padding:0}
-.extract-btn{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-bottom:20px}
+.chip button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;line-height:1;padding:0}
+.extract-btn{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:20px}
 .extract-btn:disabled{opacity:.4;cursor:not-allowed}
 .ai-loading{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:28px;text-align:center;margin-bottom:16px;display:none}
 .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px}
@@ -42,8 +42,8 @@ input,select,textarea,button{font-family:inherit;outline:none}
 .field{display:flex;flex-direction:column;gap:4px}
 .field label{font-size:11px;font-weight:600;color:var(--text2)}
 .req{color:var(--red);margin-left:2px}
-.field input,.field select,.field textarea{background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:13px;padding:9px 11px;color:var(--text);width:100%}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--navy);background:var(--white)}
+.field input,.field select{background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:13px;padding:9px 11px;color:var(--text);width:100%}
+.field input:focus,.field select:focus{border-color:var(--navy);background:var(--white)}
 .field input.ai-filled{border-color:var(--green);background:#F0FBF4}
 .field-hint{font-size:10px;color:var(--text3)}
 .media-zone{border:1.5px dashed var(--border);border-radius:8px;padding:14px;text-align:center;cursor:pointer;background:var(--bg);margin-top:4px}
@@ -52,15 +52,15 @@ input,select,textarea,button{font-family:inherit;outline:none}
 .media-preview{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
 .media-thumb{aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:18px;position:relative}
 .media-thumb img{width:100%;height:100%;object-fit:cover}
-.media-remove{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.5);border:none;color:#fff;width:18px;height:18px;border-radius:50%;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.media-thumb button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.5);border:none;color:#fff;width:18px;height:18px;border-radius:50%;font-size:10px;cursor:pointer}
 .submit-btn{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px}
 .submit-btn:disabled{opacity:.4;cursor:not-allowed}
 .clear-btn{width:100%;padding:10px;background:transparent;color:var(--text2);border:1.5px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer}
-.upload-progress{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;display:none}
+.prog-wrap{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;display:none}
 .prog-title{font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px}
 .prog-bar-wrap{height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-bottom:6px}
 .prog-bar{height:100%;background:var(--navy);border-radius:3px;transition:width .3s;width:0%}
-.prog-label{font-size:11px;color:var(--text3)}
+.prog-pct{font-size:11px;color:var(--text3)}
 .success{background:var(--green-bg);border:1.5px solid #A3D9B8;border-radius:12px;padding:24px;text-align:center;display:none;margin-bottom:16px}
 .success-icon{font-size:40px;display:block;margin-bottom:10px}
 .success-title{font-size:16px;font-weight:700;color:var(--green);margin-bottom:6px}
@@ -90,9 +90,10 @@ input,select,textarea,button{font-family:inherit;outline:none}
       <span class="mb-sub">Type details yourself</span>
     </button>
   </div>
+
   <div id="ai-section">
-    <div class="ai-zone" id="ai-zone" onclick="document.getElementById('ai-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="onAIDrop(event)">
-      <input type="file" id="ai-input" multiple accept=".pdf,image/*,.txt" onchange="onAIFiles(this.files)" style="display:none"/>
+    <div class="ai-zone" onclick="document.getElementById('ai-input').click()">
+      <input type="file" id="ai-input" multiple accept=".pdf,image/*,.txt" style="display:none" onchange="onAIFiles(this.files)"/>
       <span class="az-icon">📄</span>
       <div class="az-title">Upload brochure, pricing sheet or any property document</div>
       <div class="az-sub">PDF, JPG, PNG - AI will read it and auto-fill the form below</div>
@@ -101,11 +102,13 @@ input,select,textarea,button{font-family:inherit;outline:none}
     <div class="file-chips" id="ai-chips"></div>
     <button class="extract-btn" id="extract-btn" onclick="doExtract()" disabled>✨ Auto-fill form with AI</button>
   </div>
+
   <div class="ai-loading" id="ai-loading">
     <div class="spinner"></div>
     <div class="ai-status" id="ai-status-text">Reading document...</div>
     <div class="ai-sub-text">Claude AI is extracting property details</div>
   </div>
+
   <div id="form-section" style="display:none">
     <div class="form-card">
       <div class="form-section">Property Details</div>
@@ -118,7 +121,7 @@ input,select,textarea,button{font-family:inherit;outline:none}
           <select id="f-status"><option value="Available">Available</option><option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option></select>
         </div>
         <div class="field"><label>Furnishing <span class="req">*</span></label>
-          <select id="f-furnish"><option value="">Select...</option><option value="Bare Shell">Bare Shell</option><option value="Warm Shell">Warm Shell</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Furnished">Furnished</option><option value="Plug &amp; Play">Plug &amp; Play</option></select>
+          <select id="f-furnish"><option value="">Select...</option><option value="Bare Shell">Bare Shell</option><option value="Warm Shell">Warm Shell</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Furnished">Furnished</option><option value="Plug and Play">Plug and Play</option></select>
         </div>
         <div class="field"><label>Floor</label><input type="text" id="f-floor" placeholder="e.g. 4th Floor"/></div>
       </div>
@@ -151,19 +154,20 @@ input,select,textarea,button{font-family:inherit;outline:none}
     <div class="form-card">
       <div class="form-section">Photos and Videos (optional)</div>
       <div class="media-zone" onclick="document.getElementById('media-input').click()">
-        <input type="file" id="media-input" multiple accept="image/*,video/*" onchange="onMedia(this.files)" style="display:none"/>
+        <input type="file" id="media-input" multiple accept="image/*,video/*" style="display:none" onchange="onMedia(this.files)"/>
         <div class="mz-text">📷 Tap to add photos or videos</div>
       </div>
       <div class="media-preview" id="media-preview"></div>
     </div>
-    <div class="upload-progress" id="upload-progress">
+    <div class="prog-wrap" id="prog-wrap">
       <div class="prog-title" id="prog-title">Uploading...</div>
       <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar"></div></div>
-      <div class="prog-label" id="prog-label">0%</div>
+      <div class="prog-pct" id="prog-pct">0%</div>
     </div>
     <button class="submit-btn" id="submit-btn" onclick="doSubmit()">Submit Property</button>
     <button class="clear-btn" onclick="doClear()">Clear Form</button>
   </div>
+
   <div class="success" id="success">
     <span class="success-icon">✅</span>
     <div class="success-title">Property Submitted!</div>
@@ -172,6 +176,7 @@ input,select,textarea,button{font-family:inherit;outline:none}
   </div>
 </div>
 <div class="toast" id="toast"></div>
+
 <script>
 var API = "https://script.google.com/macros/s/AKfycbzzo2rN6A9ddpoCpHaAFCfGPPthFOTqcmbjjloB_wm62LrpbgzHYvxdLfRtgHJuUnCj-A/exec";
 var aiFiles = [];
@@ -187,20 +192,13 @@ function setMode(mode) {
   }
 }
 
-function onAIDrop(e) {
-  e.preventDefault();
-  document.getElementById('ai-zone').classList.remove('drag-over');
-  onAIFiles(e.dataTransfer.files);
-}
-
 function onAIFiles(files) {
   for (var i = 0; i < files.length; i++) {
-    var f = files[i];
     var exists = false;
     for (var j = 0; j < aiFiles.length; j++) {
-      if (aiFiles[j].name === f.name) { exists = true; break; }
+      if (aiFiles[j].name === files[i].name) { exists = true; break; }
     }
-    if (!exists) aiFiles.push(f);
+    if (!exists) aiFiles.push(files[i]);
   }
   renderChips();
   document.getElementById('extract-btn').disabled = aiFiles.length === 0;
@@ -216,7 +214,7 @@ function renderChips() {
   var html = '';
   for (var i = 0; i < aiFiles.length; i++) {
     var icon = aiFiles[i].type.indexOf('pdf') >= 0 ? '📄' : '🖼️';
-    html += '<div class="chip">' + icon + ' ' + aiFiles[i].name + ' <button class="chip-remove" onclick="removeAI(' + i + ')">x</button></div>';
+    html += '<div class="chip">' + icon + ' ' + aiFiles[i].name + ' <button onclick="removeAI(' + i + ')">x</button></div>';
   }
   document.getElementById('ai-chips').innerHTML = html;
 }
@@ -235,39 +233,48 @@ async function doExtract() {
   document.getElementById('ai-loading').style.display = 'block';
   document.getElementById('form-section').style.display = 'none';
   document.getElementById('extract-btn').disabled = true;
+
   try {
-    var parts = [];
-    parts.push({ type: 'text', text: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON, no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","furnishing":"","floor":"","area":"","carpet":"","rate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":""}' });
+    var files = [];
     for (var i = 0; i < aiFiles.length; i++) {
       var f = aiFiles[i];
       document.getElementById('ai-status-text').textContent = 'Reading ' + f.name + '...';
       var b64 = await toB64(f);
       if (f.type.indexOf('image') >= 0) {
-        parts.push({ type: 'image', source: { type: 'base64', media_type: f.type, data: b64 } });
+        files.push({ type: f.type, data: b64 });
       } else if (f.type.indexOf('pdf') >= 0) {
-        parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } });
+        files.push({ type: 'application/pdf', data: b64 });
       } else {
         var txt = await f.text();
-        parts.push({ type: 'text', text: txt });
+        files.push({ type: 'text/plain', text: txt });
       }
     }
-    document.getElementById('ai-status-text').textContent = 'Extracting data...';
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
+
+    document.getElementById('ai-status-text').textContent = 'Extracting data with AI...';
+
+    var payload = {
+      action: 'extract',
+      prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","furnishing":"","floor":"","area":"","carpet":"","rate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":""}',
+      files: files
+    };
+
+    var res = await fetch(API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 800, messages: [{ role: 'user', content: parts }] })
+      body: JSON.stringify(payload)
     });
-    var data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    var text = '';
-    for (var i = 0; i < data.content.length; i++) { text += data.content[i].text || ''; }
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    var d = JSON.parse(text);
+
+    var result = await res.json();
+
+    if (!result.success) throw new Error(result.error || 'Extraction failed');
+
+    var d = result.extracted;
+
     function fill(id, val) {
       if (!val) return;
       var el = document.getElementById(id);
       if (el) { el.value = val; el.classList.add('ai-filled'); }
     }
+
     fill('f-name', d.name); fill('f-market', d.market); fill('f-floor', d.floor);
     fill('f-area', d.area); fill('f-carpet', d.carpet); fill('f-rate', d.rate);
     fill('f-cam', d.cam); fill('f-deposit', d.deposit); fill('f-lockin', d.lockin);
@@ -275,9 +282,11 @@ async function doExtract() {
     fill('f-phone', d.phone);
     if (d.status) document.getElementById('f-status').value = d.status;
     if (d.furnishing) document.getElementById('f-furnish').value = d.furnishing;
+
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('form-section').style.display = 'block';
     toast('Form filled! Review and submit.', false);
+
   } catch(err) {
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('form-section').style.display = 'block';
@@ -288,10 +297,11 @@ async function doExtract() {
 
 function onMedia(files) {
   for (var i = 0; i < files.length; i++) {
-    var f = files[i];
     var exists = false;
-    for (var j = 0; j < mediaFiles.length; j++) { if (mediaFiles[j].name === f.name) { exists = true; break; } }
-    if (!exists) mediaFiles.push(f);
+    for (var j = 0; j < mediaFiles.length; j++) {
+      if (mediaFiles[j].name === files[i].name) { exists = true; break; }
+    }
+    if (!exists) mediaFiles.push(files[i]);
   }
   renderMedia();
 }
@@ -304,7 +314,7 @@ function renderMedia() {
     var f = mediaFiles[i];
     var url = URL.createObjectURL(f);
     var thumb = f.type.indexOf('image') >= 0 ? '<img src="' + url + '" alt=""/>' : '🎬';
-    html += '<div class="media-thumb">' + thumb + '<button class="media-remove" onclick="removeMedia(' + i + ')">x</button></div>';
+    html += '<div class="media-thumb">' + thumb + '<button onclick="removeMedia(' + i + ')">x</button></div>';
   }
   document.getElementById('media-preview').innerHTML = html;
 }
@@ -314,7 +324,10 @@ function validate() {
   var ok = true;
   for (var i = 0; i < ids.length; i++) {
     var el = document.getElementById(ids[i]);
-    if (!el.value.trim()) { el.style.borderColor = 'var(--red)'; setTimeout(function(e){ return function(){ e.style.borderColor=''; }; }(el), 2000); ok = false; }
+    if (!el.value.trim()) {
+      el.style.borderColor = 'var(--red)';
+      ok = false;
+    }
   }
   if (!document.getElementById('f-furnish').value) ok = false;
   if (!ok) toast('Please fill all required fields', true);
@@ -327,42 +340,84 @@ async function doSubmit() {
   btn.disabled = true; btn.textContent = 'Submitting...';
   var propName = document.getElementById('f-name').value.trim();
   var propCode = propName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase();
-  var prog = document.getElementById('upload-progress');
-  prog.style.display = 'block';
-  var total = mediaFiles.length + 1;
+  document.getElementById('prog-wrap').style.display = 'block';
   var done = 0;
+  var total = mediaFiles.length + 1;
   var photoUrls = [];
+
   function updateProg(label) {
     done++;
     var pct = Math.round((done / total) * 100);
     document.getElementById('prog-bar').style.width = pct + '%';
-    document.getElementById('prog-label').textContent = pct + '%';
+    document.getElementById('prog-pct').textContent = pct + '%';
     document.getElementById('prog-title').textContent = label;
   }
+
   for (var i = 0; i < mediaFiles.length; i++) {
     try {
       var f = mediaFiles[i];
       var b64 = await toB64(f);
-      var res = await fetch(API, { method: 'POST', body: JSON.stringify({ propertyCode: propCode, propertyName: propName, mediaType: f.type.indexOf('video') >= 0 ? 'video' : 'photo', fileName: f.name, mimeType: f.type, fileData: b64 }) });
+      var res = await fetch(API, {
+        method: 'POST',
+        body: JSON.stringify({
+          propertyCode: propCode,
+          propertyName: propName,
+          mediaType: f.type.indexOf('video') >= 0 ? 'video' : 'photo',
+          fileName: f.name,
+          mimeType: f.type,
+          fileData: b64
+        })
+      });
       var json = await res.json();
       if (json.success) photoUrls.push(json.fileUrl);
       updateProg('Uploading ' + f.name + '...');
-    } catch(e) { updateProg('Skipped ' + mediaFiles[i].name); }
+    } catch(e) { updateProg('Skipped'); }
   }
+
   try {
-    var formData = { property_name: propName, micro_market: document.getElementById('f-market').value, status: document.getElementById('f-status').value, furnishing: document.getElementById('f-furnish').value, floor: document.getElementById('f-floor').value, available_area: document.getElementById('f-area').value, carpet_area: document.getElementById('f-carpet').value, lease_rate_psf: document.getElementById('f-rate').value, cam_psf: document.getElementById('f-cam').value, security_deposit: document.getElementById('f-deposit').value, lockin_years: document.getElementById('f-lockin').value, tenure_years: document.getElementById('f-tenure').value, escalation: document.getElementById('f-escal').value, owner_name: document.getElementById('f-owner').value, contact: document.getElementById('f-phone').value, media_files: photoUrls, submitted_at: new Date().toLocaleString('en-IN') };
-    await fetch(API, { method: 'POST', body: JSON.stringify({ propertyCode: propCode, propertyName: propName, mediaType: 'data', fileName: propCode + '_data.json', mimeType: 'application/json', fileData: btoa(JSON.stringify(formData, null, 2)) }) });
+    var formData = {
+      property_name: propName,
+      micro_market: document.getElementById('f-market').value,
+      status: document.getElementById('f-status').value,
+      furnishing: document.getElementById('f-furnish').value,
+      floor: document.getElementById('f-floor').value,
+      available_area: document.getElementById('f-area').value,
+      carpet_area: document.getElementById('f-carpet').value,
+      lease_rate_psf: document.getElementById('f-rate').value,
+      cam_psf: document.getElementById('f-cam').value,
+      security_deposit: document.getElementById('f-deposit').value,
+      lockin_years: document.getElementById('f-lockin').value,
+      tenure_years: document.getElementById('f-tenure').value,
+      escalation: document.getElementById('f-escal').value,
+      owner_name: document.getElementById('f-owner').value,
+      contact: document.getElementById('f-phone').value,
+      media_files: photoUrls,
+      submitted_at: new Date().toLocaleString('en-IN')
+    };
+    var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(formData, null, 2))));
+    await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify({
+        propertyCode: propCode,
+        propertyName: propName,
+        mediaType: 'data',
+        fileName: propCode + '_data.json',
+        mimeType: 'application/json',
+        fileData: encoded
+      })
+    });
     updateProg('Saving data...');
   } catch(e) {}
-  prog.style.display = 'none';
+
+  document.getElementById('prog-wrap').style.display = 'none';
   document.getElementById('form-section').style.display = 'none';
   document.getElementById('success-sub').textContent = propName + ' - ' + document.getElementById('f-market').value + (photoUrls.length ? ' | ' + photoUrls.length + ' file(s) saved to Drive.' : ' | Data saved to Drive.');
   document.getElementById('success').style.display = 'block';
 }
 
 function doClear() {
-  var inputs = document.querySelectorAll('#form-section input, #form-section textarea');
-  for (var i = 0; i < inputs.length; i++) { inputs[i].value = ''; inputs[i].classList.remove('ai-filled'); }
+  var inputs = document.querySelectorAll('#form-section input');
+  for (var i = 0; i < inputs.length; i++) { inputs[i].value = ''; inputs[i].classList.remove('ai-filled'); inputs[i].style.borderColor = ''; }
   document.getElementById('f-status').value = 'Available';
   document.getElementById('f-furnish').value = '';
   mediaFiles = []; renderMedia();

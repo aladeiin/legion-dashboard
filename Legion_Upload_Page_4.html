@@ -1,0 +1,105 @@
+var FOLDER_ID = "11F0Nn0PyyD9JWmuEcMikgew6kqguiTI0";
+var ANTHROPIC_API_KEY = "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";
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+
+    // Route based on action
+    if (data.action === "extract") {
+      return extractWithAI(data);
+    } else {
+      return uploadFile(data);
+    }
+
+  } catch (err) {
+    return respond({ success: false, error: err.message });
+  }
+}
+
+function uploadFile(data) {
+  var folder = DriveApp.getFolderById(FOLDER_ID);
+  var subFolderName = data.propertyCode + " - " + data.propertyName;
+  var propFolder;
+  var existing = folder.getFoldersByName(subFolderName);
+  if (existing.hasNext()) {
+    propFolder = existing.next();
+  } else {
+    propFolder = folder.createFolder(subFolderName);
+  }
+  var fileData = Utilities.base64Decode(data.fileData);
+  var blob = Utilities.newBlob(fileData, data.mimeType, data.fileName);
+  var file = propFolder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return respond({
+    success: true,
+    fileId: file.getId(),
+    fileUrl: file.getUrl(),
+    thumbUrl: "https://drive.google.com/thumbnail?id=" + file.getId() + "&sz=w800"
+  });
+}
+
+function extractWithAI(data) {
+  var parts = [{ type: "text", text: data.prompt }];
+
+  // Add files
+  if (data.files) {
+    for (var i = 0; i < data.files.length; i++) {
+      var f = data.files[i];
+      if (f.type.indexOf("image") >= 0) {
+        parts.push({ type: "image", source: { type: "base64", media_type: f.type, data: f.data } });
+      } else if (f.type.indexOf("pdf") >= 0) {
+        parts.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: f.data } });
+      } else {
+        parts.push({ type: "text", text: f.text || "" });
+      }
+    }
+  }
+
+  var payload = {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 800,
+    messages: [{ role: "user", content: parts }]
+  };
+
+  var options = {
+    method: "post",
+    contentType: "application/json",
+    headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  var response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
+  var result = JSON.parse(response.getContentText());
+
+  if (result.error) {
+    return respond({ success: false, error: result.error.message });
+  }
+
+  var text = "";
+  for (var i = 0; i < result.content.length; i++) {
+    text += result.content[i].text || "";
+  }
+  text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+  return respond({ success: true, extracted: JSON.parse(text) });
+}
+
+function respond(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet() {
+  var folder = DriveApp.getFolderById(FOLDER_ID);
+  return respond({ status: "Legion CRE API running", folder: folder.getName() });
+}
+
+function testWrite() {
+  var folder = DriveApp.getFolderById(FOLDER_ID);
+  var file = folder.createFile("test.txt", "Legion test", MimeType.PLAIN_TEXT);
+  Logger.log("Write works: " + file.getName());
+  file.setTrashed(true);
+}
