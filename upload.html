@@ -41,7 +41,7 @@ input,select,textarea,button{font-family:inherit;outline:none}
 .form-grid.full{grid-template-columns:1fr}
 .field{display:flex;flex-direction:column;gap:4px}
 .field label{font-size:11px;font-weight:600;color:var(--text2)}
-.req{color:var(--red);margin-left:2px}
+
 .field input,.field select{background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:13px;padding:9px 11px;color:var(--text);width:100%}
 .field input:focus,.field select:focus{border-color:var(--navy);background:var(--white)}
 .field input.ai-filled{border-color:var(--green);background:#F0FBF4}
@@ -113,14 +113,14 @@ input,select,textarea,button{font-family:inherit;outline:none}
     <div class="form-card">
       <div class="form-section">Property Details</div>
       <div class="form-grid full">
-        <div class="field"><label>Property Name <span class="req">*</span></label><input type="text" id="f-name" placeholder="e.g. Tech Park Unit 402"/></div>
+        <div class="field"><label>Property Name </label><input type="text" id="f-name" placeholder="e.g. Tech Park Unit 402"/></div>
       </div>
       <div class="form-grid">
-        <div class="field"><label>Micro-Market <span class="req">*</span></label><input type="text" id="f-market" placeholder="e.g. Kharadi"/></div>
-        <div class="field"><label>Status <span class="req">*</span></label>
+        <div class="field"><label>Micro-Market </label><input type="text" id="f-market" placeholder="e.g. Kharadi"/></div>
+        <div class="field"><label>Status </label>
           <select id="f-status"><option value="Available">Available</option><option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option></select>
         </div>
-        <div class="field"><label>Furnishing <span class="req">*</span></label>
+        <div class="field"><label>Furnishing </label>
           <select id="f-furnish"><option value="">Select...</option><option value="Bare Shell">Bare Shell</option><option value="Warm Shell">Warm Shell</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Furnished">Furnished</option><option value="Plug and Play">Plug and Play</option></select>
         </div>
         <div class="field"><label>Floor</label><input type="text" id="f-floor" placeholder="e.g. 4th Floor"/></div>
@@ -129,26 +129,26 @@ input,select,textarea,button{font-family:inherit;outline:none}
     <div class="form-card">
       <div class="form-section">Area</div>
       <div class="form-grid">
-        <div class="field"><label>Available Area (SqFt) <span class="req">*</span></label><input type="text" id="f-area" placeholder="e.g. 2500"/></div>
+        <div class="field"><label>Available Area (SqFt) </label><input type="text" id="f-area" placeholder="e.g. 2500"/></div>
         <div class="field"><label>Carpet Area (SqFt)</label><input type="text" id="f-carpet" placeholder="e.g. 2200"/></div>
       </div>
     </div>
     <div class="form-card">
       <div class="form-section">Pricing</div>
       <div class="form-grid">
-        <div class="field"><label>Lease Rate (PSF/month) <span class="req">*</span></label><input type="text" id="f-rate" placeholder="e.g. 85"/><span class="field-hint">Monthly rent per sq ft</span></div>
-        <div class="field"><label>CAM (PSF) <span class="req">*</span></label><input type="text" id="f-cam" placeholder="e.g. 12"/></div>
-        <div class="field"><label>Security Deposit (months) <span class="req">*</span></label><input type="text" id="f-deposit" placeholder="e.g. 6"/></div>
-        <div class="field"><label>Lock-In (years) <span class="req">*</span></label><input type="text" id="f-lockin" placeholder="e.g. 3"/></div>
-        <div class="field"><label>Lease Tenure (years) <span class="req">*</span></label><input type="text" id="f-tenure" placeholder="e.g. 5"/></div>
-        <div class="field"><label>Escalation <span class="req">*</span></label><input type="text" id="f-escal" placeholder="e.g. 5% per year"/></div>
+        <div class="field"><label>Lease Rate (PSF/month) </label><input type="text" id="f-rate" placeholder="e.g. 85"/><span class="field-hint">Monthly rent per sq ft</span></div>
+        <div class="field"><label>CAM (PSF) </label><input type="text" id="f-cam" placeholder="e.g. 12"/></div>
+        <div class="field"><label>Security Deposit (months) </label><input type="text" id="f-deposit" placeholder="e.g. 6"/></div>
+        <div class="field"><label>Lock-In (years) </label><input type="text" id="f-lockin" placeholder="e.g. 3"/></div>
+        <div class="field"><label>Lease Tenure (years) </label><input type="text" id="f-tenure" placeholder="e.g. 5"/></div>
+        <div class="field"><label>Escalation </label><input type="text" id="f-escal" placeholder="e.g. 5% per year"/></div>
       </div>
     </div>
     <div class="form-card">
       <div class="form-section">Owner and Contact</div>
       <div class="form-grid">
-        <div class="field"><label>Owner Name <span class="req">*</span></label><input type="text" id="f-owner" placeholder="e.g. Rahul Deshmukh"/></div>
-        <div class="field"><label>Contact Number <span class="req">*</span></label><input type="text" id="f-phone" placeholder="e.g. +91-98765 43210"/></div>
+        <div class="field"><label>Owner Name </label><input type="text" id="f-owner" placeholder="e.g. Rahul Deshmukh"/></div>
+        <div class="field"><label>Contact Number </label><input type="text" id="f-phone" placeholder="e.g. +91-98765 43210"/></div>
       </div>
     </div>
     <div class="form-card">
@@ -320,18 +320,7 @@ function renderMedia() {
 }
 
 function validate() {
-  var ids = ['f-name','f-market','f-area','f-rate','f-cam','f-deposit','f-lockin','f-tenure','f-escal','f-owner','f-phone'];
-  var ok = true;
-  for (var i = 0; i < ids.length; i++) {
-    var el = document.getElementById(ids[i]);
-    if (!el.value.trim()) {
-      el.style.borderColor = 'var(--red)';
-      ok = false;
-    }
-  }
-  if (!document.getElementById('f-furnish').value) ok = false;
-  if (!ok) toast('Please fill all required fields', true);
-  return ok;
+  return true;
 }
 
 async function doSubmit() {
