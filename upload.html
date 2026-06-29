@@ -3,131 +3,81 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Legion CRE — Property Form</title>
+<title>Legion CRE - Property Form</title>
 <style>
-:root{
-  --navy:#1B3A6B;--navy-dark:#122848;
-  --gold:#C9973A;--white:#fff;
-  --bg:#F5F7FA;--bg2:#EDF1F7;
-  --border:#DDE3EE;--text:#1A202C;
-  --text2:#4A5568;--text3:#718096;
-  --green:#1A6B3A;--green-bg:#E8F5EE;
-  --red:#9B2335;--red-bg:#FCEEF0;
-  --shadow:0 2px 8px rgba(27,58,107,.1);
-}
+:root{--navy:#1B3A6B;--navy-dark:#122848;--white:#fff;--bg:#F5F7FA;--bg2:#EDF1F7;--border:#DDE3EE;--text:#1A202C;--text2:#4A5568;--text3:#718096;--green:#1A6B3A;--green-bg:#E8F5EE;--red:#9B2335;}
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 body{background:var(--bg);min-height:100vh;padding-bottom:60px}
 input,select,textarea,button{font-family:inherit;outline:none}
-
-.topbar{background:var(--navy);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(27,58,107,.3)}
+.topbar{background:var(--navy);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
 .topbar img{height:32px;object-fit:contain}
 .topbar-title{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);border-left:1px solid rgba(255,255,255,.2);padding-left:12px}
-
 .container{max-width:600px;margin:0 auto;padding:20px 16px}
-
-/* MODE TOGGLE */
-.mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;box-shadow:var(--shadow)}
-.mode-btn{padding:12px;text-align:center;cursor:pointer;transition:.15s;border:none;background:transparent}
+.mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
+.mode-btn{padding:12px;text-align:center;cursor:pointer;border:none;background:transparent;color:var(--text2)}
 .mode-btn.active{background:var(--navy);color:#fff}
-.mode-btn:not(.active){color:var(--text2)}
 .mode-btn .mb-icon{font-size:20px;display:block;margin-bottom:4px}
 .mode-btn .mb-label{font-size:12px;font-weight:600}
 .mode-btn .mb-sub{font-size:10px;opacity:.7;margin-top:2px}
-
-/* AI UPLOAD ZONE */
-.ai-zone{background:var(--white);border:1.5px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;margin-bottom:16px;transition:.15s}
-.ai-zone:hover,.ai-zone.drag-over{border-color:var(--navy);background:#EEF3FB}
-.ai-zone input{display:none}
+.ai-zone{background:var(--white);border:2px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;margin-bottom:12px;transition:.15s}
+.ai-zone:hover{border-color:var(--navy);background:#EEF3FB}
 .az-icon{font-size:36px;display:block;margin-bottom:10px}
 .az-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
 .az-sub{font-size:11px;color:var(--text3);line-height:1.6}
-.az-btn{display:inline-block;margin-top:12px;background:var(--navy);color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer}
-
+.az-btn{display:inline-block;margin-top:12px;background:var(--navy);color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:12px;font-weight:600}
 .file-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .chip{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px}
 .chip-remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;line-height:1;padding:0}
-.chip-remove:hover{color:var(--red)}
-
-.extract-btn{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-bottom:20px;transition:.15s}
-.extract-btn:hover:not(:disabled){background:var(--navy-dark)}
+.extract-btn{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin-bottom:20px}
 .extract-btn:disabled{opacity:.4;cursor:not-allowed}
-
-/* AI LOADING */
 .ai-loading{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:28px;text-align:center;margin-bottom:16px;display:none}
 .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .ai-status{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:4px}
 .ai-sub-text{font-size:11px;color:var(--text3)}
-
-/* FORM */
-.form-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.form-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
 .form-section{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;padding-bottom:6px;border-bottom:1.5px solid var(--border)}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 .form-grid.full{grid-template-columns:1fr}
 .field{display:flex;flex-direction:column;gap:4px}
 .field label{font-size:11px;font-weight:600;color:var(--text2)}
-.field label .req{color:var(--red);margin-left:2px}
-.field input,.field select,.field textarea{
-  background:var(--bg);border:1.5px solid var(--border);
-  border-radius:7px;font-size:13px;padding:9px 11px;
-  color:var(--text);transition:.15s;width:100%
-}
+.req{color:var(--red);margin-left:2px}
+.field input,.field select,.field textarea{background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:13px;padding:9px 11px;color:var(--text);width:100%}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--navy);background:var(--white)}
 .field input.ai-filled{border-color:var(--green);background:#F0FBF4}
-.field textarea{resize:vertical;min-height:72px}
 .field-hint{font-size:10px;color:var(--text3)}
-
-/* AI BADGE */
-.ai-badge{font-size:9px;background:var(--green-bg);color:var(--green);padding:1px 6px;border-radius:8px;font-weight:600;margin-left:5px;vertical-align:middle}
-
-/* MEDIA */
-.media-zone{border:1.5px dashed var(--border);border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:.15s;margin-top:4px;background:var(--bg)}
+.media-zone{border:1.5px dashed var(--border);border-radius:8px;padding:14px;text-align:center;cursor:pointer;background:var(--bg);margin-top:4px}
 .media-zone:hover{border-color:var(--navy);background:#EEF3FB}
-.media-zone input{display:none}
 .mz-text{font-size:12px;color:var(--text3)}
 .media-preview{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
 .media-thumb{aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:18px;position:relative}
 .media-thumb img{width:100%;height:100%;object-fit:cover}
 .media-remove{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.5);border:none;color:#fff;width:18px;height:18px;border-radius:50%;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-
-/* SUBMIT */
-.submit-btn{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:.15s;margin-bottom:8px}
-.submit-btn:hover:not(:disabled){background:#155C30}
+.submit-btn{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px}
 .submit-btn:disabled{opacity:.4;cursor:not-allowed}
 .clear-btn{width:100%;padding:10px;background:transparent;color:var(--text2);border:1.5px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer}
-.clear-btn:hover{border-color:var(--border)}
-
-/* SUCCESS */
-.success{background:var(--green-bg);border:1.5px solid #A3D9B8;border-radius:12px;padding:24px;text-align:center;display:none;margin-bottom:16px}
-.success-icon{font-size:40px;display:block;margin-bottom:10px}
-.success-title{font-size:16px;font-weight:700;color:var(--green);margin-bottom:6px}
-.success-sub{font-size:12px;color:var(--text2);line-height:1.6}
-.success-again{margin-top:14px;padding:8px 24px;background:var(--white);border:1.5px solid var(--border);border-radius:7px;font-size:12px;color:var(--text2);cursor:pointer}
-
-/* PROGRESS */
 .upload-progress{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;display:none}
 .prog-title{font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px}
 .prog-bar-wrap{height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-bottom:6px}
 .prog-bar{height:100%;background:var(--navy);border-radius:3px;transition:width .3s;width:0%}
 .prog-label{font-size:11px;color:var(--text3)}
-
-/* TOAST */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:12px;z-index:9000;opacity:0;transition:opacity .25s;pointer-events:none;color:#fff;box-shadow:var(--shadow)}
+.success{background:var(--green-bg);border:1.5px solid #A3D9B8;border-radius:12px;padding:24px;text-align:center;display:none;margin-bottom:16px}
+.success-icon{font-size:40px;display:block;margin-bottom:10px}
+.success-title{font-size:16px;font-weight:700;color:var(--green);margin-bottom:6px}
+.success-sub{font-size:12px;color:var(--text2);line-height:1.6}
+.success-again{margin-top:14px;padding:8px 24px;background:var(--white);border:1.5px solid var(--border);border-radius:7px;font-size:12px;color:var(--text2);cursor:pointer}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:12px;z-index:9000;opacity:0;transition:opacity .25s;pointer-events:none;color:#fff}
 .toast.show{opacity:1}
 .toast.ok{background:var(--green)}
 .toast.err{background:var(--red)}
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <img src="https://static.wixstatic.com/media/2ffd6f_ad3fcde821074fde9c0ba30e616e854d~mv2.png/v1/fill/w_171,h_60,al_c,lg_1,q_85,enc_avif,quality_auto/LEGION%20LOGO%20HI%20RES.png" alt="Legion Realty"/>
   <span class="topbar-title">Property Form</span>
 </div>
-
 <div class="container">
-
-  <!-- MODE TOGGLE -->
   <div class="mode-toggle">
     <button class="mode-btn active" id="mode-ai" onclick="setMode('ai')">
       <span class="mb-icon">✨</span>
@@ -140,178 +90,96 @@ input,select,textarea,button{font-family:inherit;outline:none}
       <span class="mb-sub">Type details yourself</span>
     </button>
   </div>
-
-  <!-- AI MODE -->
   <div id="ai-section">
-    <div class="ai-zone" id="ai-zone"
-         onclick="document.getElementById('ai-file-input').click()"
-         ondragover="event.preventDefault();this.classList.add('drag-over')"
-         ondragleave="this.classList.remove('drag-over')"
-         ondrop="handleAIDrop(event)">
-      <input type="file" id="ai-file-input" multiple accept=".pdf,image/*,.txt" onchange="handleAIFiles(this.files)"/>
+    <div class="ai-zone" id="ai-zone" onclick="document.getElementById('ai-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="onAIDrop(event)">
+      <input type="file" id="ai-input" multiple accept=".pdf,image/*,.txt" onchange="onAIFiles(this.files)" style="display:none"/>
       <span class="az-icon">📄</span>
       <div class="az-title">Upload brochure, pricing sheet or any property document</div>
-      <div class="az-sub">PDF, JPG, PNG — AI will read it and auto-fill the form below<br/>You can upload multiple files at once</div>
+      <div class="az-sub">PDF, JPG, PNG - AI will read it and auto-fill the form below</div>
       <span class="az-btn">Choose Files</span>
     </div>
     <div class="file-chips" id="ai-chips"></div>
-    <button class="extract-btn" id="extract-btn" onclick="extractData()" disabled>✨ Auto-fill form with AI</button>
+    <button class="extract-btn" id="extract-btn" onclick="doExtract()" disabled>✨ Auto-fill form with AI</button>
   </div>
-
-  <!-- AI LOADING -->
   <div class="ai-loading" id="ai-loading">
     <div class="spinner"></div>
     <div class="ai-status" id="ai-status-text">Reading document...</div>
-    <div class="ai-sub-text" id="ai-sub-text">Claude AI is extracting property details</div>
+    <div class="ai-sub-text">Claude AI is extracting property details</div>
   </div>
-
-  <!-- FORM -->
   <div id="form-section" style="display:none">
-
-    <!-- PROPERTY DETAILS -->
     <div class="form-card">
       <div class="form-section">Property Details</div>
       <div class="form-grid full">
-        <div class="field">
-          <label>Property Name <span class="req">*</span></label>
-          <input type="text" id="f-name" placeholder="e.g. Tech Park Unit 402"/>
-        </div>
+        <div class="field"><label>Property Name <span class="req">*</span></label><input type="text" id="f-name" placeholder="e.g. Tech Park Unit 402"/></div>
       </div>
       <div class="form-grid">
-        <div class="field">
-          <label>Micro-Market <span class="req">*</span></label>
-          <input type="text" id="f-market" placeholder="e.g. Kharadi"/>
+        <div class="field"><label>Micro-Market <span class="req">*</span></label><input type="text" id="f-market" placeholder="e.g. Kharadi"/></div>
+        <div class="field"><label>Status <span class="req">*</span></label>
+          <select id="f-status"><option value="Available">Available</option><option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option></select>
         </div>
-        <div class="field">
-          <label>Status <span class="req">*</span></label>
-          <select id="f-status">
-            <option value="Available">Available</option>
-            <option value="Rented Out">Rented Out</option>
-            <option value="Under Negotiation">Under Negotiation</option>
-          </select>
+        <div class="field"><label>Furnishing <span class="req">*</span></label>
+          <select id="f-furnish"><option value="">Select...</option><option value="Bare Shell">Bare Shell</option><option value="Warm Shell">Warm Shell</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Furnished">Furnished</option><option value="Plug &amp; Play">Plug &amp; Play</option></select>
         </div>
-        <div class="field">
-          <label>Furnishing <span class="req">*</span></label>
-          <select id="f-furnish">
-            <option value="">Select...</option>
-            <option value="Bare Shell">Bare Shell</option>
-            <option value="Warm Shell">Warm Shell</option>
-            <option value="Semi-Furnished">Semi-Furnished</option>
-            <option value="Furnished">Furnished</option>
-            <option value="Plug & Play">Plug & Play</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Floor</label>
-          <input type="text" id="f-floor" placeholder="e.g. 4th Floor"/>
-        </div>
+        <div class="field"><label>Floor</label><input type="text" id="f-floor" placeholder="e.g. 4th Floor"/></div>
       </div>
     </div>
-
-    <!-- AREA -->
     <div class="form-card">
       <div class="form-section">Area</div>
       <div class="form-grid">
-        <div class="field">
-          <label>Available Area (SqFt) <span class="req">*</span></label>
-          <input type="text" id="f-area" placeholder="e.g. 2500"/>
-        </div>
-        <div class="field">
-          <label>Carpet Area (SqFt)</label>
-          <input type="text" id="f-carpet" placeholder="e.g. 2200"/>
-        </div>
+        <div class="field"><label>Available Area (SqFt) <span class="req">*</span></label><input type="text" id="f-area" placeholder="e.g. 2500"/></div>
+        <div class="field"><label>Carpet Area (SqFt)</label><input type="text" id="f-carpet" placeholder="e.g. 2200"/></div>
       </div>
     </div>
-
-    <!-- PRICING -->
     <div class="form-card">
       <div class="form-section">Pricing</div>
       <div class="form-grid">
-        <div class="field">
-          <label>Lease Rate (PSF/month ₹) <span class="req">*</span></label>
-          <input type="text" id="f-rate" placeholder="e.g. 85"/>
-          <span class="field-hint">Monthly rent per sq ft</span>
-        </div>
-        <div class="field">
-          <label>CAM (PSF ₹) <span class="req">*</span></label>
-          <input type="text" id="f-cam" placeholder="e.g. 12"/>
-        </div>
-        <div class="field">
-          <label>Security Deposit (months) <span class="req">*</span></label>
-          <input type="text" id="f-deposit" placeholder="e.g. 6"/>
-        </div>
-        <div class="field">
-          <label>Lock-In (years) <span class="req">*</span></label>
-          <input type="text" id="f-lockin" placeholder="e.g. 3"/>
-        </div>
-        <div class="field">
-          <label>Lease Tenure (years) <span class="req">*</span></label>
-          <input type="text" id="f-tenure" placeholder="e.g. 5"/>
-        </div>
-        <div class="field">
-          <label>Escalation <span class="req">*</span></label>
-          <input type="text" id="f-escal" placeholder="e.g. 5% per year"/>
-        </div>
+        <div class="field"><label>Lease Rate (PSF/month) <span class="req">*</span></label><input type="text" id="f-rate" placeholder="e.g. 85"/><span class="field-hint">Monthly rent per sq ft</span></div>
+        <div class="field"><label>CAM (PSF) <span class="req">*</span></label><input type="text" id="f-cam" placeholder="e.g. 12"/></div>
+        <div class="field"><label>Security Deposit (months) <span class="req">*</span></label><input type="text" id="f-deposit" placeholder="e.g. 6"/></div>
+        <div class="field"><label>Lock-In (years) <span class="req">*</span></label><input type="text" id="f-lockin" placeholder="e.g. 3"/></div>
+        <div class="field"><label>Lease Tenure (years) <span class="req">*</span></label><input type="text" id="f-tenure" placeholder="e.g. 5"/></div>
+        <div class="field"><label>Escalation <span class="req">*</span></label><input type="text" id="f-escal" placeholder="e.g. 5% per year"/></div>
       </div>
     </div>
-
-    <!-- OWNER -->
     <div class="form-card">
-      <div class="form-section">Owner & Contact</div>
+      <div class="form-section">Owner and Contact</div>
       <div class="form-grid">
-        <div class="field">
-          <label>Owner Name <span class="req">*</span></label>
-          <input type="text" id="f-owner" placeholder="e.g. Rahul Deshmukh"/>
-        </div>
-        <div class="field">
-          <label>Contact Number <span class="req">*</span></label>
-          <input type="text" id="f-phone" placeholder="e.g. +91-98765 43210"/>
-        </div>
+        <div class="field"><label>Owner Name <span class="req">*</span></label><input type="text" id="f-owner" placeholder="e.g. Rahul Deshmukh"/></div>
+        <div class="field"><label>Contact Number <span class="req">*</span></label><input type="text" id="f-phone" placeholder="e.g. +91-98765 43210"/></div>
       </div>
     </div>
-
-    <!-- MEDIA -->
     <div class="form-card">
-      <div class="form-section">Photos & Videos (optional)</div>
+      <div class="form-section">Photos and Videos (optional)</div>
       <div class="media-zone" onclick="document.getElementById('media-input').click()">
-        <input type="file" id="media-input" multiple accept="image/*,video/*" onchange="handleMedia(this.files)"/>
-        <div class="mz-text">📷 Tap to add photos or videos from camera roll</div>
+        <input type="file" id="media-input" multiple accept="image/*,video/*" onchange="onMedia(this.files)" style="display:none"/>
+        <div class="mz-text">📷 Tap to add photos or videos</div>
       </div>
       <div class="media-preview" id="media-preview"></div>
     </div>
-
-    <!-- PROGRESS -->
     <div class="upload-progress" id="upload-progress">
       <div class="prog-title" id="prog-title">Uploading...</div>
       <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar"></div></div>
       <div class="prog-label" id="prog-label">0%</div>
     </div>
-
-    <!-- SUBMIT -->
-    <button class="submit-btn" id="submit-btn" onclick="submitForm()">Submit Property</button>
-    <button class="clear-btn" onclick="clearForm()">Clear Form</button>
+    <button class="submit-btn" id="submit-btn" onclick="doSubmit()">Submit Property</button>
+    <button class="clear-btn" onclick="doClear()">Clear Form</button>
   </div>
-
-  <!-- SUCCESS -->
   <div class="success" id="success">
     <span class="success-icon">✅</span>
     <div class="success-title">Property Submitted!</div>
-    <div class="success-sub" id="success-sub">Data and media saved to Google Drive.</div>
-    <button class="success-again" onclick="resetAll()">Submit Another</button>
+    <div class="success-sub" id="success-sub">Data saved to Google Drive.</div>
+    <button class="success-again" onclick="doReset()">Submit Another</button>
   </div>
-
 </div>
 <div class="toast" id="toast"></div>
-
 <script>
-const API = "https://script.google.com/macros/s/AKfycbzzo2rN6A9ddpoCpHaAFCfGPPthFOTqcmbjjloB_wm62LrpbgzHYvxdLfRtgHJuUnCj-A/exec";
-let aiFiles = [], mediaFiles = [], currentMode = 'ai';
+var API = "https://script.google.com/macros/s/AKfycbzzo2rN6A9ddpoCpHaAFCfGPPthFOTqcmbjjloB_wm62LrpbgzHYvxdLfRtgHJuUnCj-A/exec";
+var aiFiles = [];
+var mediaFiles = [];
 
-// ── MODE ──────────────────────────────────────────────
 function setMode(mode) {
-  currentMode = mode;
   document.getElementById('mode-ai').classList.toggle('active', mode === 'ai');
-  document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
+  document.getElementById('mode-manual').classList.toggle('active', mode !== 'ai');
   document.getElementById('ai-section').style.display = mode === 'ai' ? 'block' : 'none';
   if (mode === 'manual') {
     document.getElementById('form-section').style.display = 'block';
@@ -319,249 +187,201 @@ function setMode(mode) {
   }
 }
 
-// ── AI FILES ──────────────────────────────────────────
-function handleAIDrop(e) { e.preventDefault(); document.getElementById('ai-zone').classList.remove('drag-over'); handleAIFiles(e.dataTransfer.files); }
-function handleAIFiles(files) {
-  Array.from(files).forEach(f => { if (!aiFiles.find(x => x.name===f.name)) aiFiles.push(f); });
+function onAIDrop(e) {
+  e.preventDefault();
+  document.getElementById('ai-zone').classList.remove('drag-over');
+  onAIFiles(e.dataTransfer.files);
+}
+
+function onAIFiles(files) {
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    var exists = false;
+    for (var j = 0; j < aiFiles.length; j++) {
+      if (aiFiles[j].name === f.name) { exists = true; break; }
+    }
+    if (!exists) aiFiles.push(f);
+  }
   renderChips();
   document.getElementById('extract-btn').disabled = aiFiles.length === 0;
 }
-function removeAIFile(i) { aiFiles.splice(i,1); renderChips(); document.getElementById('extract-btn').disabled = aiFiles.length === 0; }
-function renderChips() {
-  document.getElementById('ai-chips').innerHTML = aiFiles.map((f,i) =>
-    `<div class="chip">${f.type.includes('pdf')?'📄':'🖼️'} ${f.name} <button class="chip-remove" onclick="removeAIFile(${i})">✕</button></div>`
-  ).join('');
+
+function removeAI(i) {
+  aiFiles.splice(i, 1);
+  renderChips();
+  document.getElementById('extract-btn').disabled = aiFiles.length === 0;
 }
 
-// ── EXTRACT ───────────────────────────────────────────
-async function extractData() {
+function renderChips() {
+  var html = '';
+  for (var i = 0; i < aiFiles.length; i++) {
+    var icon = aiFiles[i].type.indexOf('pdf') >= 0 ? '📄' : '🖼️';
+    html += '<div class="chip">' + icon + ' ' + aiFiles[i].name + ' <button class="chip-remove" onclick="removeAI(' + i + ')">x</button></div>';
+  }
+  document.getElementById('ai-chips').innerHTML = html;
+}
+
+function toB64(file) {
+  return new Promise(function(resolve, reject) {
+    var r = new FileReader();
+    r.onload = function() { resolve(r.result.split(',')[1]); };
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function doExtract() {
   if (!aiFiles.length) return;
   document.getElementById('ai-loading').style.display = 'block';
   document.getElementById('form-section').style.display = 'none';
   document.getElementById('extract-btn').disabled = true;
-
   try {
-    const parts = [];
-    parts.push({ type:'text', text:`You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s).
-
-IMPORTANT RULES:
-- Lease rate = monthly rent per sq ft (₹50-300 range typically). If you see rates like ₹13000/sqft that is a SALE rate, not lease.
-- Return ONLY raw JSON, no markdown, no backticks.
-
-Return this exact JSON structure:
-{
-  "name": "",
-  "market": "",
-  "status": "Available",
-  "furnishing": "",
-  "floor": "",
-  "area": "",
-  "carpet": "",
-  "rate": "",
-  "cam": "",
-  "deposit": "",
-  "lockin": "",
-  "tenure": "",
-  "escal": "",
-  "owner": "",
-  "phone": "",
-  "notes": ""
-}` });
-
-    for (const f of aiFiles) {
+    var parts = [];
+    parts.push({ type: 'text', text: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON, no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","furnishing":"","floor":"","area":"","carpet":"","rate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":""}' });
+    for (var i = 0; i < aiFiles.length; i++) {
+      var f = aiFiles[i];
       document.getElementById('ai-status-text').textContent = 'Reading ' + f.name + '...';
-      const b64 = await toB64(f);
-      if (f.type.startsWith('image/')) {
-        parts.push({ type:'image', source:{type:'base64', media_type:f.type, data:b64} });
-      } else if (f.type.includes('pdf')) {
-        parts.push({ type:'document', source:{type:'base64', media_type:'application/pdf', data:b64} });
+      var b64 = await toB64(f);
+      if (f.type.indexOf('image') >= 0) {
+        parts.push({ type: 'image', source: { type: 'base64', media_type: f.type, data: b64 } });
+      } else if (f.type.indexOf('pdf') >= 0) {
+        parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } });
       } else {
-        parts.push({ type:'text', text: await f.text() });
+        var txt = await f.text();
+        parts.push({ type: 'text', text: txt });
       }
     }
-
     document.getElementById('ai-status-text').textContent = 'Extracting data...';
-
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:800,
-        messages:[{ role:'user', content:parts }]
-      })
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 800, messages: [{ role: 'user', content: parts }] })
     });
-
-    const data = await res.json();
+    var data = await res.json();
     if (data.error) throw new Error(data.error.message);
-    const text = data.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
-    const d = JSON.parse(text);
-
-    // Fill form
-    const fill = (id, val) => { if (!val) return; const el=document.getElementById(id); if(el){el.value=val; el.classList.add('ai-filled');} };
+    var text = '';
+    for (var i = 0; i < data.content.length; i++) { text += data.content[i].text || ''; }
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    var d = JSON.parse(text);
+    function fill(id, val) {
+      if (!val) return;
+      var el = document.getElementById(id);
+      if (el) { el.value = val; el.classList.add('ai-filled'); }
+    }
     fill('f-name', d.name); fill('f-market', d.market); fill('f-floor', d.floor);
-    fill('f-area', d.area); fill('f-carpet', d.carpet);
-    fill('f-rate', d.rate); fill('f-cam', d.cam); fill('f-deposit', d.deposit);
-    fill('f-lockin', d.lockin); fill('f-tenure', d.tenure); fill('f-escal', d.escal);
-    fill('f-owner', d.owner); fill('f-phone', d.phone);
+    fill('f-area', d.area); fill('f-carpet', d.carpet); fill('f-rate', d.rate);
+    fill('f-cam', d.cam); fill('f-deposit', d.deposit); fill('f-lockin', d.lockin);
+    fill('f-tenure', d.tenure); fill('f-escal', d.escal); fill('f-owner', d.owner);
+    fill('f-phone', d.phone);
     if (d.status) document.getElementById('f-status').value = d.status;
     if (d.furnishing) document.getElementById('f-furnish').value = d.furnishing;
-
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('form-section').style.display = 'block';
-    showToast('Form filled! Review and submit.', false);
-
+    toast('Form filled! Review and submit.', false);
   } catch(err) {
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('form-section').style.display = 'block';
     document.getElementById('extract-btn').disabled = false;
-    showToast('Could not extract: ' + err.message, true);
+    toast('Could not extract: ' + err.message, true);
   }
 }
 
-function toB64(file) {
-  return new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+function onMedia(files) {
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    var exists = false;
+    for (var j = 0; j < mediaFiles.length; j++) { if (mediaFiles[j].name === f.name) { exists = true; break; } }
+    if (!exists) mediaFiles.push(f);
+  }
+  renderMedia();
 }
 
-// ── MEDIA ─────────────────────────────────────────────
-function handleMedia(files) {
-  Array.from(files).forEach(f => { if (!mediaFiles.find(x=>x.name===f.name)) mediaFiles.push(f); });
-  renderMediaPreview();
-}
-function removeMedia(i) { mediaFiles.splice(i,1); renderMediaPreview(); }
-function renderMediaPreview() {
-  document.getElementById('media-preview').innerHTML = mediaFiles.map((f,i) => {
-    const url = URL.createObjectURL(f);
-    const thumb = f.type.startsWith('image/') ? `<img src="${url}" alt=""/>` : '🎬';
-    return `<div class="media-thumb">${thumb}<button class="media-remove" onclick="removeMedia(${i})">✕</button></div>`;
-  }).join('');
+function removeMedia(i) { mediaFiles.splice(i, 1); renderMedia(); }
+
+function renderMedia() {
+  var html = '';
+  for (var i = 0; i < mediaFiles.length; i++) {
+    var f = mediaFiles[i];
+    var url = URL.createObjectURL(f);
+    var thumb = f.type.indexOf('image') >= 0 ? '<img src="' + url + '" alt=""/>' : '🎬';
+    html += '<div class="media-thumb">' + thumb + '<button class="media-remove" onclick="removeMedia(' + i + ')">x</button></div>';
+  }
+  document.getElementById('media-preview').innerHTML = html;
 }
 
-// ── SUBMIT ────────────────────────────────────────────
 function validate() {
-  const required = ['f-name','f-market','f-area','f-rate','f-cam','f-deposit','f-lockin','f-tenure','f-escal','f-owner','f-phone'];
-  const missing = required.filter(id => !document.getElementById(id).value.trim());
-  if (!document.getElementById('f-furnish').value) missing.push('f-furnish');
-  if (missing.length) {
-    missing.forEach(id => { const el=document.getElementById(id); el.style.borderColor='var(--red)'; setTimeout(()=>el.style.borderColor='',2000); });
-    showToast('Please fill all required fields', true);
-    return false;
+  var ids = ['f-name','f-market','f-area','f-rate','f-cam','f-deposit','f-lockin','f-tenure','f-escal','f-owner','f-phone'];
+  var ok = true;
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i]);
+    if (!el.value.trim()) { el.style.borderColor = 'var(--red)'; setTimeout(function(e){ return function(){ e.style.borderColor=''; }; }(el), 2000); ok = false; }
   }
-  return true;
+  if (!document.getElementById('f-furnish').value) ok = false;
+  if (!ok) toast('Please fill all required fields', true);
+  return ok;
 }
 
-async function submitForm() {
+async function doSubmit() {
   if (!validate()) return;
-  const btn = document.getElementById('submit-btn');
+  var btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = 'Submitting...';
-
-  const propName = document.getElementById('f-name').value.trim();
-  const propCode = propName.replace(/[^a-zA-Z0-9]/g,'').substring(0,8).toUpperCase();
-
-  // Show progress
-  const prog = document.getElementById('upload-progress');
+  var propName = document.getElementById('f-name').value.trim();
+  var propCode = propName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase();
+  var prog = document.getElementById('upload-progress');
   prog.style.display = 'block';
-
-  const total = mediaFiles.length + 1;
-  let done = 0;
-  const photoUrls = [];
-
-  const updateProg = (label) => {
+  var total = mediaFiles.length + 1;
+  var done = 0;
+  var photoUrls = [];
+  function updateProg(label) {
     done++;
-    const pct = Math.round((done/total)*100);
+    var pct = Math.round((done / total) * 100);
     document.getElementById('prog-bar').style.width = pct + '%';
     document.getElementById('prog-label').textContent = pct + '%';
     document.getElementById('prog-title').textContent = label;
-  };
-
-  // Upload media files
-  for (const f of mediaFiles) {
+  }
+  for (var i = 0; i < mediaFiles.length; i++) {
     try {
-      const b64 = await toB64(f);
-      const res = await fetch(API, {
-        method:'POST',
-        body: JSON.stringify({
-          propertyCode: propCode,
-          propertyName: propName,
-          mediaType: f.type.startsWith('video/') ? 'video' : 'photo',
-          fileName: f.name,
-          mimeType: f.type,
-          fileData: b64
-        })
-      });
-      const json = await res.json();
+      var f = mediaFiles[i];
+      var b64 = await toB64(f);
+      var res = await fetch(API, { method: 'POST', body: JSON.stringify({ propertyCode: propCode, propertyName: propName, mediaType: f.type.indexOf('video') >= 0 ? 'video' : 'photo', fileName: f.name, mimeType: f.type, fileData: b64 }) });
+      var json = await res.json();
       if (json.success) photoUrls.push(json.fileUrl);
       updateProg('Uploading ' + f.name + '...');
-    } catch(e) { updateProg('Skipped ' + f.name); }
+    } catch(e) { updateProg('Skipped ' + mediaFiles[i].name); }
   }
-
-  // Save form data as JSON to Drive
   try {
-    const formData = {
-      property_name: propName,
-      micro_market: document.getElementById('f-market').value,
-      status: document.getElementById('f-status').value,
-      furnishing: document.getElementById('f-furnish').value,
-      floor: document.getElementById('f-floor').value,
-      available_area: document.getElementById('f-area').value,
-      carpet_area: document.getElementById('f-carpet').value,
-      lease_rate_psf: document.getElementById('f-rate').value,
-      cam_psf: document.getElementById('f-cam').value,
-      security_deposit: document.getElementById('f-deposit').value,
-      lockin_years: document.getElementById('f-lockin').value,
-      tenure_years: document.getElementById('f-tenure').value,
-      escalation: document.getElementById('f-escal').value,
-      owner_name: document.getElementById('f-owner').value,
-      contact: document.getElementById('f-phone').value,
-      media_files: photoUrls,
-      submitted_at: new Date().toLocaleString('en-IN'),
-      submitted_from: 'Legion Upload Form'
-    };
-
-    await fetch(API, {
-      method:'POST',
-      body: JSON.stringify({
-        propertyCode: propCode,
-        propertyName: propName,
-        mediaType: 'data',
-        fileName: propCode + '_data.json',
-        mimeType: 'application/json',
-        fileData: btoa(JSON.stringify(formData, null, 2))
-      })
-    });
+    var formData = { property_name: propName, micro_market: document.getElementById('f-market').value, status: document.getElementById('f-status').value, furnishing: document.getElementById('f-furnish').value, floor: document.getElementById('f-floor').value, available_area: document.getElementById('f-area').value, carpet_area: document.getElementById('f-carpet').value, lease_rate_psf: document.getElementById('f-rate').value, cam_psf: document.getElementById('f-cam').value, security_deposit: document.getElementById('f-deposit').value, lockin_years: document.getElementById('f-lockin').value, tenure_years: document.getElementById('f-tenure').value, escalation: document.getElementById('f-escal').value, owner_name: document.getElementById('f-owner').value, contact: document.getElementById('f-phone').value, media_files: photoUrls, submitted_at: new Date().toLocaleString('en-IN') };
+    await fetch(API, { method: 'POST', body: JSON.stringify({ propertyCode: propCode, propertyName: propName, mediaType: 'data', fileName: propCode + '_data.json', mimeType: 'application/json', fileData: btoa(JSON.stringify(formData, null, 2)) }) });
     updateProg('Saving data...');
   } catch(e) {}
-
   prog.style.display = 'none';
   document.getElementById('form-section').style.display = 'none';
-  const sub = document.getElementById('success-sub');
-  sub.textContent = propName + ' · ' + document.getElementById('f-market').value +
-    (photoUrls.length ? '
-' + photoUrls.length + ' file(s) saved to Drive.' : '
-Data saved to Drive.');
+  document.getElementById('success-sub').textContent = propName + ' - ' + document.getElementById('f-market').value + (photoUrls.length ? ' | ' + photoUrls.length + ' file(s) saved to Drive.' : ' | Data saved to Drive.');
   document.getElementById('success').style.display = 'block';
 }
 
-function clearForm() {
-  document.querySelectorAll('#form-section input, #form-section textarea').forEach(el => { el.value=''; el.classList.remove('ai-filled'); });
+function doClear() {
+  var inputs = document.querySelectorAll('#form-section input, #form-section textarea');
+  for (var i = 0; i < inputs.length; i++) { inputs[i].value = ''; inputs[i].classList.remove('ai-filled'); }
   document.getElementById('f-status').value = 'Available';
   document.getElementById('f-furnish').value = '';
-  mediaFiles = []; renderMediaPreview();
+  mediaFiles = []; renderMedia();
 }
 
-function resetAll() {
-  clearForm(); aiFiles = []; renderChips();
+function doReset() {
+  doClear(); aiFiles = []; renderChips();
   document.getElementById('success').style.display = 'none';
   document.getElementById('form-section').style.display = 'none';
   document.getElementById('extract-btn').disabled = true;
   setMode('ai');
-  window.scrollTo(0,0);
+  window.scrollTo(0, 0);
 }
 
-function showToast(msg, err) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'toast '+(err?'err':'ok')+' show';
-  setTimeout(() => t.className = 'toast', 3000);
+function toast(msg, err) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (err ? 'err' : 'ok') + ' show';
+  setTimeout(function() { t.className = 'toast'; }, 3000);
 }
 </script>
 </body>
