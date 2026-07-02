@@ -1,1 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Legion CRE - Property Form</title>
+<style>
+:root{--navy:#1B3A6B;--navy-dark:#122848;--white:#fff;--bg:#F5F7FA;--bg2:#EDF1F7;--border:#DDE3EE;--text:#1A202C;--text2:#4A5568;--text3:#718096;--green:#1A6B3A;--green-bg:#E8F5EE;--red:#9B2335;}
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+body{background:var(--bg);min-height:100vh;padding-bottom:60px}
+input,select,textarea,button{font-family:inherit;outline:none}
+.topbar{background:var(--navy);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.topbar img{height:32px;object-fit:contain}
+.topbar-title{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);border-left:1px solid rgba(255,255,255,.2);padding-left:12px}
+.container{max-width:600px;margin:0 auto;padding:20px 16px}
+.mode-toggle{display:grid;grid-template-columns:1fr 1fr;background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
+.mode-btn{padding:12px;text-align:center;cursor:pointer;border:none;background:transparent;color:var(--text2)}
+.mode-btn.active{background:var(--navy);color:#fff}
+.mb-icon{font-size:20px;display:block;margin-bottom:4px}
+.mb-label{font-size:12px;font-weight:600;display:block}
+.mb-sub{font-size:10px;opacity:.7;display:block;margin-top:2px}
+.ai-zone{background:var(--white);border:2px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;margin-bottom:12px}
+.ai-zone:hover{border-color:var(--navy);background:#EEF3FB}
+.az-icon{font-size:36px;display:block;margin-bottom:10px}
+.az-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.az-sub{font-size:11px;color:var(--text3);line-height:1.6}
+.az-btn{display:inline-block;margin-top:12px;background:var(--navy);color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:12px;font-weight:600}
+.file-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px}
+.chip button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;line-height:1;padding:0}
+.extract-btn{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:20px}
+.extract-btn:disabled{opacity:.4;cursor:not-allowed}
+.ai-loading{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:28px;text-align:center;margin-bottom:16px;display:none}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ai-status{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.ai-sub-text{font-size:11px;color:var(--text3)}
+.form-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.form-section{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;padding-bottom:6px;border-bottom:1.5px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-grid.full{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;font-weight:600;color:var(--text2)}
 
+.field input,.field select{background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:13px;padding:9px 11px;color:var(--text);width:100%}
+.field input:focus,.field select:focus{border-color:var(--navy);background:var(--white)}
+.field input.ai-filled{border-color:var(--green);background:#F0FBF4}
+.field-hint{font-size:10px;color:var(--text3)}
+.media-zone{border:1.5px dashed var(--border);border-radius:8px;padding:14px;text-align:center;cursor:pointer;background:var(--bg);margin-top:4px}
+.media-zone:hover{border-color:var(--navy);background:#EEF3FB}
+.mz-text{font-size:12px;color:var(--text3)}
+.media-preview{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.media-thumb{aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:18px;position:relative}
+.media-thumb img{width:100%;height:100%;object-fit:cover}
+.media-thumb button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.5);border:none;color:#fff;width:18px;height:18px;border-radius:50%;font-size:10px;cursor:pointer}
+.submit-btn{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px}
+.submit-btn:disabled{opacity:.4;cursor:not-allowed}
+.clear-btn{width:100%;padding:10px;background:transparent;color:var(--text2);border:1.5px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer}
+.prog-wrap{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;display:none}
+.prog-title{font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px}
+.prog-bar-wrap{height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.prog-bar{height:100%;background:var(--navy);border-radius:3px;transition:width .3s;width:0%}
+.prog-pct{font-size:11px;color:var(--text3)}
+.success{background:var(--green-bg);border:1.5px solid #A3D9B8;border-radius:12px;padding:24px;text-align:center;display:none;margin-bottom:16px}
+.success-icon{font-size:40px;display:block;margin-bottom:10px}
+.success-title{font-size:16px;font-weight:700;color:var(--green);margin-bottom:6px}
+.success-sub{font-size:12px;color:var(--text2);line-height:1.6}
+.success-again{margin-top:14px;padding:8px 24px;background:var(--white);border:1.5px solid var(--border);border-radius:7px;font-size:12px;color:var(--text2);cursor:pointer}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:12px;z-index:9000;opacity:0;transition:opacity .25s;pointer-events:none;color:#fff}
+.toast.show{opacity:1}
+.toast.ok{background:var(--green)}
+.toast.err{background:var(--red)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <img src="https://static.wixstatic.com/media/2ffd6f_ad3fcde821074fde9c0ba30e616e854d~mv2.png/v1/fill/w_171,h_60,al_c,lg_1,q_85,enc_avif,quality_auto/LEGION%20LOGO%20HI%20RES.png" alt="Legion Realty"/>
+  <span class="topbar-title">Property Form</span>
+</div>
+<div class="container">
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="mode-ai" onclick="setMode('ai')">
+      <span class="mb-icon">✨</span>
+      <span class="mb-label">Upload Document</span>
+      <span class="mb-sub">AI auto-fills the form</span>
+    </button>
+    <button class="mode-btn" id="mode-manual" onclick="setMode('manual')">
+      <span class="mb-icon">✏️</span>
+      <span class="mb-label">Fill Manually</span>
+      <span class="mb-sub">Type details yourself</span>
+    </button>
+  </div>
+
+  <div id="ai-section">
+    <div class="ai-zone" onclick="document.getElementById('ai-input').click()">
+      <input type="file" id="ai-input" multiple accept=".pdf,image/*,.txt" style="display:none" onchange="onAIFiles(this.files)"/>
+      <span class="az-icon">📄</span>
+      <div class="az-title">Upload brochure, pricing sheet or any property document</div>
+      <div class="az-sub">PDF, JPG, PNG - AI will read it and auto-fill the form below</div>
+      <span class="az-btn">Choose Files</span>
+    </div>
+    <div class="file-chips" id="ai-chips"></div>
+    <button class="extract-btn" id="extract-btn" onclick="doExtract()" disabled>✨ Auto-fill form with AI</button>
+  </div>
+
+  <div class="ai-loading" id="ai-loading">
+    <div class="spinner"></div>
+    <div class="ai-status" id="ai-status-text">Reading document...</div>
+    <div class="ai-sub-text">Claude AI is extracting property details</div>
+  </div>
+
+  <div id="form-section" style="display:none">
+    <div class="form-card">
+      <div class="form-section">Property Details</div>
+      <div class="form-grid full">
+        <div class="field"><label>Property Name </label><input type="text" id="f-name" placeholder="e.g. Tech Park Unit 402"/></div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>Micro-Market </label><input type="text" id="f-market" placeholder="e.g. Kharadi"/></div>
+        <div class="field"><label>Status </label>
+          <select id="f-status"><option value="Available">Available</option><option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option></select>
+        </div>
+        <div class="field"><label>Furnishing </label>
+          <select id="f-furnish"><option value="">Select...</option><option value="Bare Shell">Bare Shell</option><option value="Warm Shell">Warm Shell</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Furnished">Furnished</option><option value="Plug and Play">Plug and Play</option></select>
+        </div>
+        <div class="field"><label>Floor</label><input type="text" id="f-floor" placeholder="e.g. 4th Floor"/></div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-section">Area</div>
+      <div class="form-grid">
+        <div class="field"><label>Available Area (SqFt) </label><input type="text" id="f-area" placeholder="e.g. 2500"/></div>
+        <div class="field"><label>Carpet Area (SqFt)</label><input type="text" id="f-carpet" placeholder="e.g. 2200"/></div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-section">Pricing</div>
+      <div class="form-grid">
+        <div class="field"><label>Lease Rate (PSF/month) </label><input type="text" id="f-rate" placeholder="e.g. 85"/><span class="field-hint">Monthly rent per sq ft</span></div>
+        <div class="field"><label>Sale Rate (PSF)</label><input type="text" id="f-salerate" placeholder="e.g. 13000"/><span class="field-hint">Outright purchase per sq ft</span></div>
+        <div class="field"><label>CAM (PSF) </label><input type="text" id="f-cam" placeholder="e.g. 12"/></div>
+        <div class="field"><label>Security Deposit (months) </label><input type="text" id="f-deposit" placeholder="e.g. 6"/></div>
+        <div class="field"><label>Lock-In (years) </label><input type="text" id="f-lockin" placeholder="e.g. 3"/></div>
+        <div class="field"><label>Lease Tenure (years) </label><input type="text" id="f-tenure" placeholder="e.g. 5"/></div>
+        <div class="field"><label>Escalation </label><input type="text" id="f-escal" placeholder="e.g. 5% per year"/></div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-section">Owner and Contact</div>
+      <div class="form-grid">
+        <div class="field"><label>Owner Name </label><input type="text" id="f-owner" placeholder="e.g. Rahul Deshmukh"/></div>
+        <div class="field"><label>Contact Number </label><input type="text" id="f-phone" placeholder="e.g. +91-98765 43210"/></div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-section">Photos and Videos (optional)</div>
+      <div class="media-zone" onclick="document.getElementById('media-input').click()">
+        <input type="file" id="media-input" multiple accept="image/*,video/*" style="display:none" onchange="onMedia(this.files)"/>
+        <div class="mz-text">📷 Tap to add photos or videos</div>
+      </div>
+      <div class="media-preview" id="media-preview"></div>
+    </div>
+    <div class="prog-wrap" id="prog-wrap">
+      <div class="prog-title" id="prog-title">Uploading...</div>
+      <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar"></div></div>
+      <div class="prog-pct" id="prog-pct">0%</div>
+    </div>
+    <button class="submit-btn" id="submit-btn" onclick="doSubmit()">Submit Property</button>
+    <button class="clear-btn" onclick="doClear()">Clear Form</button>
+  </div>
+
+  <div class="success" id="success">
+    <span class="success-icon">✅</span>
+    <div class="success-title">Property Submitted!</div>
+    <div class="success-sub" id="success-sub">Data saved to Google Drive.</div>
+    <button class="success-again" onclick="doReset()">Submit Another</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var API = "https://script.google.com/macros/s/AKfycbzzo2rN6A9ddpoCpHaAFCfGPPthFOTqcmbjjloB_wm62LrpbgzHYvxdLfRtgHJuUnCj-A/exec";
+var aiFiles = [];
+var mediaFiles = [];
+
+function setMode(mode) {
+  document.getElementById('mode-ai').classList.toggle('active', mode === 'ai');
+  document.getElementById('mode-manual').classList.toggle('active', mode !== 'ai');
+  document.getElementById('ai-section').style.display = mode === 'ai' ? 'block' : 'none';
+  if (mode === 'manual') {
+    document.getElementById('form-section').style.display = 'block';
+    document.getElementById('ai-loading').style.display = 'none';
+  }
+}
+
+function onAIFiles(files) {
+  for (var i = 0; i < files.length; i++) {
+    var exists = false;
+    for (var j = 0; j < aiFiles.length; j++) {
+      if (aiFiles[j].name === files[i].name) { exists = true; break; }
+    }
+    if (!exists) aiFiles.push(files[i]);
+  }
+  renderChips();
+  document.getElementById('extract-btn').disabled = aiFiles.length === 0;
+}
+
+function removeAI(i) {
+  aiFiles.splice(i, 1);
+  renderChips();
+  document.getElementById('extract-btn').disabled = aiFiles.length === 0;
+}
+
+function renderChips() {
+  var html = '';
+  for (var i = 0; i < aiFiles.length; i++) {
+    var icon = aiFiles[i].type.indexOf('pdf') >= 0 ? '📄' : '🖼️';
+    html += '<div class="chip">' + icon + ' ' + aiFiles[i].name + ' <button onclick="removeAI(' + i + ')">x</button></div>';
+  }
+  document.getElementById('ai-chips').innerHTML = html;
+}
+
+function toB64(file) {
+  return new Promise(function(resolve, reject) {
+    var r = new FileReader();
+    r.onload = function() { resolve(r.result.split(',')[1]); };
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function doExtract() {
+  if (!aiFiles.length) return;
+  document.getElementById('ai-loading').style.display = 'block';
+  document.getElementById('form-section').style.display = 'none';
+  document.getElementById('extract-btn').disabled = true;
+
+  try {
+    var files = [];
+    for (var i = 0; i < aiFiles.length; i++) {
+      var f = aiFiles[i];
+      document.getElementById('ai-status-text').textContent = 'Reading ' + f.name + '...';
+      var b64 = await toB64(f);
+      if (f.type.indexOf('image') >= 0) {
+        files.push({ type: f.type, data: b64 });
+      } else if (f.type.indexOf('pdf') >= 0) {
+        files.push({ type: 'application/pdf', data: b64 });
+      } else {
+        var txt = await f.text();
+        files.push({ type: 'text/plain', text: txt });
+      }
+    }
+
+    document.getElementById('ai-status-text').textContent = 'Extracting data with AI...';
+
+    var payload = {
+      action: 'extract',
+      prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300). salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field.',
+      files: files
+    };
+
+    var res = await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    var result = await res.json();
+
+    if (!result.success) throw new Error(result.error || 'Extraction failed');
+
+    var d = result.extracted;
+
+    function fill(id, val) {
+      if (!val) return;
+      var el = document.getElementById(id);
+      if (el) { el.value = val; el.classList.add('ai-filled'); }
+    }
+
+    fill('f-name', d.name); fill('f-market', d.market); fill('f-floor', d.floor);
+    fill('f-area', d.area); fill('f-carpet', d.carpet); fill('f-rate', d.rate);
+    fill('f-cam', d.cam); fill('f-deposit', d.deposit); fill('f-lockin', d.lockin);
+    fill('f-tenure', d.tenure); fill('f-escal', d.escal); fill('f-owner', d.owner);
+    fill('f-phone', d.phone);
+    fill('f-salerate', d.salerate);
+    if (d.status) document.getElementById('f-status').value = d.status;
+    if (d.furnishing) document.getElementById('f-furnish').value = d.furnishing;
+
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('form-section').style.display = 'block';
+    toast('Form filled! Review and submit.', false);
+
+  } catch(err) {
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('form-section').style.display = 'block';
+    document.getElementById('extract-btn').disabled = false;
+    toast('Could not extract: ' + err.message, true);
+  }
+}
+
+function onMedia(files) {
+  for (var i = 0; i < files.length; i++) {
+    var exists = false;
+    for (var j = 0; j < mediaFiles.length; j++) {
+      if (mediaFiles[j].name === files[i].name) { exists = true; break; }
+    }
+    if (!exists) mediaFiles.push(files[i]);
+  }
+  renderMedia();
+}
+
+function removeMedia(i) { mediaFiles.splice(i, 1); renderMedia(); }
+
+function renderMedia() {
+  var html = '';
+  for (var i = 0; i < mediaFiles.length; i++) {
+    var f = mediaFiles[i];
+    var url = URL.createObjectURL(f);
+    var thumb = f.type.indexOf('image') >= 0 ? '<img src="' + url + '" alt=""/>' : '🎬';
+    html += '<div class="media-thumb">' + thumb + '<button onclick="removeMedia(' + i + ')">x</button></div>';
+  }
+  document.getElementById('media-preview').innerHTML = html;
+}
+
+function validate() {
+  return true;
+}
+
+async function doSubmit() {
+  if (!validate()) return;
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+  var propName = document.getElementById('f-name').value.trim();
+  var propCode = propName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase();
+  document.getElementById('prog-wrap').style.display = 'block';
+  var done = 0;
+  var total = mediaFiles.length + 1;
+  var photoUrls = [];
+
+  function updateProg(label) {
+    done++;
+    var pct = Math.round((done / total) * 100);
+    document.getElementById('prog-bar').style.width = pct + '%';
+    document.getElementById('prog-pct').textContent = pct + '%';
+    document.getElementById('prog-title').textContent = label;
+  }
+
+  for (var i = 0; i < mediaFiles.length; i++) {
+    try {
+      var f = mediaFiles[i];
+      var b64 = await toB64(f);
+      var res = await fetch(API, {
+        method: 'POST',
+        body: JSON.stringify({
+          propertyCode: propCode,
+          propertyName: propName,
+          mediaType: f.type.indexOf('video') >= 0 ? 'video' : 'photo',
+          fileName: f.name,
+          mimeType: f.type,
+          fileData: b64
+        })
+      });
+      var json = await res.json();
+      if (json.success) photoUrls.push(json.fileUrl);
+      updateProg('Uploading ' + f.name + '...');
+    } catch(e) { updateProg('Skipped'); }
+  }
+
+  try {
+    var formData = {
+      property_name: propName,
+      micro_market: document.getElementById('f-market').value,
+      status: document.getElementById('f-status').value,
+      furnishing: document.getElementById('f-furnish').value,
+      floor: document.getElementById('f-floor').value,
+      available_area: document.getElementById('f-area').value,
+      carpet_area: document.getElementById('f-carpet').value,
+      lease_rate_psf: document.getElementById('f-rate').value,
+      sale_rate_psf: document.getElementById('f-salerate').value,
+      cam_psf: document.getElementById('f-cam').value,
+      security_deposit: document.getElementById('f-deposit').value,
+      lockin_years: document.getElementById('f-lockin').value,
+      tenure_years: document.getElementById('f-tenure').value,
+      escalation: document.getElementById('f-escal').value,
+      owner_name: document.getElementById('f-owner').value,
+      contact: document.getElementById('f-phone').value,
+      media_files: photoUrls,
+      submitted_at: new Date().toLocaleString('en-IN')
+    };
+    var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(formData, null, 2))));
+    await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify({
+        propertyCode: propCode,
+        propertyName: propName,
+        mediaType: 'data',
+        fileName: propCode + '_data.json',
+        mimeType: 'application/json',
+        fileData: encoded
+      })
+    });
+    updateProg('Saving data...');
+  } catch(e) {}
+
+  document.getElementById('prog-wrap').style.display = 'none';
+  document.getElementById('form-section').style.display = 'none';
+  document.getElementById('success-sub').textContent = propName + ' - ' + document.getElementById('f-market').value + (photoUrls.length ? ' | ' + photoUrls.length + ' file(s) saved to Drive.' : ' | Data saved to Drive.');
+  document.getElementById('success').style.display = 'block';
+}
+
+function doClear() {
+  var inputs = document.querySelectorAll('#form-section input');
+  for (var i = 0; i < inputs.length; i++) { inputs[i].value = ''; inputs[i].classList.remove('ai-filled'); inputs[i].style.borderColor = ''; }
+  document.getElementById('f-status').value = 'Available';
+  document.getElementById('f-salerate').value = '';
+  document.getElementById('f-furnish').value = '';
+  mediaFiles = []; renderMedia();
+}
+
+function doReset() {
+  doClear(); aiFiles = []; renderChips();
+  document.getElementById('success').style.display = 'none';
+  document.getElementById('form-section').style.display = 'none';
+  document.getElementById('extract-btn').disabled = true;
+  setMode('ai');
+  window.scrollTo(0, 0);
+}
+
+function toast(msg, err) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (err ? 'err' : 'ok') + ' show';
+  setTimeout(function() { t.className = 'toast'; }, 3000);
+}
+</script>
+</body>
+</html>
