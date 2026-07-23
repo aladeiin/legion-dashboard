@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legion Realty — Portfolio Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --navy:#1B3A6B;
+  --navy-dark:#122848;
+  --navy-light:#2a518f;
+  --gold:#C9973A;
+  --gold-light:#E8B84B;
+  --white:#FFFFFF;
+  --bg:#F5F7FA;
+  --bg2:#EDF1F7;
+  --border:#DDE3EE;
+  --border2:#C8D0E0;
+  --text:#1A202C;
+  --text2:#4A5568;
+  --text3:#718096;
+  --avail:#1A6B3A;
+  --avail-bg:#E8F5EE;
+  --rented:#9B2335;
+  --rented-bg:#FCEEF0;
+  --nego:#7A5C00;
+  --nego-bg:#FFF8E6;
+  --shadow:0 1px 4px rgba(27,58,107,.08);
+  --shadow-md:0 4px 16px rgba(27,58,107,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+body{background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+input,select,textarea{outline:none;font-family:inherit;color:var(--text)}
+button{font-family:inherit;cursor:pointer}
+
+/* ── OVERLAY ── */
+.overlay{position:fixed;inset:0;background:rgba(27,58,107,.45);z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(2px)}
+.overlay.hidden{display:none}
+
+/* ── LOGIN ── */
+.login-box{background:var(--white);border-radius:16px;box-shadow:0 8px 40px rgba(27,58,107,.18);padding:40px 36px;width:100%;max-width:360px;text-align:center}
+.login-logo{margin:0 auto 20px}
+.login-logo img{height:52px;object-fit:contain}
+.login-divider{height:1px;background:var(--border);margin:0 0 20px}
+.login-box h2{font-size:17px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.login-box p{font-size:12px;color:var(--text3);margin-bottom:20px}
+.login-box input{width:100%;padding:9px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:10px;transition:border-color .15s}
+.login-box input:focus{border-color:var(--navy)}
+.login-btn{width:100%;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;letter-spacing:.02em;transition:background .15s}
+.login-btn:hover{background:var(--navy-dark)}
+.login-err{color:var(--rented);font-size:11px;margin-top:8px;display:none}
+.login-hint{font-size:10px;color:var(--text3);margin-top:14px;line-height:1.8;border-top:1px solid var(--border);padding-top:12px}
+
+/* ── TOPBAR ── */
+.topbar{height:56px;background:var(--navy);display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;z-index:100;box-shadow:0 2px 8px rgba(27,58,107,.25)}
+.topbar-logo img{height:36px;object-fit:contain;display:block}
+.topbar-sep{width:1px;height:22px;background:rgba(255,255,255,.2)}
+.role-badge{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:600;letter-spacing:.03em}
+.role-admin{background:rgba(201,151,58,.25);color:#F6CC7A;border:1px solid rgba(201,151,58,.35)}
+.role-editor{background:rgba(72,187,120,.15);color:#9AE6B4;border:1px solid rgba(72,187,120,.25)}
+.role-viewer{background:rgba(144,205,244,.15);color:#90CDF4;border:1px solid rgba(144,205,244,.25)}
+.stat-pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px;color:rgba(255,255,255,.7)}
+.stat-pill span{color:#fff;font-weight:600}
+.spacer{flex:1}
+.topbar-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);padding:5px 12px;border-radius:6px;font-size:11px;transition:.15s}
+.topbar-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+
+/* ── LAYOUT ── */
+.main{flex:1;display:flex;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{width:284px;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;box-shadow:2px 0 8px rgba(27,58,107,.04)}
+.sidebar-head{padding:14px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--white)}
+.sidebar-section-title{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.sidebar-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.fg{margin-bottom:8px}
+.fl{font-size:11px;color:var(--text2);margin-bottom:3px;display:block;font-weight:500}
+select.fs,input.fs{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:6px 8px;transition:border-color .15s}
+select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
+.range-row{display:flex;gap:6px}
+.range-row input{flex:1}
+.fbtn{width:100%;margin-top:10px;padding:7px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;letter-spacing:.02em;transition:.15s}
+.fbtn:hover{background:var(--navy-dark)}
+.cbtn{width:100%;margin-top:4px;padding:6px;background:transparent;color:var(--text3);border:1.5px solid var(--border);border-radius:7px;font-size:11px;transition:.15s}
+.cbtn:hover{border-color:var(--border2);color:var(--text2)}
+
+/* ── LIST ── */
+.prop-list{flex:1;overflow-y:auto;padding:8px;background:var(--bg)}
+.prop-list::-webkit-scrollbar{width:4px}
+.prop-list::-webkit-scrollbar-track{background:var(--bg)}
+.prop-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.lc{font-size:10px;color:var(--text3);padding:4px 4px 6px;text-align:center}
+.pi{background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.pi:hover{border-color:var(--navy-light);box-shadow:var(--shadow)}
+.pi.active{border-color:var(--navy);box-shadow:0 0 0 3px rgba(27,58,107,.08)}
+.pi-name{font-size:11px;font-weight:600;color:var(--navy);margin-bottom:2px;line-height:1.3}
+.pi-mkt{font-size:10px;color:var(--text3);margin-bottom:5px}
+.pi-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.tag{font-size:9px;padding:2px 7px;border-radius:8px;font-weight:600}
+.ta{background:var(--avail-bg);color:var(--avail)}
+.tr{background:var(--rented-bg);color:var(--rented)}
+.tn{background:var(--nego-bg);color:var(--nego)}
+.pi-meta{font-size:10px;color:var(--text3)}
+.pi-photo-thumb{width:100%;height:54px;object-fit:cover;border-radius:5px;margin-bottom:6px;display:block;border:1px solid var(--border)}
+
+/* ── MAP ── */
+.map-wrap{flex:1;position:relative}
+#map{width:100%;height:100%}
+
+/* ── POPUP ── */
+.custom-popup .leaflet-popup-content-wrapper{background:var(--white);border:1.5px solid var(--border);border-top:3px solid var(--navy);border-radius:10px;box-shadow:var(--shadow-md);padding:0;min-width:240px;max-width:280px}
+.custom-popup .leaflet-popup-tip-container{display:none}
+.custom-popup .leaflet-popup-content{margin:0}
+.pu{padding:0}
+.pu-photo{width:100%;height:120px;object-fit:cover;border-radius:7px 7px 0 0;display:block}
+.pu-photo-placeholder{width:100%;height:72px;background:linear-gradient(135deg,var(--navy),var(--navy-light));border-radius:7px 7px 0 0;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,.4)}
+.pu-body{padding:12px}
+.pu-name{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:1px;line-height:1.3}
+.pu-mkt{font-size:10px;color:var(--text3);margin-bottom:6px}
+.pu-status{display:inline-block;font-size:10px;padding:2px 9px;border-radius:10px;font-weight:600;margin-bottom:8px}
+.pu-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.pu-stat{background:var(--bg);border-radius:5px;padding:5px 7px}
+.pu-stat .psl{font-size:9px;color:var(--text3);margin-bottom:1px}
+.pu-stat .psv{font-size:11px;font-weight:600;color:var(--text)}
+.pu-actions{display:flex;gap:5px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap}
+.pu-btn{flex:1;padding:6px 4px;font-size:10px;font-weight:600;border:none;border-radius:6px;cursor:pointer;min-width:48px;transition:.15s}
+.pu-edit{background:var(--navy);color:#fff}
+.pu-edit:hover{background:var(--navy-dark)}
+.pu-maps{background:var(--bg);color:var(--text2);border:1px solid var(--border)}
+.pu-maps:hover{background:var(--bg2)}
+.pu-video{background:#E8F5EE;color:var(--avail);border:1px solid #C6E6D4}
+.pu-video:hover{background:#D4EDDF}
+.pu-fp{background:#EEF3FB;color:var(--navy);border:1px solid #C8D8F0}
+.pu-fp:hover{background:#DDE8F6}
+.pu-code{font-size:9px;color:var(--text3);margin-bottom:5px}
+.edited-tag{font-size:9px;color:var(--nego);background:var(--nego-bg);padding:1px 7px;border-radius:8px;display:inline-block;margin-left:5px;vertical-align:middle}
+
+/* ── EDIT PANEL ── */
+.edit-panel{background:var(--white);border-radius:14px;box-shadow:0 8px 40px rgba(27,58,107,.18);width:100%;max-width:500px;max-height:92vh;overflow-y:auto;padding:0}
+.edit-panel::-webkit-scrollbar{width:4px}
+.edit-panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.ep-topbar{background:var(--navy);border-radius:14px 14px 0 0;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.ep-topbar-title{font-size:14px;font-weight:600;color:#fff}
+.ep-topbar-sub{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px}
+.ep-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:6px;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ep-close:hover{background:rgba(255,255,255,.25)}
+.ep-body{padding:18px 20px}
+.ep-section{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px;padding-bottom:5px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:6px}
+.ep-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ep-grid.full{grid-template-columns:1fr}
+.ep-field label{font-size:10px;color:var(--text2);display:block;margin-bottom:3px;font-weight:500}
+.ep-field input,.ep-field select,.ep-field textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:6px;font-size:12px;padding:7px 9px;transition:border-color .15s}
+.ep-field input:focus,.ep-field select:focus,.ep-field textarea:focus{border-color:var(--navy);background:var(--white)}
+.ep-field textarea{resize:vertical;min-height:64px}
+.ep-actions{display:flex;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.ep-save{flex:1;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;transition:.15s}
+.ep-save:hover{background:var(--navy-dark)}
+.ep-cancel{padding:10px 18px;background:transparent;color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-size:13px;transition:.15s}
+.ep-cancel:hover{border-color:var(--border2)}
+.ep-saving{display:none;text-align:center;font-size:12px;color:var(--text3);padding:8px}
+
+/* ── USERS ── */
+.user-panel{background:var(--white);border-radius:14px;box-shadow:0 8px 40px rgba(27,58,107,.18);width:100%;max-width:420px;max-height:85vh;overflow-y:auto;padding:0}
+.up-topbar{background:var(--navy);border-radius:14px 14px 0 0;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.up-title{font-size:14px;font-weight:600;color:#fff}
+.up-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:6px;font-size:16px;display:flex;align-items:center;justify-content:center}
+.up-close:hover{background:rgba(255,255,255,.25)}
+.up-body{padding:16px}
+.user-row{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.user-info{flex:1}
+.user-name{font-size:12px;font-weight:500;color:var(--text)}
+.urb{font-size:9px;padding:1px 7px;border-radius:8px;font-weight:600}
+.add-user-form{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:12px}
+.add-user-form h4{font-size:10px;font-weight:700;color:var(--navy);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em}
+.auf-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.auf-grid input,.auf-grid select{background:var(--white);border:1.5px solid var(--border);border-radius:6px;font-size:11px;padding:7px 8px;width:100%}
+.auf-grid input:focus,.auf-grid select:focus{border-color:var(--navy)}
+.add-btn{width:100%;padding:8px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600}
+.add-btn:hover{background:var(--navy-dark)}
+.del-btn{background:none;border:none;color:var(--border2);font-size:14px;padding:3px}
+.del-btn:hover{color:var(--rented)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:9px 20px;border-radius:8px;font-size:12px;z-index:9000;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow-md)}
+.toast.show{opacity:1}
+.toast.success{border-left:3px solid #68d391}
+.toast.error{border-left:3px solid #fc8181}
+
+
+/* ── MOBILE RESPONSIVE ── */
+.mobile-toggle{display:none;position:fixed;bottom:20px;left:16px;z-index:1000;background:var(--navy);color:#fff;border:none;border-radius:50%;width:52px;height:52px;font-size:20px;box-shadow:0 4px 16px rgba(27,58,107,.35);cursor:pointer;align-items:center;justify-content:center}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:499}
+.sidebar-backdrop.show{display:block}
+
+@media (max-width: 768px) {
+  .mobile-toggle{display:flex}
+  .sidebar{
+    position:fixed;
+    top:0;left:0;bottom:0;
+    z-index:500;
+    width:85%;
+    max-width:320px;
+    transform:translateX(-100%);
+    transition:transform .28s ease;
+    box-shadow:4px 0 24px rgba(0,0,0,.2);
+  }
+  .sidebar.open{transform:translateX(0)}
+  .map-wrap{width:100%}
+  .topbar{padding:0 10px;gap:6px;overflow-x:auto}
+  .topbar-logo img{height:28px}
+  .stat-pill{padding:2px 7px;font-size:10px;white-space:nowrap}
+  .topbar-btn{padding:4px 8px;font-size:10px;white-space:nowrap}
+  .role-badge{font-size:9px;padding:2px 6px;white-space:nowrap}
+  .custom-popup .leaflet-popup-content-wrapper{min-width:200px;max-width:240px}
+  .edit-panel{max-width:100%;max-height:95vh;border-radius:14px 14px 0 0}
+  .overlay{padding:0;align-items:flex-end}
+  .overlay .login-box{margin:auto;border-radius:16px}
+  .user-panel{max-width:100%;border-radius:14px 14px 0 0}
+  .sidebar-close{display:flex !important}
+}
+.sidebar-close{display:none;position:absolute;top:10px;right:10px;background:var(--bg2);border:none;color:var(--text2);width:30px;height:30px;border-radius:8px;font-size:15px;align-items:center;justify-content:center;cursor:pointer;z-index:10}
+
+/* ── MAP OVERRIDE ── */
+.leaflet-control-zoom a{background:var(--white)!important;color:var(--navy)!important;border-color:var(--border)!important;font-weight:700}
+.leaflet-control-zoom a:hover{background:var(--bg)!important}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="overlay" id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="https://static.wixstatic.com/media/2ffd6f_ad3fcde821074fde9c0ba30e616e854d~mv2.png/v1/fill/w_171,h_60,al_c,lg_1,q_85,enc_avif,quality_auto/LEGION%20LOGO%20HI%20RES.png" alt="Legion Realty Services"/>
+    </div>
+    <div class="login-divider"></div>
+    <h2>Portfolio Dashboard</h2>
+    <p>Sign in with your team credentials</p>
+    <input type="text" id="li-user" placeholder="Username" autocomplete="off"/>
+    <input type="password" id="li-pass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-err" id="login-err">Incorrect username or password</div>
+    <div class="login-hint">
+      admin / admin123 &nbsp;·&nbsp; editor / edit123 &nbsp;·&nbsp; viewer / view123
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="data-loading" style="display:none">
+  <div class="login-box" style="text-align:center">
+    <div style="width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px"></div>
+    <p style="color:var(--text2);font-size:13px">Loading properties from database...</p>
+  </div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<!-- EDIT PANEL -->
+<div class="overlay hidden" id="edit-overlay">
+  <div class="edit-panel">
+    <div class="ep-topbar">
+      <div>
+        <div class="ep-topbar-title" id="ep-title">Edit Property</div>
+        <div class="ep-topbar-sub" id="ep-sub"></div>
+      </div>
+      <button class="ep-close" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="ep-body">
+      <div class="ep-section">Availability & Pricing</div>
+      <div class="ep-grid">
+        <div class="ep-field"><label>Status</label>
+          <select id="ef-status"><option value="Available">Available</option><option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option></select>
+        </div>
+        <div class="ep-field"><label>Furnishing</label>
+          <select id="ef-furnish"><option value="Bare Shell">Bare Shell</option><option value="Furnished">Furnished</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Plug & Play">Plug & Play</option></select>
+        </div>
+        <div class="ep-field"><label>Available Area (SqFt)</label><input type="text" id="ef-area"/></div>
+        <div class="ep-field"><label>Lease Rate (PSF ₹)</label><input type="text" id="ef-rate"/></div>
+        <div class="ep-field"><label>CAM (PSF ₹)</label><input type="text" id="ef-cam"/></div>
+        <div class="ep-field"><label>Security Deposit (months)</label><input type="text" id="ef-deposit"/></div>
+        <div class="ep-field"><label>Lock-In (years)</label><input type="text" id="ef-lockin"/></div>
+        <div class="ep-field"><label>Lease Tenure (years)</label><input type="text" id="ef-tenure"/></div>
+        <div class="ep-field"><label>Escalation (%)</label><input type="text" id="ef-escal"/></div>
+        <div class="ep-field"><label>Parking Ratio</label><input type="text" id="ef-parking"/></div>
+      </div>
+      <div class="ep-section">Amenities</div>
+      <div class="ep-grid">
+        <div class="ep-field"><label>Power Backup</label>
+          <select id="ef-power"><option value="100%">100%</option><option value="Provided">Provided</option><option value="Only for common areas">Common areas only</option><option value="Not Provided">Not Provided</option></select>
+        </div>
+        <div class="ep-field"><label>Air Conditioning</label>
+          <select id="ef-ac"><option value="100%">100%</option><option value="Provided">Provided</option><option value="Split Units">Split Units</option><option value="Not Provided">Not Provided</option></select>
+        </div>
+      </div>
+      <div class="ep-section">Owner & Contact</div>
+      <div class="ep-grid">
+        <div class="ep-field"><label>Owner Name</label><input type="text" id="ef-owner"/></div>
+        <div class="ep-field"><label>Contact Number</label><input type="text" id="ef-phone"/></div>
+      </div>
+      <div class="ep-section">Media & Links</div>
+      <div class="ep-grid full">
+        <div class="ep-field"><label>Photo URL</label><input type="text" id="ef-photo" placeholder="https://drive.google.com/file/d/..."/></div>
+        <div class="ep-field"><label>Video Walkthrough URL</label><input type="text" id="ef-video" placeholder="https://youtube.com/ or drive.google.com..."/></div>
+        <div class="ep-field"><label>Floor Plan URL</label><input type="text" id="ef-floorplan" placeholder="https://drive.google.com/..."/></div>
+        <div class="ep-field"><label>Google Maps URL</label><input type="text" id="ef-maps" placeholder="https://maps.google.com/..."/></div>
+      </div>
+      <div class="ep-section">Notes</div>
+      <div class="ep-grid full">
+        <div class="ep-field"><textarea id="ef-notes" placeholder="Internal notes about this property..."></textarea></div>
+      </div>
+      <div class="ep-saving" id="ep-saving">Saving changes…</div>
+      <div class="ep-actions">
+        <button class="ep-cancel" onclick="closeEdit()">Cancel</button>
+        <button class="ep-save" onclick="saveEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- USER MANAGER -->
+<div class="overlay hidden" id="user-overlay">
+  <div class="user-panel">
+    <div class="up-topbar">
+      <span class="up-title">Manage Team</span>
+      <button class="up-close" onclick="closeUsers()">✕</button>
+    </div>
+    <div class="up-body">
+      <div id="user-list"></div>
+      <div class="add-user-form">
+        <h4>Add New Member</h4>
+        <div class="auf-grid">
+          <input type="text" id="nu-user" placeholder="Username" autocomplete="off"/>
+          <input type="password" id="nu-pass" placeholder="Password"/>
+          <select id="nu-role" style="grid-column:span 2">
+            <option value="viewer">Viewer — read only</option>
+            <option value="editor">Editor — can edit all fields</option>
+            <option value="admin">Admin — full access + manage team</option>
+          </select>
+        </div>
+        <button class="add-btn" onclick="addUser()">Add Member</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;flex-direction:column;height:100vh">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <img src="https://static.wixstatic.com/media/2ffd6f_ad3fcde821074fde9c0ba30e616e854d~mv2.png/v1/fill/w_171,h_60,al_c,lg_1,q_85,enc_avif,quality_auto/LEGION%20LOGO%20HI%20RES.png" alt="Legion Realty"/>
+    </div>
+    <div class="topbar-sep"></div>
+    <span class="role-badge" id="role-badge"></span>
+    <div class="topbar-sep"></div>
+    <div class="stat-pill">Total <span id="s-total">0</span></div>
+    <div class="stat-pill">Available <span id="s-avail">0</span></div>
+    <div class="stat-pill">Markets <span id="s-mkts">0</span></div>
+    <div class="spacer"></div>
+    <button class="topbar-btn" id="users-btn" onclick="openUsers()" style="display:none">👥 Team</button>
+    <button class="topbar-btn" onclick="doLogout()">Sign out</button>
+  </div>
+  <div class="main">
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+    <div class="sidebar" id="sidebar">
+      <button class="sidebar-close" onclick="toggleSidebar(false)">✕</button>
+      <div class="sidebar-head">
+        <div class="sidebar-section-title">Filters</div>
+        <div class="fg"><span class="fl">Micro-Market</span><select class="fs" id="f-market"><option value="">All Markets</option></select></div>
+        <div class="fg"><span class="fl">Status</span>
+          <select class="fs" id="f-status">
+            <option value="">All</option><option value="Available">Available</option>
+            <option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option>
+          </select>
+        </div>
+        <div class="fg"><span class="fl">Area (SqFt)</span>
+          <div class="range-row"><input class="fs" type="text" id="f-amin" placeholder="Min"/><input class="fs" type="text" id="f-amax" placeholder="Max"/></div>
+        </div>
+        <div class="fg"><span class="fl">Max Rate (PSF ₹)</span><input class="fs" type="text" id="f-rate" placeholder="e.g. 100"/></div>
+        <div class="fg"><span class="fl">Furnishing</span>
+          <select class="fs" id="f-furnish">
+            <option value="">All</option><option value="Furnished">Furnished</option>
+            <option value="Bare Shell">Bare Shell</option><option value="Semi-Furnished">Semi-Furnished</option>
+            <option value="Plug & Play">Plug & Play</option>
+          </select>
+        </div>
+        <button class="fbtn" onclick="applyFilters()">Apply Filters</button>
+        <button class="cbtn" onclick="clearFilters()">Clear All</button>
+      </div>
+      <div class="prop-list">
+        <div class="lc" id="lc"></div>
+        <div id="pli"></div>
+      </div>
+    </div>
+    <div class="map-wrap"><div id="map"></div></div>
+    <button class="mobile-toggle" id="mobile-toggle" onclick="toggleSidebar()">☰</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = "https://fxbexvkrvavyfqcyvgii.supabase.co";
+const SUPABASE_KEY = "sb_publishable__ugwNHVlz66JGU5k3fPFuQ_2ATB6g95";
+let BASE_PROPS = [];
+let MARKETS = [];
+
+async function loadPropsFromSupabase() {
+  try {
+    const res = await fetch(SUPABASE_URL + "/rest/v1/properties?select=*&order=id.asc", {
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY
+      }
+    });
+    const rows = await res.json();
+    BASE_PROPS = rows.map(r => ({
+      code: r.code, name: r.name, market: r.market, status: r.status,
+      furnish: r.furnish, area: r.area, rate: r.rate, cam: r.cam,
+      deposit: r.deposit, lockin: r.lockin, tenure: r.tenure, escal: r.escal,
+      parking: r.parking, power: r.power, ac: r.ac, owner: r.owner, phone: r.phone,
+      video: r.video, floorplan: r.floorplan, maps: r.maps, photo: r.photo,
+      photos: r.photos || [], notes: r.notes, lat: r.lat, lng: r.lng,
+      _dbId: r.id
+    }));
+    MARKETS = [...new Set(BASE_PROPS.map(p => p.market).filter(Boolean))].sort();
+    return true;
+  } catch(e) {
+    console.error("Failed to load from Supabase:", e);
+    return false;
+  }
+}
+
+
+const EDITS_KEY='legion_edits_v1', USERS_KEY='legion_users_v1';
+async function stGet(k){
+  try{
+    if(window.storage&&window.storage.get){const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}
+    var v=localStorage.getItem(k);return v?JSON.parse(v):null;
+  }catch(e){return null;}
+}
+async function stSet(k,v){
+  try{
+    if(window.storage&&window.storage.set){await window.storage.set(k,JSON.stringify(v));return;}
+    localStorage.setItem(k,JSON.stringify(v));
+  }catch(e){}
+}
+
+const DEFAULT_USERS=[
+  {username:'admin',password:'admin123',role:'admin',name:'Admin'},
+  {username:'editor',password:'edit123',role:'editor',name:'Editor'},
+  {username:'viewer',password:'view123',role:'viewer',name:'Viewer'},
+];
+
+let USERS=[], EDITS={}, currentUser=null, props=[], filtered=[];
+let map, markerLayer, markers=[], editIdx=null, activeListIdx=null;
+
+let dataLoaded = false;
+async function init(){
+  USERS=(await stGet(USERS_KEY))||DEFAULT_USERS;
+  document.getElementById('li-pass') && document.getElementById('li-pass').focus;
+}
+
+async function ensureDataLoaded(){
+  if (dataLoaded) return;
+  const loadingEl = document.getElementById('data-loading');
+  if (loadingEl) { loadingEl.classList.remove('hidden'); loadingEl.style.display = 'flex'; }
+  const ok = await loadPropsFromSupabase();
+  if (!ok) { showToast('Could not load property data - check connection', 'error'); }
+  props = BASE_PROPS.map(p => ({...p}));
+  const sel=document.getElementById('f-market');
+  sel.innerHTML = '<option value="">All Markets</option>';
+  MARKETS.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});
+  dataLoaded = true;
+  if (loadingEl) { loadingEl.classList.add('hidden'); loadingEl.style.display = 'none'; }
+}
+
+async function doLogin(){
+  const u=document.getElementById('li-user').value.trim();
+  const p=document.getElementById('li-pass').value;
+  const user=USERS.find(x=>x.username===u&&x.password===p);
+  if(!user){document.getElementById('login-err').style.display='block';return;}
+  currentUser=user;
+  document.getElementById('login-overlay').classList.add('hidden');
+  document.getElementById('app').style.display='flex';
+  const rb=document.getElementById('role-badge');
+  rb.textContent=user.role.charAt(0).toUpperCase()+user.role.slice(1);
+  rb.className='role-badge role-'+user.role;
+  if(user.role==='admin') document.getElementById('users-btn').style.display='block';
+  await ensureDataLoaded();
+  initMap();
+}
+document.getElementById('li-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+function doLogout(){
+  currentUser=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-overlay').classList.remove('hidden');
+  document.getElementById('li-user').value='';
+  document.getElementById('li-pass').value='';
+  document.getElementById('login-err').style.display='none';
+  document.getElementById('users-btn').style.display='none';
+}
+
+function initMap(){
+  map=L.map('map',{center:[18.52,73.855],zoom:12});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(map);
+  markerLayer=L.layerGroup().addTo(map);
+  applyFilters();
+}
+
+const mkIcon=(color,sz,border)=>L.divIcon({className:'',
+  html:`<div style="width:${sz}px;height:${sz}px;background:${color};border:2px solid ${border||'#fff'};border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.25)"></div>`,
+  iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
+const iAvail=mkIcon('#1B3A6B',11,'#fff');
+const iRented=mkIcon('#9B2335',8,'#fff');
+const iNego=mkIcon('#C9973A',9,'#fff');
+function getIcon(s){return s==='Available'?iAvail:s==='Under Negotiation'?iNego:iRented;}
+
+function statusStyle(s){
+  if(s==='Available') return `background:var(--avail-bg);color:var(--avail)`;
+  if(s==='Rented Out') return `background:var(--rented-bg);color:var(--rented)`;
+  return `background:var(--nego-bg);color:var(--nego)`;
+}
+
+function driveToImg(url){
+  if(!url) return '';
+  const m=url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if(m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
+  return url;
+}
+
+function makePopup(p,idx){
+  const rate=p.rate?'₹'+p.rate+' PSF':'—';
+  const area=p.area?parseInt(p.area).toLocaleString()+' sqft':'—';
+  const canEdit=currentUser&&(currentUser.role==='admin'||currentUser.role==='editor');
+  const mapsUrl=p.maps||`https://www.google.com/maps/search/${encodeURIComponent(p.name+' '+p.market+' Pune')}`;
+  const isEdited=!!(p.edited_by);
+  const photos=p.photos&&p.photos.length?p.photos:(p.photo?[p.photo]:[]);
+  const uid='pu'+idx;
+
+  // Carousel HTML
+  let carouselHtml='';
+  if(photos.length>0){
+    const dots=photos.map((_,i)=>`<div class="pu-dot${i===0?' active':''}" onclick="goSlide('${uid}',${i})"></div>`).join('');
+    carouselHtml=`<div class="pu-carousel" id="${uid}">
+      <div class="pu-slides" id="${uid}-slides">
+        ${photos.map((url,i)=>`<img class="pu-slide" src="${url}" onerror="this.src=''" alt="Photo ${i+1}"/>`).join('')}
+      </div>
+      ${photos.length>1?`
+        <button class="pu-arrow pu-prev" onclick="goSlide('${uid}',-1,true)">‹</button>
+        <button class="pu-arrow pu-next" onclick="goSlide('${uid}',1,true)">›</button>
+        <div class="pu-dots">${dots}</div>
+        <div class="pu-count" id="${uid}-count">1/${photos.length}</div>
+      `:''}
+    </div>`;
+  } else {
+    carouselHtml=`<div class="pu-photo-placeholder">🏢</div>`;
+  }
+
+  return `<div class="pu">
+    ${carouselHtml}
+    <div class="pu-body">
+      <div class="pu-name">${p.name}${isEdited?'<span class="edited-tag">Updated</span>':''}</div>
+      <div class="pu-mkt">📍 ${p.market}</div>
+      <div class="pu-code">${p.code||''}</div>
+      <span class="pu-status" style="${statusStyle(p.status)}">${p.status}</span>
+      <div class="pu-grid">
+        <div class="pu-stat"><div class="psl">Area</div><div class="psv">${area}</div></div>
+        <div class="pu-stat"><div class="psl">Rate</div><div class="psv">${rate}</div></div>
+        <div class="pu-stat"><div class="psl">Furnishing</div><div class="psv">${p.furnish||'—'}</div></div>
+        <div class="pu-stat"><div class="psl">Owner</div><div class="psv">${p.owner||'—'}</div></div>
+        ${p.cam?`<div class="pu-stat"><div class="psl">CAM</div><div class="psv">₹${p.cam} PSF</div></div>`:''}
+        ${p.phone?`<div class="pu-stat"><div class="psl">Phone</div><div class="psv">${p.phone}</div></div>`:''}
+      </div>
+      <div class="pu-actions">
+        ${canEdit?`<button class="pu-btn pu-edit" onclick="openEdit(${idx})">✏️ Edit</button>`:''}
+        ${p.video?`<button class="pu-btn pu-video" onclick="window.open('${p.video}','_blank')">▶ Video</button>`:''}
+        ${p.floorplan?`<button class="pu-btn pu-fp" onclick="window.open('${p.floorplan}','_blank')">📐 Plan</button>`:''}
+        <button class="pu-btn pu-maps" onclick="window.open('${mapsUrl}','_blank')">🗺 Maps</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Carousel state
+var carouselState={};
+function goSlide(uid,val,relative){
+  var slides=document.querySelectorAll('#'+uid+' .pu-slide');
+  var dots=document.querySelectorAll('#'+uid+' .pu-dot');
+  var count=document.getElementById(uid+'-count');
+  if(!slides.length) return;
+  var n=slides.length;
+  var cur=carouselState[uid]||0;
+  var next=relative?(cur+val+n)%n:val;
+  carouselState[uid]=next;
+  // Move slides
+  var track=document.getElementById(uid+'-slides');
+  if(track) track.style.transform='translateX(-'+next+'00%)';
+  // Update dots
+  dots.forEach((d,i)=>d.classList.toggle('active',i===next));
+  if(count) count.textContent=(next+1)+'/'+n;
+}
+
+function applyFilters(){
+  const mkt=document.getElementById('f-market').value;
+  const sts=document.getElementById('f-status').value;
+  const aMin=parseFloat(document.getElementById('f-amin').value)||0;
+  const aMax=parseFloat(document.getElementById('f-amax').value)||Infinity;
+  const rMax=parseFloat(document.getElementById('f-rate').value)||Infinity;
+  const fur=document.getElementById('f-furnish').value;
+  filtered=props.reduce((acc,p,i)=>{
+    if(mkt&&p.market!==mkt) return acc;
+    if(sts&&p.status!==sts) return acc;
+    if(fur&&p.furnish!==fur) return acc;
+    const area=parseFloat(p.area)||0;
+    if(area&&(area<aMin||area>aMax)) return acc;
+    const rate=parseFloat(p.rate)||0;
+    if(rate&&rate>rMax) return acc;
+    acc.push({...p,_origIdx:i});
+    return acc;
+  },[]);
+  renderMarkers(); renderList(); updateStats();
+}
+
+function clearFilters(){
+  ['f-market','f-status','f-furnish'].forEach(id=>document.getElementById(id).value='');
+  ['f-amin','f-amax','f-rate'].forEach(id=>document.getElementById(id).value='');
+  applyFilters();
+}
+
+function renderMarkers(){
+  markerLayer.clearLayers(); markers=[];
+  filtered.forEach((p,fi)=>{
+    const m=L.marker([p.lat,p.lng],{icon:getIcon(p.status)});
+    m.bindPopup(makePopup(p,p._origIdx),{className:'custom-popup',maxWidth:280,offset:[0,-2]});
+    m.on('click',()=>highlightItem(fi));
+    markerLayer.addLayer(m); markers.push(m);
+  });
+}
+
+function renderList(){
+  const el=document.getElementById('pli');
+  document.getElementById('lc').textContent=filtered.length+' properties';
+  if(!filtered.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:11px">No properties match your filters</div>';return;}
+  const show=filtered.slice(0,200);
+  el.innerHTML=show.map((p,fi)=>{
+    const photoUrl=p.photo?driveToImg(p.photo):'';
+    return `<div class="pi" id="li-${fi}" onclick="focusProp(${fi})">
+      ${photoUrl?`<img class="pi-photo-thumb" src="${photoUrl}" onerror="this.style.display='none'" alt=""/>`:''}
+      <div class="pi-name">${p.name}</div>
+      <div class="pi-mkt">📍 ${p.market}</div>
+      <div class="pi-row">
+        <span class="tag ${p.status==='Available'?'ta':p.status==='Rented Out'?'tr':'tn'}">${p.status}</span>
+        ${p.area?`<span class="pi-meta">${parseInt(p.area).toLocaleString()} sqft</span>`:''}
+        ${p.rate?`<span class="pi-meta">₹${p.rate} PSF</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  if(filtered.length>200) el.innerHTML+=`<div style="text-align:center;padding:10px;color:var(--text3);font-size:10px">Showing 200 of ${filtered.length}. Use filters to narrow down.</div>`;
+}
+
+function updateStats(){
+  document.getElementById('s-total').textContent=filtered.length;
+  document.getElementById('s-avail').textContent=filtered.filter(p=>p.status==='Available').length;
+  document.getElementById('s-mkts').textContent=new Set(filtered.map(p=>p.market)).size;
+}
+
+function focusProp(fi){
+  const p=filtered[fi];
+  map.setView([p.lat,p.lng],15);
+  if(markers[fi]) markers[fi].openPopup();
+  highlightItem(fi);
+}
+function highlightItem(fi){
+  if(activeListIdx!==null){const prev=document.getElementById('li-'+activeListIdx);if(prev)prev.classList.remove('active');}
+  activeListIdx=fi;
+  const el=document.getElementById('li-'+fi);
+  if(el){el.classList.add('active');el.scrollIntoView({block:'nearest',behavior:'smooth'});}
+}
+
+function openEdit(origIdx){
+  if(!currentUser||(currentUser.role!=='admin'&&currentUser.role!=='editor')) return;
+  editIdx=origIdx;
+  const p=props[origIdx];
+  document.getElementById('ep-title').textContent=p.name;
+  document.getElementById('ep-sub').textContent=(p.code||'')+' · '+p.market;
+  const fields={'ef-status':p.status,'ef-furnish':p.furnish,'ef-area':p.area,'ef-rate':p.rate,
+    'ef-cam':p.cam,'ef-deposit':p.deposit,'ef-lockin':p.lockin,'ef-tenure':p.tenure,
+    'ef-escal':p.escal,'ef-parking':p.parking,'ef-power':p.power,'ef-ac':p.ac,
+    'ef-owner':p.owner,'ef-phone':p.phone,'ef-photo':p.photo,'ef-video':p.video,
+    'ef-floorplan':p.floorplan,'ef-maps':p.maps,'ef-notes':p.notes};
+  Object.entries(fields).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val||'';});
+  document.getElementById('edit-overlay').classList.remove('hidden');
+  document.getElementById('ep-saving').style.display='none';
+}
+function closeEdit(){document.getElementById('edit-overlay').classList.add('hidden');editIdx=null;}
+async function saveEdit(){
+  if(editIdx===null) return;
+  document.getElementById('ep-saving').style.display='block';
+  const updated={
+    status:document.getElementById('ef-status').value,
+    furnish:document.getElementById('ef-furnish').value,
+    area:document.getElementById('ef-area').value,
+    rate:document.getElementById('ef-rate').value,
+    cam:document.getElementById('ef-cam').value,
+    deposit:document.getElementById('ef-deposit').value,
+    lockin:document.getElementById('ef-lockin').value,
+    tenure:document.getElementById('ef-tenure').value,
+    escal:document.getElementById('ef-escal').value,
+    parking:document.getElementById('ef-parking').value,
+    power:document.getElementById('ef-power').value,
+    ac:document.getElementById('ef-ac').value,
+    owner:document.getElementById('ef-owner').value,
+    phone:document.getElementById('ef-phone').value,
+    photo:document.getElementById('ef-photo').value,
+    video:document.getElementById('ef-video').value,
+    floorplan:document.getElementById('ef-floorplan').value,
+    maps:document.getElementById('ef-maps').value,
+    notes:document.getElementById('ef-notes').value,
+    edited_by:currentUser.username,
+    edited_at:new Date().toISOString(),
+  };
+  const dbId = props[editIdx]._dbId;
+  try {
+    const res = await fetch(SUPABASE_URL + "/rest/v1/properties?id=eq." + dbId, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify(updated)
+    });
+    if (!res.ok) throw new Error("Save failed: " + res.status);
+    props[editIdx]={...props[editIdx],...updated};
+    applyFilters();
+    document.getElementById('ep-saving').style.display='none';
+    closeEdit();
+    showToast('Changes saved to database ✓','success');
+  } catch(err) {
+    document.getElementById('ep-saving').style.display='none';
+    showToast('Save failed - check connection','error');
+  }
+}
+
+function openUsers(){renderUserList();document.getElementById('user-overlay').classList.remove('hidden');}
+function closeUsers(){document.getElementById('user-overlay').classList.add('hidden');}
+function renderUserList(){
+  document.getElementById('user-list').innerHTML=USERS.map((u,i)=>`
+    <div class="user-row">
+      <div class="user-avatar">${u.name.charAt(0).toUpperCase()}</div>
+      <div class="user-info">
+        <div class="user-name">${u.name} <span style="color:var(--text3);font-size:10px">(${u.username})</span></div>
+        <span class="urb role-${u.role}">${u.role}</span>
+      </div>
+      ${u.username!=='admin'?`<button class="del-btn" onclick="deleteUser(${i})">✕</button>`:''}
+    </div>`).join('');
+}
+async function addUser(){
+  const u=document.getElementById('nu-user').value.trim();
+  const p=document.getElementById('nu-pass').value;
+  const r=document.getElementById('nu-role').value;
+  if(!u||!p){showToast('Fill all fields','error');return;}
+  if(USERS.find(x=>x.username===u)){showToast('Username already exists','error');return;}
+  USERS.push({username:u,password:p,role:r,name:u.charAt(0).toUpperCase()+u.slice(1)});
+  await stSet(USERS_KEY,USERS);
+  document.getElementById('nu-user').value='';document.getElementById('nu-pass').value='';
+  renderUserList();showToast('Member added ✓','success');
+}
+async function deleteUser(i){
+  if(USERS[i].username==='admin'){showToast('Cannot remove admin','error');return;}
+  USERS.splice(i,1);await stSet(USERS_KEY,USERS);renderUserList();showToast('Member removed','success');
+}
+
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+type+' show';
+  setTimeout(()=>t.className='toast',2500);
+}
+
+
+function toggleSidebar(force) {
+  var sb = document.getElementById('sidebar');
+  var bd = document.getElementById('sidebar-backdrop');
+  var isOpen = sb.classList.contains('open');
+  var newState = (force !== undefined) ? force : !isOpen;
+  sb.classList.toggle('open', newState);
+  bd.classList.toggle('show', newState);
+}
+
+// Close sidebar when a property is clicked on mobile
+var origFocusProp = focusProp;
+focusProp = function(fi) {
+  origFocusProp(fi);
+  if (window.innerWidth <= 768) toggleSidebar(false);
+};
+
+init();
+</script>
+</body>
+</html>
