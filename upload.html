@@ -13,7 +13,7 @@ input,select,textarea,button{font-family:inherit;outline:none}
 .topbar img{height:32px;object-fit:contain}
 .topbar-title{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);border-left:1px solid rgba(255,255,255,.2);padding-left:12px}
 .container{max-width:600px;margin:0 auto;padding:20px 16px}
-.mode-toggle{display:grid;grid-template-columns:1fr 1fr;background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
+.mode-toggle{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
 .mode-btn{padding:12px;text-align:center;cursor:pointer;border:none;background:transparent;color:var(--text2)}
 .mode-btn.active{background:var(--navy);color:#fff}
 .mb-icon{font-size:20px;display:block;margin-bottom:4px}
@@ -71,6 +71,7 @@ input,select,textarea,button{font-family:inherit;outline:none}
 .toast.ok{background:var(--green)}
 .toast.err{background:var(--red)}
 </style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="topbar">
@@ -89,6 +90,38 @@ input,select,textarea,button{font-family:inherit;outline:none}
       <span class="mb-label">Fill Manually</span>
       <span class="mb-sub">Type details yourself</span>
     </button>
+    <button class="mode-btn" id="mode-bulk" onclick="setMode('bulk')">
+      <span class="mb-icon">📊</span>
+      <span class="mb-label">Bulk Import</span>
+      <span class="mb-sub">Upload a listings sheet</span>
+    </button>
+  </div>
+
+  <div id="bulk-section" style="display:none">
+    <div class="ai-zone" onclick="document.getElementById('bulk-input').click()">
+      <input type="file" id="bulk-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="onBulkFile(this.files)"/>
+      <span class="az-icon">📊</span>
+      <div class="az-title">Upload an Excel sheet of property listings</div>
+      <div class="az-sub">Any format - AI will read every listing in the sheet, skip properties already in the database, and add only the new ones</div>
+      <span class="az-btn">Choose Excel File</span>
+    </div>
+    <div class="file-chips" id="bulk-chip"></div>
+    <button class="extract-btn" id="bulk-extract-btn" onclick="doBulkImport()" disabled>📥 Import Listings</button>
+
+    <div class="ai-loading" id="bulk-loading">
+      <div class="spinner"></div>
+      <div class="ai-status" id="bulk-status-text">Reading spreadsheet...</div>
+      <div class="ai-sub-text" id="bulk-sub-text">This may take a moment for large sheets</div>
+    </div>
+
+    <div id="bulk-results" style="display:none">
+      <div class="form-card">
+        <div class="form-section">Import Summary</div>
+        <div id="bulk-summary" style="font-size:13px;color:var(--text2);line-height:1.8"></div>
+        <div id="bulk-list" style="margin-top:12px;max-height:300px;overflow-y:auto"></div>
+      </div>
+      <button class="clear-btn" onclick="doReset()">Done</button>
+    </div>
   </div>
 
   <div id="ai-section">
@@ -180,15 +213,24 @@ input,select,textarea,button{font-family:inherit;outline:none}
 
 <script>
 var API = "https://script.google.com/macros/s/AKfycbxXNGHtJ7KixMp5Q1wdD_QU2BDjNy_mitwD_aBAhDzwt7OcR_ZtYuKHIFoe36Uy4TWk/exec";
+var SUPABASE_URL = "https://fxbexvkrvavyfqcyvgii.supabase.co";
+var SUPABASE_KEY = "sb_publishable__ugwNHVlz66JGU5k3fPFuQ_2ATB6g95";
 var aiFiles = [];
 var mediaFiles = [];
+var bulkFile = null;
 
 function setMode(mode) {
   document.getElementById('mode-ai').classList.toggle('active', mode === 'ai');
-  document.getElementById('mode-manual').classList.toggle('active', mode !== 'ai');
+  document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
+  document.getElementById('mode-bulk').classList.toggle('active', mode === 'bulk');
   document.getElementById('ai-section').style.display = mode === 'ai' ? 'block' : 'none';
-  if (mode === 'manual') {
-    document.getElementById('form-section').style.display = 'block';
+  document.getElementById('bulk-section').style.display = mode === 'bulk' ? 'block' : 'none';
+  document.getElementById('form-section').style.display = mode === 'manual' ? 'block' : 'none';
+  if (mode !== 'bulk') {
+    document.getElementById('bulk-loading').style.display = 'none';
+    document.getElementById('bulk-results').style.display = 'none';
+  }
+  if (mode === 'ai') {
     document.getElementById('ai-loading').style.display = 'none';
   }
 }
@@ -423,6 +465,139 @@ function doReset() {
   document.getElementById('extract-btn').disabled = true;
   setMode('ai');
   window.scrollTo(0, 0);
+}
+
+// ── BULK IMPORT ─────────────────────────────────────
+function onBulkFile(files) {
+  if (!files.length) return;
+  bulkFile = files[0];
+  document.getElementById('bulk-chip').innerHTML =
+    '<div class="chip">📊 ' + bulkFile.name + ' <button onclick="clearBulkFile()">x</button></div>';
+  document.getElementById('bulk-extract-btn').disabled = false;
+}
+
+function clearBulkFile() {
+  bulkFile = null;
+  document.getElementById('bulk-chip').innerHTML = '';
+  document.getElementById('bulk-extract-btn').disabled = true;
+}
+
+function sheetToText(workbook) {
+  var out = '';
+  workbook.SheetNames.forEach(function(name) {
+    var sheet = workbook.Sheets[name];
+    var csv = XLSX.utils.sheet_to_csv(sheet);
+    out += '=== SHEET: ' + name + ' ===\n' + csv + '\n\n';
+  });
+  return out;
+}
+
+async function doBulkImport() {
+  if (!bulkFile) return;
+  document.getElementById('bulk-section').querySelector('.ai-zone').style.display = 'none';
+  document.getElementById('bulk-extract-btn').style.display = 'none';
+  document.getElementById('bulk-loading').style.display = 'block';
+  document.getElementById('bulk-status-text').textContent = 'Reading ' + bulkFile.name + '...';
+
+  try {
+    var arrayBuffer = await bulkFile.arrayBuffer();
+    var workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    var sheetText = sheetToText(workbook);
+
+    if (sheetText.length > 100000) {
+      sheetText = sheetText.substring(0, 100000);
+    }
+
+    document.getElementById('bulk-status-text').textContent = 'Extracting listings with AI...';
+    document.getElementById('bulk-sub-text').textContent = 'Claude is reading every property in the sheet';
+
+    var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":"","building_grade":"","notes":""}\n\nSpreadsheet content:\n' + sheetText;
+
+    var res = await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'extract', prompt: prompt, files: [] })
+    });
+    var result = await res.json();
+    if (!result.success) throw new Error(result.error || 'Extraction failed');
+
+    var listings = result.extracted;
+    if (!Array.isArray(listings)) listings = [listings];
+
+    document.getElementById('bulk-status-text').textContent = 'Checking for duplicates...';
+    document.getElementById('bulk-sub-text').textContent = 'Comparing against ' + listings.length + ' extracted listings';
+
+    var added = [];
+    var skipped = [];
+    var failed = [];
+
+    for (var i = 0; i < listings.length; i++) {
+      var item = listings[i];
+      if (!item.name) { continue; }
+      document.getElementById('bulk-status-text').textContent = 'Processing ' + (i+1) + ' of ' + listings.length + '...';
+
+      try {
+        var checkUrl = SUPABASE_URL + '/rest/v1/properties?select=id,name,market&name=ilike.' + encodeURIComponent(item.name.trim()) + '&market=ilike.' + encodeURIComponent((item.market||'').trim());
+        var checkRes = await fetch(checkUrl, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        });
+        var existing = await checkRes.json();
+
+        if (existing && existing.length > 0) {
+          skipped.push(item.name + ' (' + (item.market||'-') + ') - already exists');
+          continue;
+        }
+
+        var code = 'BLK' + Date.now().toString().slice(-7) + i;
+        var insertBody = {
+          code: code, name: item.name, market: item.market || '', city: item.city || 'Pune',
+          status: item.status || 'Available', furnish: item.furnish || '', area: item.area || '',
+          rate: item.rate || '', cam: item.cam || '', deposit: item.deposit || '',
+          lockin: item.lockin || '', tenure: item.tenure || '', escal: item.escal || '',
+          owner: item.owner || '', phone: item.phone || '', building_grade: item.building_grade || '',
+          notes: (item.notes || '') + (item.salerate ? ' | Sale rate: Rs' + item.salerate + ' PSF' : ''),
+          lat: 18.52, lng: 73.855
+        };
+
+        var insertRes = await fetch(SUPABASE_URL + '/rest/v1/properties', {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+            'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(insertBody)
+        });
+
+        if (insertRes.ok) {
+          added.push(item.name + ' (' + (item.market||'-') + ')');
+        } else {
+          failed.push(item.name);
+        }
+      } catch (e) {
+        failed.push(item.name);
+      }
+    }
+
+    document.getElementById('bulk-loading').style.display = 'none';
+    document.getElementById('bulk-results').style.display = 'block';
+    document.getElementById('bulk-summary').innerHTML =
+      '<b>' + listings.length + '</b> listings found in sheet<br>' +
+      '<b style="color:var(--green)">' + added.length + '</b> new properties added<br>' +
+      '<b style="color:var(--text3)">' + skipped.length + '</b> skipped (already in database)' +
+      (failed.length ? '<br><b style="color:var(--red)">' + failed.length + '</b> failed to save' : '');
+
+    var listHtml = '';
+    if (added.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--green);margin:10px 0 6px">ADDED</div>' + added.map(function(n){return '<div style="font-size:11px;color:var(--text2);padding:3px 0">+ '+n+'</div>';}).join('');
+    if (skipped.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--text3);margin:10px 0 6px">SKIPPED (DUPLICATES)</div>' + skipped.map(function(n){return '<div style="font-size:11px;color:var(--text3);padding:3px 0">- '+n+'</div>';}).join('');
+    document.getElementById('bulk-list').innerHTML = listHtml;
+
+    toast(added.length + ' properties imported', false);
+
+  } catch (err) {
+    document.getElementById('bulk-loading').style.display = 'none';
+    document.getElementById('bulk-section').querySelector('.ai-zone').style.display = 'block';
+    document.getElementById('bulk-extract-btn').style.display = 'block';
+    toast('Import failed: ' + err.message, true);
+  }
 }
 
 function toast(msg, err) {
