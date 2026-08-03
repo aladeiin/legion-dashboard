@@ -212,7 +212,7 @@ input,select,textarea,button{font-family:inherit;outline:none}
 <div class="toast" id="toast"></div>
 
 <script>
-var API = "https://script.google.com/macros/s/AKfycbxXNGHtJ7KixMp5Q1wdD_QU2BDjNy_mitwD_aBAhDzwt7OcR_ZtYuKHIFoe36Uy4TWk/exec";
+var API = "https://script.google.com/macros/s/AKfycbzxuYP_TJyoam1lTnQ2OGq7jjPeSPFI9Aaid5LiUI8pks7ZBAHjTBAKDAX1ownMDpmm/exec";
 var SUPABASE_URL = "https://fxbexvkrvavyfqcyvgii.supabase.co";
 var SUPABASE_KEY = "sb_publishable__ugwNHVlz66JGU5k3fPFuQ_2ATB6g95";
 var aiFiles = [];
@@ -515,7 +515,7 @@ async function doBulkImport() {
 
     var res = await fetch(API, {
       method: 'POST',
-      body: JSON.stringify({ action: 'extract', prompt: prompt, files: [] })
+      body: JSON.stringify({ action: 'extract', prompt: prompt, files: [], max_tokens: 4000 })
     });
     var result = await res.json();
     if (!result.success) throw new Error(result.error || 'Extraction failed');
