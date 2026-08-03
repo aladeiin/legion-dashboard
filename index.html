@@ -358,6 +358,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     <div class="stat-pill">Available <span id="s-avail">0</span></div>
     <div class="stat-pill">Markets <span id="s-mkts">0</span></div>
     <div class="spacer"></div>
+    <button class="topbar-btn" id="add-property-btn" onclick="window.open('upload.html','_blank')" style="display:none">+ Add Property</button>
     <button class="topbar-btn" id="users-btn" onclick="openUsers()" style="display:none">👥 Team</button>
     <button class="topbar-btn" onclick="doLogout()">Sign out</button>
   </div>
@@ -487,6 +488,7 @@ async function doLogin(){
   rb.textContent=user.role.charAt(0).toUpperCase()+user.role.slice(1);
   rb.className='role-badge role-'+user.role;
   if(user.role==='admin') document.getElementById('users-btn').style.display='block';
+  if(user.role==='admin'||user.role==='editor') document.getElementById('add-property-btn').style.display='block';
   await ensureDataLoaded();
   initMap();
 }
@@ -499,6 +501,7 @@ function doLogout(){
   document.getElementById('li-pass').value='';
   document.getElementById('login-err').style.display='none';
   document.getElementById('users-btn').style.display='none';
+  document.getElementById('add-property-btn').style.display='none';
 }
 
 function initMap(){

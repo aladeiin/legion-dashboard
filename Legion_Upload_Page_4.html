@@ -1,5 +1,5 @@
 var FOLDER_ID = "11F0Nn0PyyD9JWmuEcMikgew6kqguiTI0";
-var ANTHROPIC_API_KEY = "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";
+var ANTHROPIC_API_KEY = PropertiesService.getScriptProperties().getProperty("ANTHROPIC_API_KEY");
 
 function doPost(e) {
   try {
@@ -40,6 +40,10 @@ function uploadFile(data) {
 }
 
 function extractWithAI(data) {
+  if (!ANTHROPIC_API_KEY) {
+    return respond({ success: false, error: "Server misconfigured: ANTHROPIC_API_KEY script property is not set." });
+  }
+
   var parts = [{ type: "text", text: data.prompt }];
 
   // Add files
@@ -57,8 +61,8 @@ function extractWithAI(data) {
   }
 
   var payload = {
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 800,
+    model: "claude-sonnet-4-5",
+    max_tokens: data.max_tokens || 800,
     messages: [{ role: "user", content: parts }]
   };
 
@@ -83,7 +87,14 @@ function extractWithAI(data) {
   }
   text = text.replace(/```json/g, "").replace(/```/g, "").trim();
 
-  return respond({ success: true, extracted: JSON.parse(text) });
+  var extracted;
+  try {
+    extracted = JSON.parse(text);
+  } catch (e) {
+    return respond({ success: false, error: "AI response could not be parsed. It may have been cut off - try again or upload fewer/smaller files." });
+  }
+
+  return respond({ success: true, extracted: extracted });
 }
 
 function respond(obj) {

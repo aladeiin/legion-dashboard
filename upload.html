@@ -133,6 +133,10 @@ input,select,textarea,button{font-family:inherit;outline:none}
       <span class="az-btn">Choose Files</span>
     </div>
     <div class="file-chips" id="ai-chips"></div>
+    <div class="field" style="margin-bottom:12px">
+      <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Or paste a WhatsApp / SMS message</label>
+      <textarea id="ai-pasted-text" rows="4" placeholder="Paste the broker's message text here..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:13px;padding:9px 11px;color:var(--text);font-family:inherit;resize:vertical" oninput="updateExtractBtn()"></textarea>
+    </div>
     <button class="extract-btn" id="extract-btn" onclick="doExtract()" disabled>✨ Auto-fill form with AI</button>
   </div>
 
@@ -244,13 +248,18 @@ function onAIFiles(files) {
     if (!exists) aiFiles.push(files[i]);
   }
   renderChips();
-  document.getElementById('extract-btn').disabled = aiFiles.length === 0;
+  updateExtractBtn();
 }
 
 function removeAI(i) {
   aiFiles.splice(i, 1);
   renderChips();
-  document.getElementById('extract-btn').disabled = aiFiles.length === 0;
+  updateExtractBtn();
+}
+
+function updateExtractBtn() {
+  var pastedText = document.getElementById('ai-pasted-text').value.trim();
+  document.getElementById('extract-btn').disabled = aiFiles.length === 0 && pastedText === '';
 }
 
 function renderChips() {
@@ -272,7 +281,8 @@ function toB64(file) {
 }
 
 async function doExtract() {
-  if (!aiFiles.length) return;
+  var pastedText = document.getElementById('ai-pasted-text').value.trim();
+  if (!aiFiles.length && !pastedText) return;
   document.getElementById('ai-loading').style.display = 'block';
   document.getElementById('form-section').style.display = 'none';
   document.getElementById('extract-btn').disabled = true;
@@ -291,6 +301,9 @@ async function doExtract() {
         var txt = await f.text();
         files.push({ type: 'text/plain', text: txt });
       }
+    }
+    if (pastedText) {
+      files.push({ type: 'text/plain', text: pastedText });
     }
 
     document.getElementById('ai-status-text').textContent = 'Extracting data with AI...';
@@ -460,6 +473,7 @@ function doClear() {
 
 function doReset() {
   doClear(); aiFiles = []; renderChips();
+  document.getElementById('ai-pasted-text').value = '';
   document.getElementById('success').style.display = 'none';
   document.getElementById('form-section').style.display = 'none';
   document.getElementById('extract-btn').disabled = true;
