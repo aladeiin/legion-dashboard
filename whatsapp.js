@@ -1,0 +1,119 @@
+module.exports = async function handler(req, res) {
+  if (req.method !== 'POST') { res.status(200).send('OK'); return; }
+
+  try {
+    const params = req.body;
+    const from = params.From || '';
+    const body = params.Body || '';
+    const numMedia = parseInt(params.NumMedia || '0');
+
+    const parts = [{
+      type: 'text',
+      text: 'You are a commercial real estate data extractor for a Pune/Hyderabad CRE company. A broker sent this WhatsApp message with a property listing. Extract all available property information. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON, no markdown, no backticks. Use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":""}\n\nMessage text:\n' + body
+    }];
+
+    const twilioAuth = 'Basic ' + Buffer.from(process.env.TWILIO_SID + ':' + process.env.TWILIO_AUTH).toString('base64');
+
+    for (let i = 0; i < numMedia; i++) {
+      const mediaUrl = params['MediaUrl' + i];
+      const mediaType = params['MediaContentType' + i];
+      if (!mediaUrl) continue;
+      const mediaResp = await fetch(mediaUrl, { headers: { Authorization: twilioAuth } });
+      const buffer = await mediaResp.arrayBuffer();
+      const b64 = Buffer.from(buffer).toString('base64');
+      if (mediaType.indexOf('image') >= 0) {
+        parts.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } });
+      } else if (mediaType.indexOf('pdf') >= 0) {
+        parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } });
+      }
+    }
+
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 800, messages: [{ role: 'user', content: parts }] })
+    });
+    const result = await aiRes.json();
+
+    if (result.error) {
+      await sendWhatsAppReply(from, 'Sorry, could not process that listing: ' + result.error.message, twilioAuth);
+      res.status(200).send('OK');
+      return;
+    }
+
+    let text = '';
+    result.content.forEach(c => { text += c.text || ''; });
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    let extracted;
+    try {
+      extracted = JSON.parse(text);
+    } catch (e) {
+      await sendWhatsAppReply(from, 'Could not understand that listing format. Please try again.', twilioAuth);
+      res.status(200).send('OK');
+      return;
+    }
+
+    const code = 'WA' + Date.now().toString().slice(-8);
+    const insertBody = {
+      code: code,
+      name: extracted.name || 'Unnamed Property',
+      market: extracted.market || '',
+      city: extracted.city || 'Pune',
+      status: extracted.status || 'Available',
+      furnish: extracted.furnish || '',
+      area: extracted.area || '',
+      rate: extracted.rate || '',
+      cam: extracted.cam || '',
+      deposit: extracted.deposit || '',
+      lockin: extracted.lockin || '',
+      tenure: extracted.tenure || '',
+      escal: extracted.escal || '',
+      owner: extracted.owner || '',
+      phone: extracted.phone || from.replace('whatsapp:', ''),
+      notes: 'Received via WhatsApp bot. Sale rate: ' + (extracted.salerate || 'N/A'),
+      lat: 18.52,
+      lng: 73.855
+    };
+
+    const insertRes = await fetch(process.env.SUPABASE_URL + '/rest/v1/properties', {
+      method: 'POST',
+      headers: {
+        apikey: process.env.SUPABASE_KEY,
+        Authorization: 'Bearer ' + process.env.SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify(insertBody)
+    });
+
+    if (insertRes.ok) {
+      await sendWhatsAppReply(from, 'Property added: ' + insertBody.name + ' (' + insertBody.market + ')\nRate: Rs ' + (insertBody.rate || 'N/A') + ' PSF\nCode: ' + code + '\n\nIt is now live on the dashboard.', twilioAuth);
+    } else {
+      await sendWhatsAppReply(from, 'Extracted the listing but saving failed. Please check with your admin.', twilioAuth);
+    }
+
+    res.status(200).send('OK');
+  } catch (err) {
+    res.status(200).send('OK');
+  }
+};
+
+async function sendWhatsAppReply(to, message, twilioAuth) {
+  try {
+    const body = new URLSearchParams({
+      From: process.env.TWILIO_WHATSAPP_FROM,
+      To: to,
+      Body: message
+    });
+    await fetch('https://api.twilio.com/2010-04-01/Accounts/' + process.env.TWILIO_SID + '/Messages.json', {
+      method: 'POST',
+      headers: { Authorization: twilioAuth, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+  } catch (e) {}
+}
