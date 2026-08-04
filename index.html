@@ -6,6 +6,7 @@
 <title>Legion Realty — Portfolio Dashboard</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --navy:#1B3A6B;
@@ -27,6 +28,9 @@
   --rented-bg:#FCEEF0;
   --nego:#7A5C00;
   --nego-bg:#FFF8E6;
+  --green:#1A6B3A;
+  --green-bg:#E8F5EE;
+  --red:#9B2335;
   --shadow:0 1px 4px rgba(27,58,107,.08);
   --shadow-md:0 4px 16px rgba(27,58,107,.12);
 }
@@ -34,6 +38,7 @@
 body{background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
 input,select,textarea{outline:none;font-family:inherit;color:var(--text)}
 button{font-family:inherit;cursor:pointer}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── OVERLAY ── */
 .overlay{position:fixed;inset:0;background:rgba(27,58,107,.45);z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(2px)}
@@ -61,14 +66,18 @@ button{font-family:inherit;cursor:pointer}
 .role-admin{background:rgba(201,151,58,.25);color:#F6CC7A;border:1px solid rgba(201,151,58,.35)}
 .role-editor{background:rgba(72,187,120,.15);color:#9AE6B4;border:1px solid rgba(72,187,120,.25)}
 .role-viewer{background:rgba(144,205,244,.15);color:#90CDF4;border:1px solid rgba(144,205,244,.25)}
+.topbar-name{color:rgba(255,255,255,.7);font-size:11px;white-space:nowrap}
 .stat-pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px;color:rgba(255,255,255,.7)}
 .stat-pill span{color:#fff;font-weight:600}
 .spacer{flex:1}
-.topbar-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);padding:5px 12px;border-radius:6px;font-size:11px;transition:.15s}
+.topbar-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);padding:5px 12px;border-radius:6px;font-size:11px;transition:.15s;white-space:nowrap}
 .topbar-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+.topbar-btn.active{background:rgba(255,255,255,.28);color:#fff;border-color:rgba(255,255,255,.4)}
 
-/* ── LAYOUT ── */
+/* ── LAYOUT / VIEWS ── */
 .main{flex:1;display:flex;overflow:hidden}
+.view-panel{flex:1;overflow-y:auto;background:var(--bg)}
+.view-container{max-width:600px;margin:0 auto;padding:20px 16px}
 
 /* ── SIDEBAR ── */
 .sidebar{width:284px;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;box-shadow:2px 0 8px rgba(27,58,107,.04)}
@@ -189,6 +198,69 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .toast.success{border-left:3px solid #68d391}
 .toast.error{border-left:3px solid #fc8181}
 
+/* ── ADD PROPERTY VIEW (ported from upload page) ── */
+.mode-toggle{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
+.mode-btn{padding:12px;text-align:center;cursor:pointer;border:none;background:transparent;color:var(--text2)}
+.mode-btn.active{background:var(--navy);color:#fff}
+.mb-icon{font-size:20px;display:block;margin-bottom:4px}
+.mb-label{font-size:12px;font-weight:600;display:block}
+.mb-sub{font-size:10px;opacity:.7;display:block;margin-top:2px}
+.ai-zone{background:var(--white);border:2px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;margin-bottom:12px}
+.ai-zone:hover{border-color:var(--navy);background:#EEF3FB}
+.az-icon{font-size:36px;display:block;margin-bottom:10px}
+.az-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.az-sub{font-size:11px;color:var(--text3);line-height:1.6}
+.az-btn{display:inline-block;margin-top:12px;background:var(--navy);color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:12px;font-weight:600}
+.file-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px}
+.chip button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;line-height:1;padding:0}
+.extract-btn{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:20px}
+.extract-btn:disabled{opacity:.4;cursor:not-allowed}
+.ai-loading{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:28px;text-align:center;margin-bottom:16px;display:none}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px}
+.ai-status{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.ai-sub-text{font-size:11px;color:var(--text3)}
+.form-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.form-section{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;padding-bottom:6px;border-bottom:1.5px solid var(--border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-grid.full{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;font-weight:600;color:var(--text2)}
+.field input,.field select{background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:13px;padding:9px 11px;color:var(--text);width:100%}
+.field input:focus,.field select:focus{border-color:var(--navy);background:var(--white)}
+.field input.ai-filled{border-color:var(--green);background:#F0FBF4}
+.field-hint{font-size:10px;color:var(--text3)}
+.media-zone{border:1.5px dashed var(--border);border-radius:8px;padding:14px;text-align:center;cursor:pointer;background:var(--bg);margin-top:4px}
+.media-zone:hover{border-color:var(--navy);background:#EEF3FB}
+.mz-text{font-size:12px;color:var(--text3)}
+.media-preview{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.media-thumb{aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:18px;position:relative}
+.media-thumb img{width:100%;height:100%;object-fit:cover}
+.media-thumb button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.5);border:none;color:#fff;width:18px;height:18px;border-radius:50%;font-size:10px;cursor:pointer}
+.submit-btn{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px}
+.submit-btn:disabled{opacity:.4;cursor:not-allowed}
+.clear-btn{width:100%;padding:10px;background:transparent;color:var(--text2);border:1.5px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer}
+.prog-wrap{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;display:none}
+.prog-title{font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px}
+.prog-bar-wrap{height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.prog-bar{height:100%;background:var(--navy);border-radius:3px;transition:width .3s;width:0%}
+.prog-pct{font-size:11px;color:var(--text3)}
+.success{background:var(--green-bg);border:1.5px solid #A3D9B8;border-radius:12px;padding:24px;text-align:center;display:none;margin-bottom:16px}
+.success-icon{font-size:40px;display:block;margin-bottom:10px}
+.success-title{font-size:16px;font-weight:700;color:var(--green);margin-bottom:6px}
+.success-sub{font-size:12px;color:var(--text2);line-height:1.6}
+.success-again{margin-top:14px;padding:8px 24px;background:var(--white);border:1.5px solid var(--border);border-radius:7px;font-size:12px;color:var(--text2);cursor:pointer}
+
+/* ── ACTIVITY VIEW ── */
+.act-filter{display:flex;gap:6px;margin-bottom:14px}
+.act-filter button{padding:6px 14px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer}
+.act-filter button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.act-item{background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;transition:border-color .15s}
+.act-item:hover{border-color:var(--navy-light)}
+.act-main{flex:1;min-width:0}
+.act-name{font-size:13px;font-weight:600;color:var(--navy)}
+.act-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.act-by{font-size:10px;color:var(--text2);background:var(--bg2);padding:2px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0}
 
 /* ── MOBILE RESPONSIVE ── */
 .mobile-toggle{display:none;position:fixed;bottom:20px;left:16px;z-index:1000;background:var(--navy);color:#fff;border:none;border-radius:50%;width:52px;height:52px;font-size:20px;box-shadow:0 4px 16px rgba(27,58,107,.35);cursor:pointer;align-items:center;justify-content:center}
@@ -255,7 +327,6 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     <p style="color:var(--text2);font-size:13px">Loading properties from database...</p>
   </div>
 </div>
-<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <!-- EDIT PANEL -->
 <div class="overlay hidden" id="edit-overlay">
@@ -301,9 +372,9 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
       </div>
       <div class="ep-section">Media & Links</div>
       <div class="ep-grid full">
-        <div class="ep-field"><label>Photo URL</label><input type="text" id="ef-photo" placeholder="https://drive.google.com/file/d/..."/></div>
-        <div class="ep-field"><label>Video Walkthrough URL</label><input type="text" id="ef-video" placeholder="https://youtube.com/ or drive.google.com..."/></div>
-        <div class="ep-field"><label>Floor Plan URL</label><input type="text" id="ef-floorplan" placeholder="https://drive.google.com/..."/></div>
+        <div class="ep-field"><label>Photo URL</label><input type="text" id="ef-photo" placeholder="https://..."/></div>
+        <div class="ep-field"><label>Video Walkthrough URL</label><input type="text" id="ef-video" placeholder="https://youtube.com/..."/></div>
+        <div class="ep-field"><label>Floor Plan URL</label><input type="text" id="ef-floorplan" placeholder="https://..."/></div>
         <div class="ep-field"><label>Google Maps URL</label><input type="text" id="ef-maps" placeholder="https://maps.google.com/..."/></div>
       </div>
       <div class="ep-section">Notes</div>
@@ -353,16 +424,21 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     </div>
     <div class="topbar-sep"></div>
     <span class="role-badge" id="role-badge"></span>
+    <span class="topbar-name" id="topbar-name"></span>
     <div class="topbar-sep"></div>
     <div class="stat-pill">Total <span id="s-total">0</span></div>
     <div class="stat-pill">Available <span id="s-avail">0</span></div>
     <div class="stat-pill">Markets <span id="s-mkts">0</span></div>
     <div class="spacer"></div>
-    <button class="topbar-btn" id="add-property-btn" onclick="window.open('upload.html','_blank')" style="display:none">+ Add Property</button>
+    <button class="topbar-btn active" id="nav-map" onclick="switchView('map')">🗺 Map</button>
+    <button class="topbar-btn" id="nav-add" onclick="switchView('add')" style="display:none">➕ Add Property</button>
+    <button class="topbar-btn" id="nav-activity" onclick="switchView('activity')">📋 Activity</button>
     <button class="topbar-btn" id="users-btn" onclick="openUsers()" style="display:none">👥 Team</button>
     <button class="topbar-btn" onclick="doLogout()">Sign out</button>
   </div>
-  <div class="main">
+
+  <!-- MAP VIEW -->
+  <div class="main" id="view-map">
     <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
     <div class="sidebar" id="sidebar">
       <button class="sidebar-close" onclick="toggleSidebar(false)">✕</button>
@@ -397,12 +473,165 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     <div class="map-wrap"><div id="map"></div></div>
     <button class="mobile-toggle" id="mobile-toggle" onclick="toggleSidebar()">☰</button>
   </div>
+
+  <!-- ADD PROPERTY VIEW -->
+  <div class="view-panel" id="view-add" style="display:none">
+    <div class="view-container">
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="mode-ai" onclick="setMode('ai')">
+          <span class="mb-icon">✨</span>
+          <span class="mb-label">Upload Document</span>
+          <span class="mb-sub">AI auto-fills the form</span>
+        </button>
+        <button class="mode-btn" id="mode-manual" onclick="setMode('manual')">
+          <span class="mb-icon">✏️</span>
+          <span class="mb-label">Fill Manually</span>
+          <span class="mb-sub">Type details yourself</span>
+        </button>
+        <button class="mode-btn" id="mode-bulk" onclick="setMode('bulk')">
+          <span class="mb-icon">📊</span>
+          <span class="mb-label">Bulk Import</span>
+          <span class="mb-sub">Upload a listings sheet</span>
+        </button>
+      </div>
+
+      <div id="bulk-section" style="display:none">
+        <div class="ai-zone" onclick="document.getElementById('bulk-input').click()">
+          <input type="file" id="bulk-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="onBulkFile(this.files)"/>
+          <span class="az-icon">📊</span>
+          <div class="az-title">Upload an Excel sheet of property listings</div>
+          <div class="az-sub">Any format - AI will read every listing in the sheet, skip properties already in the database, and add only the new ones</div>
+          <span class="az-btn">Choose Excel File</span>
+        </div>
+        <div class="file-chips" id="bulk-chip"></div>
+        <button class="extract-btn" id="bulk-extract-btn" onclick="doBulkImport()" disabled>📥 Import Listings</button>
+
+        <div class="ai-loading" id="bulk-loading">
+          <div class="spinner"></div>
+          <div class="ai-status" id="bulk-status-text">Reading spreadsheet...</div>
+          <div class="ai-sub-text" id="bulk-sub-text">This may take a moment for large sheets</div>
+        </div>
+
+        <div id="bulk-results" style="display:none">
+          <div class="form-card">
+            <div class="form-section">Import Summary</div>
+            <div id="bulk-summary" style="font-size:13px;color:var(--text2);line-height:1.8"></div>
+            <div id="bulk-list" style="margin-top:12px;max-height:300px;overflow-y:auto"></div>
+          </div>
+          <button class="clear-btn" onclick="doReset()">Done</button>
+        </div>
+      </div>
+
+      <div id="ai-section">
+        <div class="ai-zone" onclick="document.getElementById('ai-input').click()">
+          <input type="file" id="ai-input" multiple accept=".pdf,image/*,.txt" style="display:none" onchange="onAIFiles(this.files)"/>
+          <span class="az-icon">📄</span>
+          <div class="az-title">Upload brochure, pricing sheet or any property document</div>
+          <div class="az-sub">PDF, JPG, PNG - AI will read it and auto-fill the form below</div>
+          <span class="az-btn">Choose Files</span>
+        </div>
+        <div class="file-chips" id="ai-chips"></div>
+        <div class="field" style="margin-bottom:12px">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Or paste a WhatsApp / SMS message</label>
+          <textarea id="ai-pasted-text" rows="4" placeholder="Paste the broker's message text here..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:13px;padding:9px 11px;color:var(--text);font-family:inherit;resize:vertical" oninput="updateExtractBtn()"></textarea>
+        </div>
+        <button class="extract-btn" id="extract-btn" onclick="doExtract()" disabled>✨ Auto-fill form with AI</button>
+      </div>
+
+      <div class="ai-loading" id="ai-loading">
+        <div class="spinner"></div>
+        <div class="ai-status" id="ai-status-text">Reading document...</div>
+        <div class="ai-sub-text">Claude AI is extracting property details</div>
+      </div>
+
+      <div id="form-section" style="display:none">
+        <div class="form-card">
+          <div class="form-section">Property Details</div>
+          <div class="form-grid full">
+            <div class="field"><label>Property Name </label><input type="text" id="nf-name" placeholder="e.g. Tech Park Unit 402"/></div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Micro-Market </label><input type="text" id="nf-market" placeholder="e.g. Kharadi"/></div>
+            <div class="field"><label>Status </label>
+              <select id="nf-status"><option value="Available">Available</option><option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option></select>
+            </div>
+            <div class="field"><label>Furnishing </label>
+              <select id="nf-furnish"><option value="">Select...</option><option value="Bare Shell">Bare Shell</option><option value="Warm Shell">Warm Shell</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Furnished">Furnished</option><option value="Plug and Play">Plug and Play</option></select>
+            </div>
+            <div class="field"><label>Floor</label><input type="text" id="nf-floor" placeholder="e.g. 4th Floor"/></div>
+          </div>
+        </div>
+        <div class="form-card">
+          <div class="form-section">Area</div>
+          <div class="form-grid">
+            <div class="field"><label>Available Area (SqFt) </label><input type="text" id="nf-area" placeholder="e.g. 2500"/></div>
+            <div class="field"><label>Carpet Area (SqFt)</label><input type="text" id="nf-carpet" placeholder="e.g. 2200"/></div>
+          </div>
+        </div>
+        <div class="form-card">
+          <div class="form-section">Pricing</div>
+          <div class="form-grid">
+            <div class="field"><label>Lease Rate (PSF/month) </label><input type="text" id="nf-rate" placeholder="e.g. 85"/><span class="field-hint">Monthly rent per sq ft</span></div>
+            <div class="field"><label>Sale Rate (PSF)</label><input type="text" id="nf-salerate" placeholder="e.g. 13000"/><span class="field-hint">Outright purchase per sq ft</span></div>
+            <div class="field"><label>CAM (PSF) </label><input type="text" id="nf-cam" placeholder="e.g. 12"/></div>
+            <div class="field"><label>Security Deposit (months) </label><input type="text" id="nf-deposit" placeholder="e.g. 6"/></div>
+            <div class="field"><label>Lock-In (years) </label><input type="text" id="nf-lockin" placeholder="e.g. 3"/></div>
+            <div class="field"><label>Lease Tenure (years) </label><input type="text" id="nf-tenure" placeholder="e.g. 5"/></div>
+            <div class="field"><label>Escalation </label><input type="text" id="nf-escal" placeholder="e.g. 5% per year"/></div>
+          </div>
+        </div>
+        <div class="form-card">
+          <div class="form-section">Owner and Contact</div>
+          <div class="form-grid">
+            <div class="field"><label>Owner Name </label><input type="text" id="nf-owner" placeholder="e.g. Rahul Deshmukh"/></div>
+            <div class="field"><label>Contact Number </label><input type="text" id="nf-phone" placeholder="e.g. +91-98765 43210"/></div>
+          </div>
+        </div>
+        <div class="form-card">
+          <div class="form-section">Photos and Videos (optional)</div>
+          <div class="media-zone" onclick="document.getElementById('media-input').click()">
+            <input type="file" id="media-input" multiple accept="image/*,video/*" style="display:none" onchange="onMedia(this.files)"/>
+            <div class="mz-text">📷 Tap to add photos or videos</div>
+          </div>
+          <div class="media-preview" id="media-preview"></div>
+        </div>
+        <div class="prog-wrap" id="prog-wrap">
+          <div class="prog-title" id="prog-title">Uploading...</div>
+          <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar"></div></div>
+          <div class="prog-pct" id="prog-pct">0%</div>
+        </div>
+        <button class="submit-btn" id="submit-btn" onclick="doSubmit()">Submit Property</button>
+        <button class="clear-btn" onclick="doClear()">Clear Form</button>
+      </div>
+
+      <div class="success" id="success">
+        <span class="success-icon">✅</span>
+        <div class="success-title">Property Submitted!</div>
+        <div class="success-sub" id="success-sub">Saved to database.</div>
+        <button class="success-again" onclick="doReset()">Submit Another</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVITY VIEW -->
+  <div class="view-panel" id="view-activity" style="display:none">
+    <div class="view-container">
+      <div class="act-filter">
+        <button class="active" id="act-filter-all" onclick="setActivityFilter(false)">All Activity</button>
+        <button id="act-filter-mine" onclick="setActivityFilter(true)">My Uploads</button>
+      </div>
+      <div id="activity-list"></div>
+    </div>
+  </div>
+
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
 const SUPABASE_URL = "https://fxbexvkrvavyfqcyvgii.supabase.co";
 const SUPABASE_KEY = "sb_publishable__ugwNHVlz66JGU5k3fPFuQ_2ATB6g95";
+const EXTRACT_API = "/api/extract";
+const MEDIA_API = "/api/upload-media";
 let BASE_PROPS = [];
 let MARKETS = [];
 
@@ -422,6 +651,8 @@ async function loadPropsFromSupabase() {
       parking: r.parking, power: r.power, ac: r.ac, owner: r.owner, phone: r.phone,
       video: r.video, floorplan: r.floorplan, maps: r.maps, photo: r.photo,
       photos: r.photos || [], notes: r.notes, lat: r.lat, lng: r.lng,
+      edited_by: r.edited_by, edited_at: r.edited_at,
+      created_by: r.created_by, created_at: r.created_at,
       _dbId: r.id
     }));
     MARKETS = [...new Set(BASE_PROPS.map(p => p.market).filter(Boolean))].sort();
@@ -431,7 +662,6 @@ async function loadPropsFromSupabase() {
     return false;
   }
 }
-
 
 const EDITS_KEY='legion_edits_v1', USERS_KEY='legion_users_v1', SESSION_KEY='legion_session_v1';
 async function stGet(k){
@@ -455,6 +685,7 @@ const DEFAULT_USERS=[
 
 let USERS=[], EDITS={}, currentUser=null, props=[], filtered=[];
 let map, markerLayer, markers=[], editIdx=null, activeListIdx=null;
+let aiFiles=[], mediaFiles=[], bulkFile=null;
 
 let dataLoaded = false;
 async function init(){
@@ -481,6 +712,13 @@ async function ensureDataLoaded(){
   if (loadingEl) { loadingEl.classList.add('hidden'); loadingEl.style.display = 'none'; }
 }
 
+async function refreshProps(){
+  await loadPropsFromSupabase();
+  props = BASE_PROPS.map(p => ({...p}));
+  applyFilters();
+  renderActivity();
+}
+
 async function enterApp(user){
   currentUser=user;
   document.getElementById('login-overlay').classList.add('hidden');
@@ -488,10 +726,12 @@ async function enterApp(user){
   const rb=document.getElementById('role-badge');
   rb.textContent=user.role.charAt(0).toUpperCase()+user.role.slice(1);
   rb.className='role-badge role-'+user.role;
+  document.getElementById('topbar-name').textContent = user.name;
   if(user.role==='admin') document.getElementById('users-btn').style.display='block';
-  if(user.role==='admin'||user.role==='editor') document.getElementById('add-property-btn').style.display='block';
+  if(user.role==='admin'||user.role==='editor') document.getElementById('nav-add').style.display='block';
   await ensureDataLoaded();
   initMap();
+  switchView('map');
 }
 async function doLogin(){
   const u=document.getElementById('li-user').value.trim();
@@ -512,7 +752,20 @@ async function doLogout(){
   document.getElementById('li-pass').value='';
   document.getElementById('login-err').style.display='none';
   document.getElementById('users-btn').style.display='none';
-  document.getElementById('add-property-btn').style.display='none';
+  document.getElementById('nav-add').style.display='none';
+}
+
+// ── VIEW SWITCHING ──────────────────────────────────
+function switchView(view){
+  if(view==='add' && !(currentUser&&(currentUser.role==='admin'||currentUser.role==='editor'))) view='map';
+  document.getElementById('view-map').style.display = view==='map' ? 'flex' : 'none';
+  document.getElementById('view-add').style.display = view==='add' ? 'block' : 'none';
+  document.getElementById('view-activity').style.display = view==='activity' ? 'block' : 'none';
+  document.getElementById('nav-map').classList.toggle('active', view==='map');
+  document.getElementById('nav-add').classList.toggle('active', view==='add');
+  document.getElementById('nav-activity').classList.toggle('active', view==='activity');
+  if(view==='activity') renderActivity();
+  if(view==='map' && map) setTimeout(()=>map.invalidateSize(), 50);
 }
 
 function initMap(){
@@ -526,10 +779,11 @@ function initMap(){
 const mkIcon=(color,sz,border)=>L.divIcon({className:'',
   html:`<div style="width:${sz}px;height:${sz}px;background:${color};border:2px solid ${border||'#fff'};border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.25)"></div>`,
   iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
-const iAvail=mkIcon('#1B3A6B',11,'#fff');
-const iRented=mkIcon('#9B2335',8,'#fff');
-const iNego=mkIcon('#C9973A',9,'#fff');
-function getIcon(s){return s==='Available'?iAvail:s==='Under Negotiation'?iNego:iRented;}
+let iAvail,iRented,iNego;
+function getIcon(s){
+  if(!iAvail){ iAvail=mkIcon('#1B3A6B',11,'#fff'); iRented=mkIcon('#9B2335',8,'#fff'); iNego=mkIcon('#C9973A',9,'#fff'); }
+  return s==='Available'?iAvail:s==='Under Negotiation'?iNego:iRented;
+}
 
 function statusStyle(s){
   if(s==='Available') return `background:var(--avail-bg);color:var(--avail)`;
@@ -577,7 +831,7 @@ function makePopup(p,idx){
     <div class="pu-body">
       <div class="pu-name">${p.name}${isEdited?'<span class="edited-tag">Updated</span>':''}</div>
       <div class="pu-mkt">📍 ${p.market}</div>
-      <div class="pu-code">${p.code||''}</div>
+      <div class="pu-code">${p.code||''}${p.created_by?' · Added by '+p.created_by:''}</div>
       <span class="pu-status" style="${statusStyle(p.status)}">${p.status}</span>
       <div class="pu-grid">
         <div class="pu-stat"><div class="psl">Area</div><div class="psv">${area}</div></div>
@@ -794,7 +1048,6 @@ function showToast(msg,type='success'){
   setTimeout(()=>t.className='toast',2500);
 }
 
-
 function toggleSidebar(force) {
   var sb = document.getElementById('sidebar');
   var bd = document.getElementById('sidebar-backdrop');
@@ -810,6 +1063,470 @@ focusProp = function(fi) {
   origFocusProp(fi);
   if (window.innerWidth <= 768) toggleSidebar(false);
 };
+
+// ── ADD PROPERTY (ported from upload page) ──────────
+function setMode(mode) {
+  document.getElementById('mode-ai').classList.toggle('active', mode === 'ai');
+  document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
+  document.getElementById('mode-bulk').classList.toggle('active', mode === 'bulk');
+  document.getElementById('ai-section').style.display = mode === 'ai' ? 'block' : 'none';
+  document.getElementById('bulk-section').style.display = mode === 'bulk' ? 'block' : 'none';
+  document.getElementById('form-section').style.display = mode === 'manual' ? 'block' : 'none';
+  if (mode !== 'bulk') {
+    document.getElementById('bulk-loading').style.display = 'none';
+    document.getElementById('bulk-results').style.display = 'none';
+  }
+  if (mode === 'ai') {
+    document.getElementById('ai-loading').style.display = 'none';
+  }
+}
+
+function onAIFiles(files) {
+  for (var i = 0; i < files.length; i++) {
+    var exists = false;
+    for (var j = 0; j < aiFiles.length; j++) {
+      if (aiFiles[j].name === files[i].name) { exists = true; break; }
+    }
+    if (!exists) aiFiles.push(files[i]);
+  }
+  renderChips();
+  updateExtractBtn();
+}
+
+function removeAI(i) {
+  aiFiles.splice(i, 1);
+  renderChips();
+  updateExtractBtn();
+}
+
+function updateExtractBtn() {
+  var pastedText = document.getElementById('ai-pasted-text').value.trim();
+  document.getElementById('extract-btn').disabled = aiFiles.length === 0 && pastedText === '';
+}
+
+function renderChips() {
+  var html = '';
+  for (var i = 0; i < aiFiles.length; i++) {
+    var icon = aiFiles[i].type.indexOf('pdf') >= 0 ? '📄' : '🖼️';
+    html += '<div class="chip">' + icon + ' ' + aiFiles[i].name + ' <button onclick="removeAI(' + i + ')">x</button></div>';
+  }
+  document.getElementById('ai-chips').innerHTML = html;
+}
+
+function toB64(file) {
+  return new Promise(function(resolve, reject) {
+    var r = new FileReader();
+    r.onload = function() { resolve(r.result.split(',')[1]); };
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function doExtract() {
+  var pastedText = document.getElementById('ai-pasted-text').value.trim();
+  if (!aiFiles.length && !pastedText) return;
+  document.getElementById('ai-loading').style.display = 'block';
+  document.getElementById('form-section').style.display = 'none';
+  document.getElementById('extract-btn').disabled = true;
+
+  try {
+    var files = [];
+    for (var i = 0; i < aiFiles.length; i++) {
+      var f = aiFiles[i];
+      document.getElementById('ai-status-text').textContent = 'Reading ' + f.name + '...';
+      var b64 = await toB64(f);
+      if (f.type.indexOf('image') >= 0) {
+        files.push({ type: f.type, data: b64 });
+      } else if (f.type.indexOf('pdf') >= 0) {
+        files.push({ type: 'application/pdf', data: b64 });
+      } else {
+        var txt = await f.text();
+        files.push({ type: 'text/plain', text: txt });
+      }
+    }
+    if (pastedText) {
+      files.push({ type: 'text/plain', text: pastedText });
+    }
+
+    document.getElementById('ai-status-text').textContent = 'Extracting data with AI...';
+
+    var payload = {
+      prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300). salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field.',
+      files: files
+    };
+
+    var res = await fetch(EXTRACT_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    var result = await res.json();
+
+    if (!result.success) throw new Error(result.error || 'Extraction failed');
+
+    var d = result.extracted;
+
+    function fill(id, val) {
+      if (!val) return;
+      var el = document.getElementById(id);
+      if (el) { el.value = val; el.classList.add('ai-filled'); }
+    }
+
+    fill('nf-name', d.name); fill('nf-market', d.market); fill('nf-floor', d.floor);
+    fill('nf-area', d.area); fill('nf-carpet', d.carpet); fill('nf-rate', d.rate);
+    fill('nf-cam', d.cam); fill('nf-deposit', d.deposit); fill('nf-lockin', d.lockin);
+    fill('nf-tenure', d.tenure); fill('nf-escal', d.escal); fill('nf-owner', d.owner);
+    fill('nf-phone', d.phone);
+    fill('nf-salerate', d.salerate);
+    if (d.status) document.getElementById('nf-status').value = d.status;
+    if (d.furnishing) document.getElementById('nf-furnish').value = d.furnishing;
+
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('form-section').style.display = 'block';
+    showToast('Form filled! Review and submit.', 'success');
+
+  } catch(err) {
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('form-section').style.display = 'block';
+    document.getElementById('extract-btn').disabled = false;
+    showToast('Could not extract: ' + err.message, 'error');
+  }
+}
+
+function onMedia(files) {
+  for (var i = 0; i < files.length; i++) {
+    var exists = false;
+    for (var j = 0; j < mediaFiles.length; j++) {
+      if (mediaFiles[j].name === files[i].name) { exists = true; break; }
+    }
+    if (!exists) mediaFiles.push(files[i]);
+  }
+  renderMedia();
+}
+
+function removeMedia(i) { mediaFiles.splice(i, 1); renderMedia(); }
+
+function renderMedia() {
+  var html = '';
+  for (var i = 0; i < mediaFiles.length; i++) {
+    var f = mediaFiles[i];
+    var url = URL.createObjectURL(f);
+    var thumb = f.type.indexOf('image') >= 0 ? '<img src="' + url + '" alt=""/>' : '🎬';
+    html += '<div class="media-thumb">' + thumb + '<button onclick="removeMedia(' + i + ')">x</button></div>';
+  }
+  document.getElementById('media-preview').innerHTML = html;
+}
+
+function validateSubmit() {
+  return true;
+}
+
+// POST to Supabase with created_by attribution; if the column doesn't
+// exist yet in the table, fall back to an insert without it so the
+// submission still succeeds (attribution is added once the column exists).
+async function insertProperty(body) {
+  var withAttribution = Object.assign({}, body, { created_by: currentUser ? currentUser.username : '' });
+  var res = await fetch(SUPABASE_URL + '/rest/v1/properties', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify(withAttribution)
+  });
+  if (res.ok) return { ok: true };
+  var errText = await res.text();
+  if (errText.indexOf('created_by') >= 0) {
+    var res2 = await fetch(SUPABASE_URL + '/rest/v1/properties', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(body)
+    });
+    if (res2.ok) return { ok: true, noAttribution: true };
+    return { ok: false, error: await res2.text() };
+  }
+  return { ok: false, error: errText };
+}
+
+async function doSubmit() {
+  if (!validateSubmit()) return;
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+  var propName = document.getElementById('nf-name').value.trim();
+  var propCode = propName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase() + Date.now().toString().slice(-4);
+  document.getElementById('prog-wrap').style.display = 'block';
+  var done = 0;
+  var total = mediaFiles.length + 1;
+  var photoUrls = [];
+  var videoUrl = '';
+
+  function updateProg(label) {
+    done++;
+    var pct = Math.round((done / total) * 100);
+    document.getElementById('prog-bar').style.width = pct + '%';
+    document.getElementById('prog-pct').textContent = pct + '%';
+    document.getElementById('prog-title').textContent = label;
+  }
+
+  for (var i = 0; i < mediaFiles.length; i++) {
+    try {
+      var f = mediaFiles[i];
+      var b64 = await toB64(f);
+      var isVideo = f.type.indexOf('video') >= 0;
+      var res = await fetch(MEDIA_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          propertyCode: propCode,
+          propertyName: propName,
+          fileName: f.name,
+          mimeType: f.type,
+          fileData: b64
+        })
+      });
+      var json = await res.json();
+      if (json.success) {
+        if (isVideo) { if (!videoUrl) videoUrl = json.fileUrl; }
+        else { photoUrls.push(json.fileUrl); }
+      }
+      updateProg('Uploading ' + f.name + '...');
+    } catch(e) { updateProg('Skipped'); }
+  }
+
+  var salerate = document.getElementById('nf-salerate').value;
+  var insertBody = {
+    code: propCode,
+    name: propName,
+    market: document.getElementById('nf-market').value,
+    city: 'Pune',
+    status: document.getElementById('nf-status').value,
+    furnish: document.getElementById('nf-furnish').value,
+    area: document.getElementById('nf-area').value,
+    rate: document.getElementById('nf-rate').value,
+    cam: document.getElementById('nf-cam').value,
+    deposit: document.getElementById('nf-deposit').value,
+    lockin: document.getElementById('nf-lockin').value,
+    tenure: document.getElementById('nf-tenure').value,
+    escal: document.getElementById('nf-escal').value,
+    owner: document.getElementById('nf-owner').value,
+    phone: document.getElementById('nf-phone').value,
+    photo: photoUrls[0] || '',
+    photos: photoUrls,
+    video: videoUrl,
+    notes: salerate ? 'Sale rate: Rs' + salerate + ' PSF' : '',
+    lat: 18.52,
+    lng: 73.855
+  };
+
+  updateProg('Saving data...');
+  var result = await insertProperty(insertBody);
+
+  btn.disabled = false; btn.textContent = 'Submit Property';
+
+  if (!result.ok) {
+    document.getElementById('prog-wrap').style.display = 'none';
+    showToast('Could not save property: ' + result.error, 'error');
+    return;
+  }
+
+  await refreshProps();
+
+  document.getElementById('prog-wrap').style.display = 'none';
+  document.getElementById('form-section').style.display = 'none';
+  document.getElementById('success-sub').textContent = propName + ' - ' + document.getElementById('nf-market').value + (photoUrls.length ? ' | ' + photoUrls.length + ' photo(s) saved.' : ' | Saved to database.');
+  document.getElementById('success').style.display = 'block';
+}
+
+function doClear() {
+  var inputs = document.querySelectorAll('#form-section input');
+  for (var i = 0; i < inputs.length; i++) { inputs[i].value = ''; inputs[i].classList.remove('ai-filled'); inputs[i].style.borderColor = ''; }
+  document.getElementById('nf-status').value = 'Available';
+  document.getElementById('nf-salerate').value = '';
+  document.getElementById('nf-furnish').value = '';
+  mediaFiles = []; renderMedia();
+}
+
+function doReset() {
+  doClear(); aiFiles = []; renderChips();
+  document.getElementById('ai-pasted-text').value = '';
+  document.getElementById('success').style.display = 'none';
+  document.getElementById('form-section').style.display = 'none';
+  document.getElementById('extract-btn').disabled = true;
+  setMode('ai');
+  window.scrollTo(0, 0);
+}
+
+// ── BULK IMPORT ─────────────────────────────────────
+function onBulkFile(files) {
+  if (!files.length) return;
+  bulkFile = files[0];
+  document.getElementById('bulk-chip').innerHTML =
+    '<div class="chip">📊 ' + bulkFile.name + ' <button onclick="clearBulkFile()">x</button></div>';
+  document.getElementById('bulk-extract-btn').disabled = false;
+}
+
+function clearBulkFile() {
+  bulkFile = null;
+  document.getElementById('bulk-chip').innerHTML = '';
+  document.getElementById('bulk-extract-btn').disabled = true;
+}
+
+function sheetToText(workbook) {
+  var out = '';
+  workbook.SheetNames.forEach(function(name) {
+    var sheet = workbook.Sheets[name];
+    var csv = XLSX.utils.sheet_to_csv(sheet);
+    out += '=== SHEET: ' + name + ' ===\n' + csv + '\n\n';
+  });
+  return out;
+}
+
+async function doBulkImport() {
+  if (!bulkFile) return;
+  document.getElementById('bulk-section').querySelector('.ai-zone').style.display = 'none';
+  document.getElementById('bulk-extract-btn').style.display = 'none';
+  document.getElementById('bulk-loading').style.display = 'block';
+  document.getElementById('bulk-status-text').textContent = 'Reading ' + bulkFile.name + '...';
+
+  try {
+    var arrayBuffer = await bulkFile.arrayBuffer();
+    var workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    var sheetText = sheetToText(workbook);
+
+    if (sheetText.length > 100000) {
+      sheetText = sheetText.substring(0, 100000);
+    }
+
+    document.getElementById('bulk-status-text').textContent = 'Extracting listings with AI...';
+    document.getElementById('bulk-sub-text').textContent = 'Claude is reading every property in the sheet';
+
+    var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":"","building_grade":"","notes":""}\n\nSpreadsheet content:\n' + sheetText;
+
+    var res = await fetch(EXTRACT_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt, files: [], max_tokens: 4000 })
+    });
+    var result = await res.json();
+    if (!result.success) throw new Error(result.error || 'Extraction failed');
+
+    var listings = result.extracted;
+    if (!Array.isArray(listings)) listings = [listings];
+
+    document.getElementById('bulk-status-text').textContent = 'Checking for duplicates...';
+    document.getElementById('bulk-sub-text').textContent = 'Comparing against ' + listings.length + ' extracted listings';
+
+    var added = [];
+    var skipped = [];
+    var failed = [];
+
+    for (var i = 0; i < listings.length; i++) {
+      var item = listings[i];
+      if (!item.name) { continue; }
+      document.getElementById('bulk-status-text').textContent = 'Processing ' + (i+1) + ' of ' + listings.length + '...';
+
+      try {
+        var checkUrl = SUPABASE_URL + '/rest/v1/properties?select=id,name,market&name=ilike.' + encodeURIComponent(item.name.trim()) + '&market=ilike.' + encodeURIComponent((item.market||'').trim());
+        var checkRes = await fetch(checkUrl, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        });
+        var existing = await checkRes.json();
+
+        if (existing && existing.length > 0) {
+          skipped.push(item.name + ' (' + (item.market||'-') + ') - already exists');
+          continue;
+        }
+
+        var code = 'BLK' + Date.now().toString().slice(-7) + i;
+        var insertBody = {
+          code: code, name: item.name, market: item.market || '', city: item.city || 'Pune',
+          status: item.status || 'Available', furnish: item.furnish || '', area: item.area || '',
+          rate: item.rate || '', cam: item.cam || '', deposit: item.deposit || '',
+          lockin: item.lockin || '', tenure: item.tenure || '', escal: item.escal || '',
+          owner: item.owner || '', phone: item.phone || '', building_grade: item.building_grade || '',
+          notes: (item.notes || '') + (item.salerate ? ' | Sale rate: Rs' + item.salerate + ' PSF' : ''),
+          lat: 18.52, lng: 73.855
+        };
+
+        var insertRes = await insertProperty(insertBody);
+
+        if (insertRes.ok) {
+          added.push(item.name + ' (' + (item.market||'-') + ')');
+        } else {
+          failed.push(item.name);
+        }
+      } catch (e) {
+        failed.push(item.name);
+      }
+    }
+
+    await refreshProps();
+
+    document.getElementById('bulk-loading').style.display = 'none';
+    document.getElementById('bulk-results').style.display = 'block';
+    document.getElementById('bulk-summary').innerHTML =
+      '<b>' + listings.length + '</b> listings found in sheet<br>' +
+      '<b style="color:var(--green)">' + added.length + '</b> new properties added<br>' +
+      '<b style="color:var(--text3)">' + skipped.length + '</b> skipped (already in database)' +
+      (failed.length ? '<br><b style="color:var(--red)">' + failed.length + '</b> failed to save' : '');
+
+    var listHtml = '';
+    if (added.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--green);margin:10px 0 6px">ADDED</div>' + added.map(function(n){return '<div style="font-size:11px;color:var(--text2);padding:3px 0">+ '+n+'</div>';}).join('');
+    if (skipped.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--text3);margin:10px 0 6px">SKIPPED (DUPLICATES)</div>' + skipped.map(function(n){return '<div style="font-size:11px;color:var(--text3);padding:3px 0">- '+n+'</div>';}).join('');
+    document.getElementById('bulk-list').innerHTML = listHtml;
+
+    showToast(added.length + ' properties imported', 'success');
+
+  } catch (err) {
+    document.getElementById('bulk-loading').style.display = 'none';
+    document.getElementById('bulk-section').querySelector('.ai-zone').style.display = 'block';
+    document.getElementById('bulk-extract-btn').style.display = 'block';
+    showToast('Import failed: ' + err.message, 'error');
+  }
+}
+
+// ── ACTIVITY LOG ─────────────────────────────────────
+function renderActivity(filterMine){
+  var list = props.slice().sort(function(a,b){
+    var ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+    var tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return tb - ta;
+  });
+  if(filterMine===undefined) filterMine = document.getElementById('act-filter-mine').classList.contains('active');
+  if(filterMine && currentUser) list = list.filter(function(p){ return p.created_by===currentUser.username; });
+  var el = document.getElementById('activity-list');
+  if(!list.length){
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">No upload activity to show yet. Properties added before this feature was enabled won\'t have an uploader on record.</div>';
+    return;
+  }
+  el.innerHTML = list.map(function(p){
+    var when = p.created_at ? new Date(p.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'Date unknown';
+    var by = p.created_by || 'Unattributed';
+    var safeCode = (p.code||'').replace(/'/g,"\\'");
+    return '<div class="act-item" onclick="jumpToProperty(\'' + safeCode + '\')">' +
+      '<div class="act-main">' +
+        '<div class="act-name">' + p.name + '</div>' +
+        '<div class="act-meta">📍 ' + (p.market||'—') + ' · ' + when + '</div>' +
+      '</div>' +
+      '<span class="act-by">' + by + '</span>' +
+    '</div>';
+  }).join('');
+}
+function setActivityFilter(mine){
+  document.getElementById('act-filter-all').classList.toggle('active', !mine);
+  document.getElementById('act-filter-mine').classList.toggle('active', mine);
+  renderActivity(mine);
+}
+function jumpToProperty(code){
+  clearFilters();
+  var fi = filtered.findIndex(function(p){ return p.code===code; });
+  switchView('map');
+  if(fi>=0) setTimeout(function(){ focusProp(fi); }, 80);
+}
 
 init();
 </script>
