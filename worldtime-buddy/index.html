@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>WorldTime Buddy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="titlebar-spacer"></div>
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1 class="brand">🌍 WorldTime Buddy</h1>
+    </div>
+
+    <div class="topbar-center">
+      <button id="prevDay" class="icon-btn" title="Previous day">‹</button>
+      <button id="todayBtn" class="today-btn">Today</button>
+      <button id="nextDay" class="icon-btn" title="Next day">›</button>
+      <span id="dateLabel" class="date-label"></span>
+      <input id="datePicker" type="date" class="date-picker" />
+    </div>
+
+    <div class="topbar-right">
+      <div class="working-hours">
+        <label>Work hours</label>
+        <input id="workStart" type="number" min="0" max="23" value="9" />
+        <span>–</span>
+        <input id="workEnd" type="number" min="1" max="24" value="18" />
+      </div>
+      <button id="formatToggle" class="pill-btn" title="Toggle 12h/24h">24h</button>
+      <div class="add-city-wrap">
+        <input id="citySearch" class="city-search" type="text" placeholder="+ Add city or timezone…" autocomplete="off" />
+        <div id="citySuggestions" class="suggestions hidden"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="board-wrap">
+    <div id="board" class="board"></div>
+  </main>
+
+  <footer class="summary" id="summary">
+    <div class="summary-empty">Click any time slot in the grid to pick a meeting time and compare it across every city.</div>
+  </footer>
+
+  <script src="cities.js"></script>
+  <script src="timezone.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

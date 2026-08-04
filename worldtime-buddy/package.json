@@ -1,0 +1,40 @@
+{
+  "name": "worldtime-buddy",
+  "productName": "WorldTime Buddy",
+  "version": "1.0.0",
+  "description": "Compare time zones across the world and find a common meeting window with clients and teams.",
+  "main": "main.js",
+  "private": true,
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --mac",
+    "dist:dir": "electron-builder --mac --dir"
+  },
+  "devDependencies": {
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.worldtimebuddy.app",
+    "productName": "WorldTime Buddy",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!dist/**"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] },
+        { "target": "zip", "arch": ["arm64", "x64"] }
+      ]
+    },
+    "dmg": {
+      "title": "WorldTime Buddy"
+    }
+  }
+}
