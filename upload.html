@@ -216,7 +216,8 @@ input,select,textarea,button{font-family:inherit;outline:none}
 <div class="toast" id="toast"></div>
 
 <script>
-var API = "https://script.google.com/macros/s/AKfycbzsN71my7D-9SP-dclR-Sx1DIfCuj3LyKB_TzQb7fZEtBWBGi6t4iwyxp29PY8-IW-t/exec";
+var EXTRACT_API = "/api/extract";
+var MEDIA_API = "/api/upload-media";
 var SUPABASE_URL = "https://fxbexvkrvavyfqcyvgii.supabase.co";
 var SUPABASE_KEY = "sb_publishable__ugwNHVlz66JGU5k3fPFuQ_2ATB6g95";
 var aiFiles = [];
@@ -309,13 +310,13 @@ async function doExtract() {
     document.getElementById('ai-status-text').textContent = 'Extracting data with AI...';
 
     var payload = {
-      action: 'extract',
       prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300). salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field.',
       files: files
     };
 
-    var res = await fetch(API, {
+    var res = await fetch(EXTRACT_API, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
@@ -385,11 +386,12 @@ async function doSubmit() {
   var btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = 'Submitting...';
   var propName = document.getElementById('f-name').value.trim();
-  var propCode = propName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase();
+  var propCode = propName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase() + Date.now().toString().slice(-4);
   document.getElementById('prog-wrap').style.display = 'block';
   var done = 0;
   var total = mediaFiles.length + 1;
   var photoUrls = [];
+  var videoUrl = '';
 
   function updateProg(label) {
     done++;
@@ -403,62 +405,77 @@ async function doSubmit() {
     try {
       var f = mediaFiles[i];
       var b64 = await toB64(f);
-      var res = await fetch(API, {
+      var isVideo = f.type.indexOf('video') >= 0;
+      var res = await fetch(MEDIA_API, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           propertyCode: propCode,
           propertyName: propName,
-          mediaType: f.type.indexOf('video') >= 0 ? 'video' : 'photo',
           fileName: f.name,
           mimeType: f.type,
           fileData: b64
         })
       });
       var json = await res.json();
-      if (json.success) photoUrls.push(json.fileUrl);
+      if (json.success) {
+        if (isVideo) { if (!videoUrl) videoUrl = json.fileUrl; }
+        else { photoUrls.push(json.fileUrl); }
+      }
       updateProg('Uploading ' + f.name + '...');
     } catch(e) { updateProg('Skipped'); }
   }
 
+  var saved = false, saveError = '';
   try {
-    var formData = {
-      property_name: propName,
-      micro_market: document.getElementById('f-market').value,
+    var salerate = document.getElementById('f-salerate').value;
+    var insertBody = {
+      code: propCode,
+      name: propName,
+      market: document.getElementById('f-market').value,
+      city: 'Pune',
       status: document.getElementById('f-status').value,
-      furnishing: document.getElementById('f-furnish').value,
-      floor: document.getElementById('f-floor').value,
-      available_area: document.getElementById('f-area').value,
-      carpet_area: document.getElementById('f-carpet').value,
-      lease_rate_psf: document.getElementById('f-rate').value,
-      sale_rate_psf: document.getElementById('f-salerate').value,
-      cam_psf: document.getElementById('f-cam').value,
-      security_deposit: document.getElementById('f-deposit').value,
-      lockin_years: document.getElementById('f-lockin').value,
-      tenure_years: document.getElementById('f-tenure').value,
-      escalation: document.getElementById('f-escal').value,
-      owner_name: document.getElementById('f-owner').value,
-      contact: document.getElementById('f-phone').value,
-      media_files: photoUrls,
-      submitted_at: new Date().toLocaleString('en-IN')
+      furnish: document.getElementById('f-furnish').value,
+      area: document.getElementById('f-area').value,
+      rate: document.getElementById('f-rate').value,
+      cam: document.getElementById('f-cam').value,
+      deposit: document.getElementById('f-deposit').value,
+      lockin: document.getElementById('f-lockin').value,
+      tenure: document.getElementById('f-tenure').value,
+      escal: document.getElementById('f-escal').value,
+      owner: document.getElementById('f-owner').value,
+      phone: document.getElementById('f-phone').value,
+      photo: photoUrls[0] || '',
+      photos: photoUrls,
+      video: videoUrl,
+      notes: salerate ? 'Sale rate: Rs' + salerate + ' PSF' : '',
+      lat: 18.52,
+      lng: 73.855
     };
-    var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(formData, null, 2))));
-    await fetch(API, {
+    var res2 = await fetch(SUPABASE_URL + '/rest/v1/properties', {
       method: 'POST',
-      body: JSON.stringify({
-        propertyCode: propCode,
-        propertyName: propName,
-        mediaType: 'data',
-        fileName: propCode + '_data.json',
-        mimeType: 'application/json',
-        fileData: encoded
-      })
+      headers: {
+        'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(insertBody)
     });
+    if (!res2.ok) { var errText = await res2.text(); throw new Error(errText || ('Save failed: ' + res2.status)); }
+    saved = true;
     updateProg('Saving data...');
-  } catch(e) {}
+  } catch(e) { saveError = e.message; }
+
+  btn.disabled = false; btn.textContent = 'Submit Property';
+
+  if (!saved) {
+    document.getElementById('prog-wrap').style.display = 'none';
+    toast('Could not save property: ' + saveError, true);
+    return;
+  }
 
   document.getElementById('prog-wrap').style.display = 'none';
   document.getElementById('form-section').style.display = 'none';
-  document.getElementById('success-sub').textContent = propName + ' - ' + document.getElementById('f-market').value + (photoUrls.length ? ' | ' + photoUrls.length + ' file(s) saved to Drive.' : ' | Data saved to Drive.');
+  document.getElementById('success-sub').textContent = propName + ' - ' + document.getElementById('f-market').value + (photoUrls.length ? ' | ' + photoUrls.length + ' photo(s) saved.' : ' | Saved to database.');
   document.getElementById('success').style.display = 'block';
 }
 
@@ -527,9 +544,10 @@ async function doBulkImport() {
 
     var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":"","building_grade":"","notes":""}\n\nSpreadsheet content:\n' + sheetText;
 
-    var res = await fetch(API, {
+    var res = await fetch(EXTRACT_API, {
       method: 'POST',
-      body: JSON.stringify({ action: 'extract', prompt: prompt, files: [], max_tokens: 4000 })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt, files: [], max_tokens: 4000 })
     });
     var result = await res.json();
     if (!result.success) throw new Error(result.error || 'Extraction failed');
