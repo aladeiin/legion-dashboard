@@ -433,7 +433,7 @@ async function loadPropsFromSupabase() {
 }
 
 
-const EDITS_KEY='legion_edits_v1', USERS_KEY='legion_users_v1';
+const EDITS_KEY='legion_edits_v1', USERS_KEY='legion_users_v1', SESSION_KEY='legion_session_v1';
 async function stGet(k){
   try{
     if(window.storage&&window.storage.get){const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}
@@ -459,6 +459,11 @@ let map, markerLayer, markers=[], editIdx=null, activeListIdx=null;
 let dataLoaded = false;
 async function init(){
   USERS=(await stGet(USERS_KEY))||DEFAULT_USERS;
+  const session=await stGet(SESSION_KEY);
+  if(session){
+    const user=USERS.find(x=>x.username===session.username);
+    if(user){ await enterApp(user); return; }
+  }
   document.getElementById('li-pass') && document.getElementById('li-pass').focus;
 }
 
@@ -476,11 +481,7 @@ async function ensureDataLoaded(){
   if (loadingEl) { loadingEl.classList.add('hidden'); loadingEl.style.display = 'none'; }
 }
 
-async function doLogin(){
-  const u=document.getElementById('li-user').value.trim();
-  const p=document.getElementById('li-pass').value;
-  const user=USERS.find(x=>x.username===u&&x.password===p);
-  if(!user){document.getElementById('login-err').style.display='block';return;}
+async function enterApp(user){
   currentUser=user;
   document.getElementById('login-overlay').classList.add('hidden');
   document.getElementById('app').style.display='flex';
@@ -492,8 +493,18 @@ async function doLogin(){
   await ensureDataLoaded();
   initMap();
 }
+async function doLogin(){
+  const u=document.getElementById('li-user').value.trim();
+  const p=document.getElementById('li-pass').value;
+  const user=USERS.find(x=>x.username===u&&x.password===p);
+  if(!user){document.getElementById('login-err').style.display='block';return;}
+  document.getElementById('login-err').style.display='none';
+  await stSet(SESSION_KEY,{username:user.username});
+  await enterApp(user);
+}
 document.getElementById('li-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-function doLogout(){
+async function doLogout(){
+  await stSet(SESSION_KEY,null);
   currentUser=null;
   document.getElementById('app').style.display='none';
   document.getElementById('login-overlay').classList.remove('hidden');

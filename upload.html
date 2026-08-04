@@ -70,15 +70,54 @@ input,select,textarea,button{font-family:inherit;outline:none}
 .toast.show{opacity:1}
 .toast.ok{background:var(--green)}
 .toast.err{background:var(--red)}
+.overlay{position:fixed;inset:0;background:rgba(27,58,107,.45);z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(2px)}
+.overlay.hidden{display:none}
+.login-box{background:var(--white);border-radius:16px;box-shadow:0 8px 40px rgba(27,58,107,.18);padding:36px 32px;width:100%;max-width:340px;text-align:center}
+.login-box img{height:44px;margin:0 auto 16px;display:block}
+.login-box h2{font-size:16px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.login-box p{font-size:12px;color:var(--text3);margin-bottom:18px;line-height:1.5}
+.login-box input{width:100%;padding:9px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:10px}
+.login-box input:focus{border-color:var(--navy);background:var(--white)}
+.login-btn{width:100%;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.login-err{color:var(--red);font-size:11px;margin-top:8px;display:none}
+.denied-icon{font-size:36px;display:block;margin-bottom:10px}
+.topbar-user{margin-left:auto;display:flex;align-items:center;gap:8px}
+.topbar-link{color:rgba(255,255,255,.85);font-size:11px;text-decoration:none;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.topbar-link:hover{background:rgba(255,255,255,.2);color:#fff}
+.topbar-name{color:rgba(255,255,255,.7);font-size:11px;white-space:nowrap}
 </style>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
+<div class="overlay" id="login-overlay">
+  <div class="login-box">
+    <img src="https://static.wixstatic.com/media/2ffd6f_ad3fcde821074fde9c0ba30e616e854d~mv2.png/v1/fill/w_171,h_60,al_c,lg_1,q_85,enc_avif,quality_auto/LEGION%20LOGO%20HI%20RES.png" alt="Legion Realty Services"/>
+    <h2>Property Form</h2>
+    <p>Sign in with your team credentials</p>
+    <input type="text" id="li-user" placeholder="Username" autocomplete="off"/>
+    <input type="password" id="li-pass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-err" id="login-err">Incorrect username or password</div>
+  </div>
+</div>
+<div class="overlay hidden" id="denied-overlay">
+  <div class="login-box">
+    <span class="denied-icon">🔒</span>
+    <h2>Viewer access only</h2>
+    <p>Your account can view the dashboard but doesn't have permission to add properties. Ask an admin to upgrade your role if you need to upload listings.</p>
+    <button class="login-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+</div>
 <div class="topbar">
   <img src="https://static.wixstatic.com/media/2ffd6f_ad3fcde821074fde9c0ba30e616e854d~mv2.png/v1/fill/w_171,h_60,al_c,lg_1,q_85,enc_avif,quality_auto/LEGION%20LOGO%20HI%20RES.png" alt="Legion Realty"/>
   <span class="topbar-title">Property Form</span>
+  <div class="topbar-user">
+    <span class="topbar-name" id="topbar-name"></span>
+    <a class="topbar-link" href="index.html">← Dashboard</a>
+    <button class="topbar-link" onclick="doLogout()">Sign out</button>
+  </div>
 </div>
-<div class="container">
+<div class="container" id="app-content" style="display:none">
   <div class="mode-toggle">
     <button class="mode-btn active" id="mode-ai" onclick="setMode('ai')">
       <span class="mb-icon">✨</span>
@@ -209,7 +248,7 @@ input,select,textarea,button{font-family:inherit;outline:none}
   <div class="success" id="success">
     <span class="success-icon">✅</span>
     <div class="success-title">Property Submitted!</div>
-    <div class="success-sub" id="success-sub">Data saved to Google Drive.</div>
+    <div class="success-sub" id="success-sub">Saved to database.</div>
     <button class="success-again" onclick="doReset()">Submit Another</button>
   </div>
 </div>
@@ -223,6 +262,72 @@ var SUPABASE_KEY = "sb_publishable__ugwNHVlz66JGU5k3fPFuQ_2ATB6g95";
 var aiFiles = [];
 var mediaFiles = [];
 var bulkFile = null;
+
+// ── SHARED LOGIN (same storage keys as index.html) ──────
+var USERS_KEY = 'legion_users_v1', SESSION_KEY = 'legion_session_v1';
+var DEFAULT_USERS = [
+  {username:'admin',password:'admin123',role:'admin',name:'Admin'},
+  {username:'editor',password:'edit123',role:'editor',name:'Editor'},
+  {username:'viewer',password:'view123',role:'viewer',name:'Viewer'},
+];
+var currentUser = null;
+
+async function stGet(k) {
+  try {
+    if (window.storage && window.storage.get) { var r = await window.storage.get(k); return r ? JSON.parse(r.value) : null; }
+    var v = localStorage.getItem(k); return v ? JSON.parse(v) : null;
+  } catch(e) { return null; }
+}
+async function stSet(k, v) {
+  try {
+    if (window.storage && window.storage.set) { await window.storage.set(k, JSON.stringify(v)); return; }
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch(e) {}
+}
+
+async function checkSession() {
+  var users = (await stGet(USERS_KEY)) || DEFAULT_USERS;
+  var session = await stGet(SESSION_KEY);
+  var user = session ? users.find(function(x){ return x.username === session.username; }) : null;
+
+  if (!user) {
+    document.getElementById('login-overlay').classList.remove('hidden');
+    document.getElementById('denied-overlay').classList.add('hidden');
+    document.getElementById('app-content').style.display = 'none';
+    return;
+  }
+  if (user.role === 'viewer') {
+    document.getElementById('login-overlay').classList.add('hidden');
+    document.getElementById('denied-overlay').classList.remove('hidden');
+    document.getElementById('app-content').style.display = 'none';
+    return;
+  }
+  currentUser = user;
+  document.getElementById('login-overlay').classList.add('hidden');
+  document.getElementById('denied-overlay').classList.add('hidden');
+  document.getElementById('app-content').style.display = 'block';
+  document.getElementById('topbar-name').textContent = user.name + ' (' + user.role + ')';
+}
+
+async function doLogin() {
+  var u = document.getElementById('li-user').value.trim();
+  var p = document.getElementById('li-pass').value;
+  var users = (await stGet(USERS_KEY)) || DEFAULT_USERS;
+  var user = users.find(function(x){ return x.username === u && x.password === p; });
+  if (!user) { document.getElementById('login-err').style.display = 'block'; return; }
+  document.getElementById('login-err').style.display = 'none';
+  await stSet(SESSION_KEY, {username: user.username});
+  await checkSession();
+}
+document.getElementById('li-pass').addEventListener('keydown', function(e){ if (e.key === 'Enter') doLogin(); });
+
+async function doLogout() {
+  await stSet(SESSION_KEY, null);
+  currentUser = null;
+  window.location.href = 'index.html';
+}
+
+checkSession();
 
 function setMode(mode) {
   document.getElementById('mode-ai').classList.toggle('active', mode === 'ai');
