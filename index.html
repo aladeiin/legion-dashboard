@@ -697,9 +697,30 @@ let USERS=[], EDITS={}, currentUser=null, props=[], filtered=[];
 let map, markerLayer, markers=[], editIdx=null, activeListIdx=null;
 let aiFiles=[], mediaFiles=[], bulkFile=null;
 
+// Team accounts live in Supabase (table "team_users") so a member added by
+// one admin works for that person on any device. Falls back to a
+// browser-local list if that table hasn't been created yet, so the app
+// still works before the one-time migration is run.
+async function loadUsersFromSupabase(){
+  try{
+    const res = await fetch(SUPABASE_URL + '/rest/v1/team_users?select=*', {
+      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+    });
+    if(!res.ok) return null;
+    const rows = await res.json();
+    if(!Array.isArray(rows) || !rows.length) return null;
+    return rows.map(r=>({username:r.username,password:r.password,role:r.role,name:r.name,_dbId:r.id}));
+  }catch(e){
+    return null;
+  }
+}
+let usersShared = false;
+
 let dataLoaded = false;
 async function init(){
-  USERS=(await stGet(USERS_KEY))||DEFAULT_USERS;
+  const dbUsers = await loadUsersFromSupabase();
+  if(dbUsers){ USERS=dbUsers; usersShared=true; }
+  else { USERS=(await stGet(USERS_KEY))||DEFAULT_USERS; usersShared=false; }
   const session=await stGet(SESSION_KEY);
   if(session){
     const user=USERS.find(x=>x.username===session.username);
@@ -1100,13 +1121,45 @@ async function addUser(){
   const r=document.getElementById('nu-role').value;
   if(!u||!p){showToast('Fill all fields','error');return;}
   if(USERS.find(x=>x.username===u)){showToast('Username already exists','error');return;}
-  USERS.push({username:u,password:p,role:r,name:u.charAt(0).toUpperCase()+u.slice(1)});
+  const name=u.charAt(0).toUpperCase()+u.slice(1);
+  if(usersShared){
+    try{
+      const res=await fetch(SUPABASE_URL+'/rest/v1/team_users',{
+        method:'POST',
+        headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({username:u,password:p,role:r,name:name})
+      });
+      if(!res.ok) throw new Error(await res.text());
+      USERS=await loadUsersFromSupabase()||USERS;
+      document.getElementById('nu-user').value='';document.getElementById('nu-pass').value='';
+      renderUserList();showToast('Member added - available on all devices ✓','success');
+    }catch(err){
+      showToast('Could not add member: '+err.message,'error');
+    }
+    return;
+  }
+  USERS.push({username:u,password:p,role:r,name:name});
   await stSet(USERS_KEY,USERS);
   document.getElementById('nu-user').value='';document.getElementById('nu-pass').value='';
-  renderUserList();showToast('Member added ✓','success');
+  renderUserList();showToast('Member added on this device only - shared team table not set up yet','error');
 }
 async function deleteUser(i){
   if(USERS[i].username==='admin'){showToast('Cannot remove admin','error');return;}
+  const target=USERS[i];
+  if(usersShared&&target._dbId){
+    try{
+      const res=await fetch(SUPABASE_URL+'/rest/v1/team_users?id=eq.'+target._dbId,{
+        method:'DELETE',
+        headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}
+      });
+      if(!res.ok) throw new Error(await res.text());
+      USERS=await loadUsersFromSupabase()||USERS;
+      renderUserList();showToast('Member removed','success');
+    }catch(err){
+      showToast('Could not remove member: '+err.message,'error');
+    }
+    return;
+  }
   USERS.splice(i,1);await stSet(USERS_KEY,USERS);renderUserList();showToast('Member removed','success');
 }
 
@@ -1388,51 +1441,57 @@ async function doSubmit() {
     } catch(e) { updateProg('Skipped'); }
   }
 
-  var salerate = document.getElementById('nf-salerate').value;
-  var marketVal = document.getElementById('nf-market').value;
-  document.getElementById('prog-title').textContent = 'Locating on map...';
-  var coords = await geocodeMarket(marketVal, 'Pune');
-  var insertBody = {
-    code: propCode,
-    name: propName,
-    market: marketVal,
-    city: 'Pune',
-    status: document.getElementById('nf-status').value,
-    furnish: document.getElementById('nf-furnish').value,
-    area: document.getElementById('nf-area').value,
-    rate: document.getElementById('nf-rate').value,
-    cam: document.getElementById('nf-cam').value,
-    deposit: document.getElementById('nf-deposit').value,
-    lockin: document.getElementById('nf-lockin').value,
-    tenure: document.getElementById('nf-tenure').value,
-    escal: document.getElementById('nf-escal').value,
-    owner: document.getElementById('nf-owner').value,
-    phone: document.getElementById('nf-phone').value,
-    photo: photoUrls[0] || '',
-    photos: photoUrls,
-    video: videoUrl,
-    notes: salerate ? 'Sale rate: Rs' + salerate + ' PSF' : '',
-    lat: coords.lat,
-    lng: coords.lng
-  };
+  try {
+    var salerate = document.getElementById('nf-salerate').value;
+    var marketVal = document.getElementById('nf-market').value;
+    document.getElementById('prog-title').textContent = 'Locating on map...';
+    var coords = await geocodeMarket(marketVal, 'Pune');
+    var insertBody = {
+      code: propCode,
+      name: propName,
+      market: marketVal,
+      city: 'Pune',
+      status: document.getElementById('nf-status').value,
+      furnish: document.getElementById('nf-furnish').value,
+      area: document.getElementById('nf-area').value,
+      rate: document.getElementById('nf-rate').value,
+      cam: document.getElementById('nf-cam').value,
+      deposit: document.getElementById('nf-deposit').value,
+      lockin: document.getElementById('nf-lockin').value,
+      tenure: document.getElementById('nf-tenure').value,
+      escal: document.getElementById('nf-escal').value,
+      owner: document.getElementById('nf-owner').value,
+      phone: document.getElementById('nf-phone').value,
+      photo: photoUrls[0] || '',
+      photos: photoUrls,
+      video: videoUrl,
+      notes: salerate ? 'Sale rate: Rs' + salerate + ' PSF' : '',
+      lat: coords.lat,
+      lng: coords.lng
+    };
 
-  updateProg('Saving data...');
-  var result = await insertProperty(insertBody);
+    updateProg('Saving data...');
+    var result = await insertProperty(insertBody);
 
-  btn.disabled = false; btn.textContent = 'Submit Property';
+    btn.disabled = false; btn.textContent = 'Submit Property';
 
-  if (!result.ok) {
+    if (!result.ok) {
+      document.getElementById('prog-wrap').style.display = 'none';
+      showToast('Could not save property: ' + result.error, 'error');
+      return;
+    }
+
+    await refreshProps();
+
     document.getElementById('prog-wrap').style.display = 'none';
-    showToast('Could not save property: ' + result.error, 'error');
-    return;
+    document.getElementById('form-section').style.display = 'none';
+    document.getElementById('success-sub').textContent = propName + ' - ' + document.getElementById('nf-market').value + (photoUrls.length ? ' | ' + photoUrls.length + ' photo(s) saved.' : ' | Saved to database.');
+    document.getElementById('success').style.display = 'block';
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Submit Property';
+    document.getElementById('prog-wrap').style.display = 'none';
+    showToast('Could not save property: ' + err.message, 'error');
   }
-
-  await refreshProps();
-
-  document.getElementById('prog-wrap').style.display = 'none';
-  document.getElementById('form-section').style.display = 'none';
-  document.getElementById('success-sub').textContent = propName + ' - ' + document.getElementById('nf-market').value + (photoUrls.length ? ' | ' + photoUrls.length + ' photo(s) saved.' : ' | Saved to database.');
-  document.getElementById('success').style.display = 'block';
 }
 
 function doClear() {

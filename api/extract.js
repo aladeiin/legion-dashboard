@@ -1,13 +1,28 @@
+// Only the deployed dashboard (and localhost during development) may call
+// this endpoint - it spends Anthropic API budget on every request, and
+// without this check the URL would be an open, unmetered proxy to Claude
+// for anyone who found it.
+const ALLOWED_ORIGIN = 'https://legion-dashboard.vercel.app';
+function isAllowedOrigin(req) {
+  const origin = req.headers.origin || req.headers.referer || '';
+  return origin.indexOf(ALLOWED_ORIGIN) === 0 ||
+    origin.indexOf('http://localhost') === 0 ||
+    origin.indexOf('http://127.0.0.1') === 0;
+}
+
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowed = isAllowedOrigin(req);
+  res.setHeader('Access-Control-Allow-Origin', allowed ? (req.headers.origin || ALLOWED_ORIGIN) : ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ success: false, error: 'Method not allowed' }); return; }
+  if (!allowed) { res.status(403).json({ success: false, error: 'Forbidden' }); return; }
 
   try {
     const { prompt, files, max_tokens } = req.body;
+    const cappedMaxTokens = Math.min(max_tokens || 800, 4000);
     const parts = [{ type: 'text', text: prompt }];
 
     if (files && files.length) {
@@ -38,7 +53,7 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: max_tokens || 800,
+        max_tokens: cappedMaxTokens,
         messages: [{ role: 'user', content: parts }]
       })
     });

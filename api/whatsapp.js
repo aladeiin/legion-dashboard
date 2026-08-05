@@ -1,3 +1,23 @@
+// Same geocoding used by the dashboard's uploads, so WhatsApp-submitted
+// properties land near their real micro-market instead of all stacking on
+// one fallback point.
+async function geocodeMarket(market, city) {
+  const fallback = { lat: 18.52 + (Math.random() - 0.5) * 0.08, lng: 73.855 + (Math.random() - 0.5) * 0.08 };
+  if (!market) return fallback;
+  try {
+    const q = encodeURIComponent(market + ', ' + (city || 'Pune') + ', India');
+    const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + q + '&format=json&limit=1');
+    if (!res.ok) return fallback;
+    const data = await res.json();
+    if (data && data.length && data[0].lat && data[0].lon) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+    return fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') { res.status(200).send('OK'); return; }
 
@@ -59,6 +79,7 @@ module.exports = async function handler(req, res) {
     }
 
     const code = 'WA' + Date.now().toString().slice(-8);
+    const coords = await geocodeMarket(extracted.market, extracted.city || 'Pune');
     const insertBody = {
       code: code,
       name: extracted.name || 'Unnamed Property',
@@ -76,20 +97,31 @@ module.exports = async function handler(req, res) {
       owner: extracted.owner || '',
       phone: extracted.phone || from.replace('whatsapp:', ''),
       notes: 'Received via WhatsApp bot. Sale rate: ' + (extracted.salerate || 'N/A'),
-      lat: 18.52,
-      lng: 73.855
+      lat: coords.lat,
+      lng: coords.lng
     };
 
-    const insertRes = await fetch(process.env.SUPABASE_URL + '/rest/v1/properties', {
+    const supaHeaders = {
+      apikey: process.env.SUPABASE_KEY,
+      Authorization: 'Bearer ' + process.env.SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal'
+    };
+    let insertRes = await fetch(process.env.SUPABASE_URL + '/rest/v1/properties', {
       method: 'POST',
-      headers: {
-        apikey: process.env.SUPABASE_KEY,
-        Authorization: 'Bearer ' + process.env.SUPABASE_KEY,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal'
-      },
-      body: JSON.stringify(insertBody)
+      headers: supaHeaders,
+      body: JSON.stringify(Object.assign({ created_by: 'WhatsApp Bot' }, insertBody))
     });
+    if (!insertRes.ok) {
+      const errText = await insertRes.text();
+      if (errText.indexOf('created_by') >= 0) {
+        insertRes = await fetch(process.env.SUPABASE_URL + '/rest/v1/properties', {
+          method: 'POST',
+          headers: supaHeaders,
+          body: JSON.stringify(insertBody)
+        });
+      }
+    }
 
     if (insertRes.ok) {
       await sendWhatsAppReply(from, 'Property added: ' + insertBody.name + ' (' + insertBody.market + ')\nRate: Rs ' + (insertBody.rate || 'N/A') + ' PSF\nCode: ' + code + '\n\nIt is now live on the dashboard.', twilioAuth);
