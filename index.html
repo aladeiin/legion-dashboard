@@ -372,6 +372,12 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <div class="ep-field"><label>Owner Name</label><input type="text" id="ef-owner"/></div>
         <div class="ep-field"><label>Contact Number</label><input type="text" id="ef-phone"/></div>
       </div>
+      <div class="ep-section">Map Pin Location</div>
+      <div class="ep-grid">
+        <div class="ep-field"><label>Latitude</label><input type="text" id="ef-lat" placeholder="e.g. 18.5515"/></div>
+        <div class="ep-field"><label>Longitude</label><input type="text" id="ef-lng" placeholder="e.g. 73.9345"/></div>
+      </div>
+      <div class="field-hint" style="margin:-6px 0 4px 2px">New properties are located automatically from their micro-market. Correct here if the pin is in the wrong spot - right-click the exact spot on Google Maps to copy coordinates.</div>
       <div class="ep-section">Media & Links</div>
       <div class="ep-grid full">
         <div class="ep-field"><label>Photo URL</label><input type="text" id="ef-photo" placeholder="https://..."/></div>
@@ -724,6 +730,29 @@ async function refreshProps(){
   renderActivity();
 }
 
+// Look up real coordinates for a micro-market so new properties land in
+// roughly the right place instead of every property stacking on the exact
+// same fallback point. Free, no API key (OpenStreetMap Nominatim). If the
+// lookup fails or finds nothing, fall back to a small random jitter around
+// Pune's center so at least multiple new pins are visibly distinct rather
+// than exactly overlapping.
+async function geocodeMarket(market, city){
+  var fallback = { lat: 18.52 + (Math.random()-0.5)*0.08, lng: 73.855 + (Math.random()-0.5)*0.08 };
+  if(!market) return fallback;
+  try{
+    var q = encodeURIComponent(market + ', ' + (city||'Pune') + ', India');
+    var res = await fetch('https://nominatim.openstreetmap.org/search?q=' + q + '&format=json&limit=1');
+    if(!res.ok) return fallback;
+    var data = await res.json();
+    if(data && data.length && data[0].lat && data[0].lon){
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+    return fallback;
+  }catch(e){
+    return fallback;
+  }
+}
+
 async function enterApp(user){
   currentUser=user;
   document.getElementById('login-overlay').classList.add('hidden');
@@ -968,7 +997,8 @@ function openEdit(origIdx){
     'ef-cam':p.cam,'ef-deposit':p.deposit,'ef-lockin':p.lockin,'ef-tenure':p.tenure,
     'ef-escal':p.escal,'ef-parking':p.parking,'ef-power':p.power,'ef-ac':p.ac,
     'ef-owner':p.owner,'ef-phone':p.phone,'ef-photo':p.photo,'ef-video':p.video,
-    'ef-floorplan':p.floorplan,'ef-maps':p.maps,'ef-notes':p.notes};
+    'ef-floorplan':p.floorplan,'ef-maps':p.maps,'ef-notes':p.notes,
+    'ef-lat':p.lat,'ef-lng':p.lng};
   Object.entries(fields).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val||'';});
   document.getElementById('edit-overlay').classList.remove('hidden');
   document.getElementById('ep-saving').style.display='none';
@@ -996,7 +1026,16 @@ async function deleteProperty(){
 async function saveEdit(){
   if(editIdx===null) return;
   document.getElementById('ep-saving').style.display='block';
+  const latVal=parseFloat(document.getElementById('ef-lat').value);
+  const lngVal=parseFloat(document.getElementById('ef-lng').value);
+  if(isNaN(latVal)||isNaN(lngVal)){
+    document.getElementById('ep-saving').style.display='none';
+    showToast('Latitude and longitude must be valid numbers','error');
+    return;
+  }
   const updated={
+    lat:latVal,
+    lng:lngVal,
     status:document.getElementById('ef-status').value,
     furnish:document.getElementById('ef-furnish').value,
     area:document.getElementById('ef-area').value,
@@ -1328,10 +1367,13 @@ async function doSubmit() {
   }
 
   var salerate = document.getElementById('nf-salerate').value;
+  var marketVal = document.getElementById('nf-market').value;
+  document.getElementById('prog-title').textContent = 'Locating on map...';
+  var coords = await geocodeMarket(marketVal, 'Pune');
   var insertBody = {
     code: propCode,
     name: propName,
-    market: document.getElementById('nf-market').value,
+    market: marketVal,
     city: 'Pune',
     status: document.getElementById('nf-status').value,
     furnish: document.getElementById('nf-furnish').value,
@@ -1348,8 +1390,8 @@ async function doSubmit() {
     photos: photoUrls,
     video: videoUrl,
     notes: salerate ? 'Sale rate: Rs' + salerate + ' PSF' : '',
-    lat: 18.52,
-    lng: 73.855
+    lat: coords.lat,
+    lng: coords.lng
   };
 
   updateProg('Saving data...');
@@ -1471,6 +1513,11 @@ async function doBulkImport() {
           continue;
         }
 
+        document.getElementById('bulk-status-text').textContent = 'Locating ' + item.name + ' on map...';
+        var coords = await geocodeMarket(item.market, item.city || 'Pune');
+        // Be polite to the free geocoding service - avoid bursting requests.
+        await new Promise(function(r){ setTimeout(r, 1000); });
+
         var code = 'BLK' + Date.now().toString().slice(-7) + i;
         var insertBody = {
           code: code, name: item.name, market: item.market || '', city: item.city || 'Pune',
@@ -1479,7 +1526,7 @@ async function doBulkImport() {
           lockin: item.lockin || '', tenure: item.tenure || '', escal: item.escal || '',
           owner: item.owner || '', phone: item.phone || '', building_grade: item.building_grade || '',
           notes: (item.notes || '') + (item.salerate ? ' | Sale rate: Rs' + item.salerate + ' PSF' : ''),
-          lat: 18.52, lng: 73.855
+          lat: coords.lat, lng: coords.lng
         };
 
         var insertRes = await insertProperty(insertBody);
