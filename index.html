@@ -1487,10 +1487,12 @@ async function doBulkImport() {
         if (insertRes.ok) {
           added.push(item.name + ' (' + (item.market||'-') + ')');
         } else {
-          failed.push(item.name);
+          console.error('Bulk import: failed to save "' + item.name + '":', insertRes.error);
+          failed.push({ name: item.name, reason: (insertRes.error||'Unknown error').substring(0,200) });
         }
       } catch (e) {
-        failed.push(item.name);
+        console.error('Bulk import: failed to save "' + item.name + '":', e);
+        failed.push({ name: item.name, reason: e.message });
       }
     }
 
@@ -1507,6 +1509,7 @@ async function doBulkImport() {
     var listHtml = '';
     if (added.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--green);margin:10px 0 6px">ADDED</div>' + added.map(function(n){return '<div style="font-size:11px;color:var(--text2);padding:3px 0">+ '+n+'</div>';}).join('');
     if (skipped.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--text3);margin:10px 0 6px">SKIPPED (DUPLICATES)</div>' + skipped.map(function(n){return '<div style="font-size:11px;color:var(--text3);padding:3px 0">- '+n+'</div>';}).join('');
+    if (failed.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--red);margin:10px 0 6px">FAILED (see reason below - check console for full detail)</div>' + failed.map(function(f){return '<div style="font-size:11px;color:var(--red);padding:3px 0">- '+f.name+': '+f.reason+'</div>';}).join('');
     document.getElementById('bulk-list').innerHTML = listHtml;
 
     showToast(added.length + ' properties imported', 'success');
