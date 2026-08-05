@@ -642,7 +642,6 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 const SUPABASE_URL = "https://fxbexvkrvavyfqcyvgii.supabase.co";
 const SUPABASE_KEY = "sb_publishable__ugwNHVlz66JGU5k3fPFuQ_2ATB6g95";
 const EXTRACT_API = "/api/extract";
-const MEDIA_API = "/api/upload-media";
 let BASE_PROPS = [];
 let MARKETS = [];
 
@@ -1191,6 +1190,32 @@ function toB64(file) {
   });
 }
 
+// Uploads a raw File/Blob straight to Supabase Storage from the browser,
+// bypassing Vercel's serverless functions entirely (they have a hard,
+// non-configurable 4.5MB request body limit that base64-encoded PDFs/
+// videos easily exceed). Supabase's publishable key is safe to use
+// client-side, unlike the Anthropic key.
+async function uploadToSupabaseStorage(file, path) {
+  var res = await fetch(SUPABASE_URL + '/storage/v1/object/property-media/' + encodeURIComponent(path), {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': file.type || 'application/octet-stream'
+    },
+    body: file
+  });
+  if (!res.ok) {
+    var errText = await res.text();
+    throw new Error('Upload failed: ' + errText);
+  }
+  return SUPABASE_URL + '/storage/v1/object/public/property-media/' + encodeURIComponent(path);
+}
+
+// Files above this size are uploaded directly to Supabase Storage and
+// passed to /api/extract as a URL instead of inline base64, to stay
+// safely under Vercel's 4.5MB serverless function body limit.
+var LARGE_FILE_THRESHOLD = 2 * 1024 * 1024;
+
 async function doExtract() {
   var pastedText = document.getElementById('ai-pasted-text').value.trim();
   if (!aiFiles.length && !pastedText) return;
@@ -1202,13 +1227,22 @@ async function doExtract() {
     var files = [];
     for (var i = 0; i < aiFiles.length; i++) {
       var f = aiFiles[i];
-      document.getElementById('ai-status-text').textContent = 'Reading ' + f.name + '...';
-      var b64 = await toB64(f);
-      if (f.type.indexOf('image') >= 0) {
-        files.push({ type: f.type, data: b64 });
-      } else if (f.type.indexOf('pdf') >= 0) {
-        files.push({ type: 'application/pdf', data: b64 });
+      var isImage = f.type.indexOf('image') >= 0;
+      var isPdf = f.type.indexOf('pdf') >= 0;
+      if (isImage || isPdf) {
+        var mediaType = isPdf ? 'application/pdf' : f.type;
+        if (f.size > LARGE_FILE_THRESHOLD) {
+          document.getElementById('ai-status-text').textContent = 'Uploading ' + f.name + '...';
+          var path = 'ai-extract/' + Date.now() + '_' + f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          var fileUrl = await uploadToSupabaseStorage(f, path);
+          files.push({ type: mediaType, url: fileUrl });
+        } else {
+          document.getElementById('ai-status-text').textContent = 'Reading ' + f.name + '...';
+          var b64 = await toB64(f);
+          files.push({ type: mediaType, data: b64 });
+        }
       } else {
+        document.getElementById('ai-status-text').textContent = 'Reading ' + f.name + '...';
         var txt = await f.text();
         files.push({ type: 'text/plain', text: txt });
       }
@@ -1341,28 +1375,16 @@ async function doSubmit() {
     document.getElementById('prog-title').textContent = label;
   }
 
+  var safeFolder = (propCode + '_' + propName).replace(/[^a-zA-Z0-9_-]/g, '_');
   for (var i = 0; i < mediaFiles.length; i++) {
     try {
       var f = mediaFiles[i];
-      var b64 = await toB64(f);
       var isVideo = f.type.indexOf('video') >= 0;
-      var res = await fetch(MEDIA_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          propertyCode: propCode,
-          propertyName: propName,
-          fileName: f.name,
-          mimeType: f.type,
-          fileData: b64
-        })
-      });
-      var json = await res.json();
-      if (json.success) {
-        if (isVideo) { if (!videoUrl) videoUrl = json.fileUrl; }
-        else { photoUrls.push(json.fileUrl); }
-      }
       updateProg('Uploading ' + f.name + '...');
+      var path = safeFolder + '/' + Date.now() + '_' + f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      var fileUrl = await uploadToSupabaseStorage(f, path);
+      if (isVideo) { if (!videoUrl) videoUrl = fileUrl; }
+      else { photoUrls.push(fileUrl); }
     } catch(e) { updateProg('Skipped'); }
   }
 

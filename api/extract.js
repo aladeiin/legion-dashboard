@@ -11,15 +11,22 @@ module.exports = async function handler(req, res) {
     const parts = [{ type: 'text', text: prompt }];
 
     if (files && files.length) {
-      files.forEach(f => {
+      for (const f of files) {
+        let data = f.data;
+        if (!data && f.url) {
+          const fileRes = await fetch(f.url);
+          if (!fileRes.ok) throw new Error('Failed to fetch uploaded file for extraction');
+          const buf = await fileRes.arrayBuffer();
+          data = Buffer.from(buf).toString('base64');
+        }
         if (f.type && f.type.indexOf('image') >= 0) {
-          parts.push({ type: 'image', source: { type: 'base64', media_type: f.type, data: f.data } });
+          parts.push({ type: 'image', source: { type: 'base64', media_type: f.type, data } });
         } else if (f.type && f.type.indexOf('pdf') >= 0) {
-          parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data } });
+          parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } });
         } else if (f.text) {
           parts.push({ type: 'text', text: f.text });
         }
-      });
+      }
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
