@@ -647,13 +647,27 @@ let MARKETS = [];
 
 async function loadPropsFromSupabase() {
   try {
-    const res = await fetch(SUPABASE_URL + "/rest/v1/properties?select=*&order=id.asc", {
-      headers: {
-        "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + SUPABASE_KEY
-      }
-    });
-    const rows = await res.json();
+    // Supabase's REST API silently caps any un-paginated query at 1000 rows
+    // (no error - just a truncated response), so with more properties than
+    // that, page through with the Range header until a page comes back
+    // short, meaning we've hit the end.
+    const pageSize = 1000;
+    let rows = [];
+    let from = 0;
+    while (true) {
+      const res = await fetch(SUPABASE_URL + "/rest/v1/properties?select=*&order=id.asc", {
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY,
+          "Range": from + "-" + (from + pageSize - 1)
+        }
+      });
+      const page = await res.json();
+      if (!Array.isArray(page) || !page.length) break;
+      rows = rows.concat(page);
+      if (page.length < pageSize) break;
+      from += pageSize;
+    }
     BASE_PROPS = rows.map(r => ({
       code: r.code, name: r.name, market: r.market, status: r.status,
       furnish: r.furnish, area: r.area, rate: r.rate, cam: r.cam,
