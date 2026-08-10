@@ -553,6 +553,20 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           <span class="az-btn">Choose Excel File</span>
         </div>
         <div class="file-chips" id="bulk-chip"></div>
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="field"><label>Space Type</label>
+            <select id="bulk-spacetype">
+              <option value="auto">Auto-detect per listing</option>
+              <option value="Conventional">Force all: Conventional</option>
+              <option value="Managed">Force all: Managed Office</option>
+            </select>
+            <span class="field-hint">Use "Force" if this whole sheet is one type - more reliable than AI guessing row by row</span>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);margin-bottom:14px;cursor:pointer">
+          <input type="checkbox" id="bulk-update-existing" style="width:auto"/>
+          Update properties already in the database instead of skipping them
+        </label>
         <button class="extract-btn" id="bulk-extract-btn" onclick="doBulkImport()" disabled>📥 Import Listings</button>
 
         <div class="ai-loading" id="bulk-loading">
@@ -1689,6 +1703,11 @@ function doReset() {
   document.getElementById('success').style.display = 'none';
   document.getElementById('form-section').style.display = 'none';
   document.getElementById('extract-btn').disabled = true;
+  clearBulkFile();
+  document.getElementById('bulk-section').querySelector('.ai-zone').style.display = 'block';
+  document.getElementById('bulk-extract-btn').style.display = 'block';
+  document.getElementById('bulk-spacetype').value = 'auto';
+  document.getElementById('bulk-update-existing').checked = false;
   setMode('ai');
   window.scrollTo(0, 0);
 }
@@ -1725,6 +1744,9 @@ async function doBulkImport() {
   document.getElementById('bulk-loading').style.display = 'block';
   document.getElementById('bulk-status-text').textContent = 'Reading ' + bulkFile.name + '...';
 
+  var spaceTypeOverride = document.getElementById('bulk-spacetype').value;
+  var updateExisting = document.getElementById('bulk-update-existing').checked;
+
   try {
     var arrayBuffer = await bulkFile.arrayBuffer();
     var workbook = XLSX.read(arrayBuffer, { type: 'array' });
@@ -1737,7 +1759,11 @@ async function doBulkImport() {
     document.getElementById('bulk-status-text').textContent = 'Extracting listings with AI...';
     document.getElementById('bulk-sub-text').textContent = 'Claude is reading every property in the sheet';
 
-    var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed" for each listing. Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","notes":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.\n\nSpreadsheet content:\n' + sheetText;
+    var spaceTypeInstruction = spaceTypeOverride === 'auto'
+      ? 'This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed" for each listing based on these cues.'
+      : 'EVERY listing in this sheet is "' + spaceTypeOverride + '" space - set space_type to exactly "' + spaceTypeOverride + '" for all of them.' + (spaceTypeOverride === 'Managed' ? ' Extract operator/plan_type/seats/price_per_seat/min_commitment for each listing - do not leave these blank just because the sheet uses different column headers, map whatever pricing/capacity columns exist onto them.' : '');
+
+    var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. ' + spaceTypeInstruction + ' Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","notes":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.\n\nSpreadsheet content:\n' + sheetText;
 
     var res = await fetch(EXTRACT_API, {
       method: 'POST',
@@ -1749,11 +1775,15 @@ async function doBulkImport() {
 
     var listings = result.extracted;
     if (!Array.isArray(listings)) listings = [listings];
+    if (spaceTypeOverride !== 'auto') {
+      listings.forEach(function(item){ item.space_type = spaceTypeOverride; });
+    }
 
     document.getElementById('bulk-status-text').textContent = 'Checking for duplicates...';
     document.getElementById('bulk-sub-text').textContent = 'Comparing against ' + listings.length + ' extracted listings';
 
     var added = [];
+    var updated = [];
     var skipped = [];
     var failed = [];
 
@@ -1769,8 +1799,32 @@ async function doBulkImport() {
         });
         var existing = await checkRes.json();
 
-        if (existing && existing.length > 0) {
+        if (existing && existing.length > 0 && !updateExisting) {
           skipped.push(item.name + ' (' + (item.market||'-') + ') - already exists');
+          continue;
+        }
+
+        var propBody = {
+          market: item.market || '', city: item.city || 'Pune',
+          status: item.status || 'Available', furnish: item.furnish || '', area: item.area || '',
+          space_type: item.space_type === 'Managed' ? 'Managed' : 'Conventional',
+          rate: item.rate || '', cam: item.cam || '', deposit: item.deposit || '',
+          lockin: item.lockin || '', tenure: item.tenure || '', escal: item.escal || '',
+          operator: item.operator || '', plan_type: item.plan_type || '',
+          seats: item.seats || '', price_per_seat: item.price_per_seat || '',
+          min_commitment: item.min_commitment || '',
+          owner: item.owner || '', phone: item.phone || '', building_grade: item.building_grade || '',
+          notes: (item.notes || '') + (item.salerate ? ' | Sale rate: Rs' + item.salerate + ' PSF' : '')
+        };
+
+        if (existing && existing.length > 0) {
+          var patchRes = await patchProperty(existing[0].id, propBody);
+          if (patchRes.ok) {
+            updated.push(item.name + ' (' + (item.market||'-') + ')');
+          } else {
+            console.error('Bulk import: failed to update "' + item.name + '":', patchRes.error);
+            failed.push({ name: item.name, reason: (patchRes.error||'Unknown error').substring(0,200) });
+          }
           continue;
         }
 
@@ -1780,19 +1834,7 @@ async function doBulkImport() {
         await new Promise(function(r){ setTimeout(r, 1000); });
 
         var code = 'BLK' + Date.now().toString().slice(-7) + i;
-        var insertBody = {
-          code: code, name: item.name, market: item.market || '', city: item.city || 'Pune',
-          status: item.status || 'Available', furnish: item.furnish || '', area: item.area || '',
-          space_type: item.space_type === 'Managed' ? 'Managed' : 'Conventional',
-          rate: item.rate || '', cam: item.cam || '', deposit: item.deposit || '',
-          lockin: item.lockin || '', tenure: item.tenure || '', escal: item.escal || '',
-          operator: item.operator || '', plan_type: item.plan_type || '',
-          seats: item.seats || '', price_per_seat: item.price_per_seat || '',
-          min_commitment: item.min_commitment || '',
-          owner: item.owner || '', phone: item.phone || '', building_grade: item.building_grade || '',
-          notes: (item.notes || '') + (item.salerate ? ' | Sale rate: Rs' + item.salerate + ' PSF' : ''),
-          lat: coords.lat, lng: coords.lng
-        };
+        var insertBody = Object.assign({ code: code, name: item.name, lat: coords.lat, lng: coords.lng }, propBody);
 
         var insertRes = await insertProperty(insertBody);
 
@@ -1815,16 +1857,18 @@ async function doBulkImport() {
     document.getElementById('bulk-summary').innerHTML =
       '<b>' + listings.length + '</b> listings found in sheet<br>' +
       '<b style="color:var(--green)">' + added.length + '</b> new properties added<br>' +
+      (updateExisting ? '<b style="color:var(--navy)">' + updated.length + '</b> existing properties updated<br>' : '') +
       '<b style="color:var(--text3)">' + skipped.length + '</b> skipped (already in database)' +
       (failed.length ? '<br><b style="color:var(--red)">' + failed.length + '</b> failed to save' : '');
 
     var listHtml = '';
     if (added.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--green);margin:10px 0 6px">ADDED</div>' + added.map(function(n){return '<div style="font-size:11px;color:var(--text2);padding:3px 0">+ '+n+'</div>';}).join('');
+    if (updated.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--navy);margin:10px 0 6px">UPDATED</div>' + updated.map(function(n){return '<div style="font-size:11px;color:var(--text2);padding:3px 0">~ '+n+'</div>';}).join('');
     if (skipped.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--text3);margin:10px 0 6px">SKIPPED (DUPLICATES)</div>' + skipped.map(function(n){return '<div style="font-size:11px;color:var(--text3);padding:3px 0">- '+n+'</div>';}).join('');
     if (failed.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--red);margin:10px 0 6px">FAILED (see reason below - check console for full detail)</div>' + failed.map(function(f){return '<div style="font-size:11px;color:var(--red);padding:3px 0">- '+f.name+': '+f.reason+'</div>';}).join('');
     document.getElementById('bulk-list').innerHTML = listHtml;
 
-    showToast(added.length + ' properties imported', 'success');
+    showToast(added.length + ' added, ' + updated.length + ' updated', 'success');
 
   } catch (err) {
     document.getElementById('bulk-loading').style.display = 'none';
