@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const { prompt, files, max_tokens } = req.body;
-    const cappedMaxTokens = Math.min(max_tokens || 800, 4000);
+    const cappedMaxTokens = Math.min(max_tokens || 800, 8000);
     const parts = [{ type: 'text', text: prompt }];
 
     if (files && files.length) {
@@ -60,6 +60,11 @@ module.exports = async function handler(req, res) {
 
     const result = await response.json();
     if (result.error) { res.status(200).json({ success: false, error: result.error.message }); return; }
+
+    if (result.stop_reason === 'max_tokens') {
+      res.status(200).json({ success: false, error: 'Response was cut off before finishing - too much data for one request. Try splitting your sheet into smaller batches.' });
+      return;
+    }
 
     let text = '';
     result.content.forEach(c => { text += c.text || ''; });

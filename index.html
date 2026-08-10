@@ -1999,6 +1999,42 @@ function sheetToText(workbook) {
   return out;
 }
 
+// Splits sheetToText()'s output into per-sheet batches of ROWS_PER_CHUNK
+// data rows (each batch keeps its own sheet marker + header row for
+// context). A single AI call asked to extract and return JSON for a huge
+// sheet in one shot can produce more output than any response size limit
+// allows, silently truncating mid-array; chunking keeps each request's
+// expected output comfortably bounded regardless of how large the sheet is.
+function chunkSheetText(sheetText, rowsPerChunk) {
+  var lines = sheetText.split('\n');
+  var chunks = [];
+  var i = 0;
+  while (i < lines.length) {
+    if (/^=== SHEET:/.test(lines[i])) {
+      var marker = lines[i];
+      var header = lines[i + 1] || '';
+      var j = i + 2;
+      var dataLines = [];
+      while (j < lines.length && lines[j].trim() !== '' && !/^=== SHEET:/.test(lines[j])) {
+        dataLines.push(lines[j]);
+        j++;
+      }
+      if (dataLines.length === 0) {
+        chunks.push(marker + '\n' + header);
+      } else {
+        for (var k = 0; k < dataLines.length; k += rowsPerChunk) {
+          chunks.push(marker + '\n' + header + '\n' + dataLines.slice(k, k + rowsPerChunk).join('\n'));
+        }
+      }
+      i = j;
+      while (i < lines.length && lines[i].trim() === '') i++;
+    } else {
+      i++;
+    }
+  }
+  return chunks.length ? chunks : [sheetText];
+}
+
 async function doBulkImport() {
   if (!bulkFile) return;
   document.getElementById('bulk-section').querySelector('.ai-zone').style.display = 'none';
@@ -2018,25 +2054,37 @@ async function doBulkImport() {
       sheetText = sheetText.substring(0, 100000);
     }
 
-    document.getElementById('bulk-status-text').textContent = 'Extracting listings with AI...';
     document.getElementById('bulk-sub-text').textContent = 'Claude is reading every property in the sheet';
 
     var spaceTypeInstruction = spaceTypeOverride === 'auto'
       ? 'This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed" for each listing based on these cues.'
       : 'EVERY listing in this sheet is "' + spaceTypeOverride + '" space - set space_type to exactly "' + spaceTypeOverride + '" for all of them.' + (spaceTypeOverride === 'Managed' ? ' Extract operator/plan_type/seats/price_per_seat/min_commitment for each listing - do not leave these blank just because the sheet uses different column headers, map whatever pricing/capacity columns exist onto them.' : '');
 
-    var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. ' + spaceTypeInstruction + ' Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","notes":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.\n\nSpreadsheet content:\n' + sheetText;
+    // Chunked so a single AI call's expected JSON output stays comfortably
+    // under the response size limit no matter how large the sheet is -
+    // one giant request for hundreds of rows would get silently truncated.
+    var chunks = chunkSheetText(sheetText, 25);
+    var listings = [];
+    for (var ci = 0; ci < chunks.length; ci++) {
+      document.getElementById('bulk-status-text').textContent = chunks.length > 1
+        ? 'Extracting listings with AI (batch ' + (ci + 1) + ' of ' + chunks.length + ')...'
+        : 'Extracting listings with AI...';
 
-    var res = await fetch(EXTRACT_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: prompt, files: [], max_tokens: 4000 })
-    });
-    var result = await res.json();
-    if (!result.success) throw new Error(result.error || 'Extraction failed');
+      var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. ' + spaceTypeInstruction + ' Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","notes":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.\n\nSpreadsheet content:\n' + chunks[ci];
 
-    var listings = result.extracted;
-    if (!Array.isArray(listings)) listings = [listings];
+      var res = await fetch(EXTRACT_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt, files: [], max_tokens: 8000 })
+      });
+      var result = await res.json();
+      if (!result.success) throw new Error((chunks.length > 1 ? 'Batch ' + (ci + 1) + ' of ' + chunks.length + ': ' : '') + (result.error || 'Extraction failed'));
+
+      var batchListings = result.extracted;
+      if (!Array.isArray(batchListings)) batchListings = [batchListings];
+      listings = listings.concat(batchListings);
+    }
+
     if (spaceTypeOverride !== 'auto') {
       listings.forEach(function(item){ item.space_type = spaceTypeOverride; });
     }
