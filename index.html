@@ -949,11 +949,12 @@ async function refreshMarketSpaces(){
 }
 
 function getMarketIcon(m){
-  const key='mk|'+(m.operator||'')+'|'+(m.logo_url||'');
+  const effectiveLogo=m.logo_url||KNOWN_OPERATOR_LOGOS[m.operator]||'';
+  const key='mk|'+(m.operator||'')+'|'+effectiveLogo;
   if(!marketBadgeIconCache[key]){
     const fallback=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${operatorColor(m.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(m.operator)}</div>`;
-    const inner=m.logo_url
-      ? `<img src="${m.logo_url}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:${operatorColor(m.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(m.operator)}</div>`
+    const inner=effectiveLogo
+      ? `<img src="${effectiveLogo}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:${operatorColor(m.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(m.operator)}</div>`
       : fallback;
     marketBadgeIconCache[key]=L.divIcon({className:'',
       html:`<div style="width:20px;height:20px;border-radius:6px;border:2px dashed #8A94A6;box-shadow:0 1px 4px rgba(0,0,0,.25);overflow:hidden;background:#fff;opacity:.92">${inner}</div>`,
@@ -1178,6 +1179,14 @@ let iAvail,iRented,iNego;
 function statusColor(s){
   return s==='Available' ? '#1B3A6B' : s==='Under Negotiation' ? '#C9973A' : '#9B2335';
 }
+// Real logos for known operators, keyed by exact operator name, used as a
+// fallback whenever a listing doesn't have its own logo_url set - so every
+// listing for a known brand gets the real mark automatically instead of
+// needing the URL pasted in on every single row.
+var KNOWN_OPERATOR_LOGOS={
+  'Sprint':'data:image/png;base64,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'
+};
+
 // Deterministic color per operator name so the same brand always looks the
 // same on the map, without needing real logo assets for every operator.
 function operatorColor(name){
@@ -1197,12 +1206,13 @@ function operatorInitials(name){
 // category on the map at a glance rather than just another dot.
 var badgeIconCache={};
 function getManagedIcon(p){
-  var key='m|'+(p.operator||'')+'|'+(p.logo_url||'')+'|'+p.status;
+  var effectiveLogo=p.logo_url||KNOWN_OPERATOR_LOGOS[p.operator]||'';
+  var key='m|'+(p.operator||'')+'|'+effectiveLogo+'|'+p.status;
   if(!badgeIconCache[key]){
     var border=statusColor(p.status);
     var fallback=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${operatorColor(p.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(p.operator)}</div>`;
-    var inner=p.logo_url
-      ? `<img src="${p.logo_url}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:${operatorColor(p.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(p.operator)}</div>`
+    var inner=effectiveLogo
+      ? `<img src="${effectiveLogo}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:${operatorColor(p.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(p.operator)}</div>`
       : fallback;
     badgeIconCache[key]=L.divIcon({className:'',
       html:`<div style="width:22px;height:22px;border-radius:6px;border:2.5px solid ${border};box-shadow:0 1px 4px rgba(0,0,0,.3);overflow:hidden;background:#fff">${inner}</div>`,
