@@ -117,6 +117,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 /* ── MAP ── */
 .map-wrap{flex:1;position:relative}
 #map{width:100%;height:100%}
+#market-map-el{width:100%;height:100%}
 .map-legend{position:absolute;bottom:22px;right:10px;z-index:450;background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;box-shadow:var(--shadow-md);font-size:11px;color:var(--text2);display:flex;flex-direction:column;gap:6px}
 .map-legend-item{display:flex;align-items:center;gap:7px}
 .map-legend-dot{width:11px;height:11px;border-radius:50%;background:#1B3A6B;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25);flex-shrink:0}
@@ -467,6 +468,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     <div class="spacer"></div>
     <button class="topbar-btn active" id="nav-map" onclick="switchView('map')">🗺 Map</button>
     <button class="topbar-btn" id="nav-add" onclick="switchView('add')" style="display:none">➕ Add Property</button>
+    <button class="topbar-btn" id="nav-market" onclick="switchView('market')">🏢 Market Map</button>
     <button class="topbar-btn" id="nav-activity" onclick="switchView('activity')">📋 Activity</button>
     <button class="topbar-btn" id="users-btn" onclick="openUsers()" style="display:none">👥 Team</button>
     <button class="topbar-btn" onclick="doLogout()">Sign out</button>
@@ -696,6 +698,34 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     </div>
   </div>
 
+  <!-- MARKET MAP VIEW (competitor/reference managed-office data - separate from your team's own listings) -->
+  <div class="main" id="view-market" style="display:none">
+    <div class="sidebar" id="market-sidebar">
+      <div class="sidebar-head">
+        <div class="sidebar-section-title">Market Reference</div>
+        <div class="field-hint" style="margin-bottom:10px">Public managed-office/coworking locations in Pune, for reference only - not part of your team's own deal pipeline. Data may be incomplete or out of date; verify before quoting a client.</div>
+        <div class="fg"><span class="fl">Operator</span><select class="fs" id="mk-operator-filter" onchange="renderMarketSpaces()"><option value="">All Operators</option></select></div>
+        <div class="fg" id="market-admin-controls" style="display:none">
+          <button class="fbtn" onclick="toggleMarketAddForm()">➕ Add Market Space</button>
+          <button class="cbtn" onclick="seedMarketSpaces()">📥 Import Pune Reference Data</button>
+        </div>
+        <div id="market-add-form" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:8px">
+          <div class="fg"><span class="fl">Building / Center Name</span><input class="fs" type="text" id="mk-name" placeholder="e.g. WeWork Futura"/></div>
+          <div class="fg"><span class="fl">Operator</span><input class="fs" type="text" id="mk-operator" placeholder="e.g. WeWork"/></div>
+          <div class="fg"><span class="fl">Micro-Market</span><input class="fs" type="text" id="mk-market" placeholder="e.g. Kharadi"/></div>
+          <div class="fg"><span class="fl">Address / Notes (optional)</span><input class="fs" type="text" id="mk-address" placeholder="e.g. Magarpatta City"/></div>
+          <div class="fg"><span class="fl">Source URL (optional)</span><input class="fs" type="text" id="mk-source" placeholder="https://..."/></div>
+          <button class="fbtn" onclick="addMarketSpace()">Save</button>
+        </div>
+      </div>
+      <div class="prop-list">
+        <div class="lc" id="market-lc"></div>
+        <div id="market-list"></div>
+      </div>
+    </div>
+    <div class="map-wrap"><div id="market-map-el"></div></div>
+  </div>
+
   <!-- ACTIVITY VIEW -->
   <div class="view-panel" id="view-activity" style="display:none">
     <div class="view-container">
@@ -862,6 +892,221 @@ async function geocodeMarket(market, city){
   }
 }
 
+// ── MARKET MAP (competitor/reference managed-office data) ──────────
+// Kept in its own Supabase table and its own view/map instance,
+// deliberately separate from the properties table so public reference
+// data never mixes with your team's own tracked deals, Activity log, or
+// delete/edit permissions on real listings.
+let MARKET_SPACES=[], marketMap, marketMarkerLayer, marketMarkers=[], marketLoaded=false;
+var marketBadgeIconCache={};
+
+async function loadMarketSpacesFromSupabase(){
+  try{
+    const pageSize=1000;
+    let rows=[]; let from=0;
+    while(true){
+      const res=await fetch(SUPABASE_URL+"/rest/v1/market_spaces?select=*&order=id.asc",{
+        headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Range":from+"-"+(from+pageSize-1)}
+      });
+      if(!res.ok) return null;
+      const page=await res.json();
+      if(!Array.isArray(page)||!page.length) break;
+      rows=rows.concat(page);
+      if(page.length<pageSize) break;
+      from+=pageSize;
+    }
+    return rows;
+  }catch(e){
+    return null;
+  }
+}
+
+async function ensureMarketLoaded(){
+  if(!marketMap){
+    marketMap=L.map('market-map-el',{center:[18.52,73.855],zoom:12});
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(marketMap);
+    marketMarkerLayer=L.layerGroup().addTo(marketMap);
+  }else{
+    setTimeout(()=>marketMap.invalidateSize(),50);
+  }
+  if(marketLoaded) return;
+  const rows=await loadMarketSpacesFromSupabase();
+  if(rows===null){
+    showToast('Market reference table not set up yet - see setup instructions','error');
+    MARKET_SPACES=[];
+  }else{
+    MARKET_SPACES=rows;
+  }
+  marketLoaded=true;
+  renderMarketSpaces();
+}
+
+async function refreshMarketSpaces(){
+  const rows=await loadMarketSpacesFromSupabase();
+  if(rows!==null) MARKET_SPACES=rows;
+  renderMarketSpaces();
+}
+
+function getMarketIcon(m){
+  const key='mk|'+(m.operator||'')+'|'+(m.logo_url||'');
+  if(!marketBadgeIconCache[key]){
+    const fallback=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${operatorColor(m.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(m.operator)}</div>`;
+    const inner=m.logo_url
+      ? `<img src="${m.logo_url}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:${operatorColor(m.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(m.operator)}</div>`
+      : fallback;
+    marketBadgeIconCache[key]=L.divIcon({className:'',
+      html:`<div style="width:20px;height:20px;border-radius:6px;border:2px dashed #8A94A6;box-shadow:0 1px 4px rgba(0,0,0,.25);overflow:hidden;background:#fff;opacity:.92">${inner}</div>`,
+      iconSize:[20,20],iconAnchor:[10,10]});
+  }
+  return marketBadgeIconCache[key];
+}
+
+function renderMarketSpaces(){
+  const sel=document.getElementById('mk-operator-filter');
+  const curVal=sel.value;
+  const operators=[...new Set(MARKET_SPACES.map(m=>m.operator).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">All Operators</option>'+operators.map(o=>`<option value="${o}">${o}</option>`).join('');
+  sel.value=operators.includes(curVal)?curVal:'';
+
+  const filterOp=sel.value;
+  const filtered=filterOp?MARKET_SPACES.filter(m=>m.operator===filterOp):MARKET_SPACES;
+
+  marketMarkerLayer.clearLayers(); marketMarkers=[];
+  filtered.forEach(m=>{
+    if(m.lat==null||m.lng==null) return;
+    const mk=L.marker([m.lat,m.lng],{icon:getMarketIcon(m)});
+    const canManage=currentUser&&(currentUser.role==='admin'||currentUser.role==='editor');
+    mk.bindPopup(`<div class="pu"><div class="pu-body">
+      <div class="pu-name">${m.name}</div>
+      <div class="pu-mkt">📍 ${m.market||''}${m.operator?' · '+m.operator:''}</div>
+      ${m.address?`<div class="pu-code">${m.address}</div>`:''}
+      ${m.source_url?`<div class="pu-actions"><button class="pu-btn pu-maps" onclick="window.open('${m.source_url}','_blank')">🔗 Source</button>${canManage?`<button class="pu-btn pu-video" onclick="deleteMarketSpace(${m.id})">🗑 Remove</button>`:''}</div>`:(canManage?`<div class="pu-actions"><button class="pu-btn pu-video" onclick="deleteMarketSpace(${m.id})">🗑 Remove</button></div>`:'')}
+    </div></div>`,{className:'custom-popup',maxWidth:260});
+    marketMarkerLayer.addLayer(mk); marketMarkers.push(mk);
+  });
+
+  document.getElementById('market-lc').textContent=filtered.length+' market spaces';
+  const canManage=currentUser&&(currentUser.role==='admin'||currentUser.role==='editor');
+  document.getElementById('market-list').innerHTML=filtered.map(m=>`
+    <div class="pi">
+      <div class="pi-name">${m.name}</div>
+      <div class="pi-mkt">📍 ${m.market||'—'}${m.operator?' · '+m.operator:''}</div>
+      ${canManage?`<button class="del-btn" style="float:right;margin-top:-24px" onclick="deleteMarketSpace(${m.id})">✕</button>`:''}
+    </div>`).join('');
+}
+
+function toggleMarketAddForm(){
+  const el=document.getElementById('market-add-form');
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+
+// Generic insert with the same missing-column resilience as insertProperty,
+// targeting the separate market_spaces table.
+async function insertMarketSpace(body){
+  var payload=Object.assign({},body,{added_by:currentUser?currentUser.username:''});
+  for(var attempts=0;attempts<10;attempts++){
+    var res=await fetch(SUPABASE_URL+'/rest/v1/market_spaces',{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(payload)
+    });
+    if(res.ok) return {ok:true};
+    var errText=await res.text();
+    var m=errText.match(/Could not find the '([^']+)' column/);
+    if(m&&(m[1] in payload)){ delete payload[m[1]]; continue; }
+    return {ok:false,error:errText};
+  }
+  return {ok:false,error:'Too many missing columns - check your market_spaces table schema'};
+}
+
+async function addMarketSpace(){
+  if(!currentUser||(currentUser.role!=='admin'&&currentUser.role!=='editor')) return;
+  const name=document.getElementById('mk-name').value.trim();
+  const operator=document.getElementById('mk-operator').value.trim();
+  const marketVal=document.getElementById('mk-market').value.trim();
+  const address=document.getElementById('mk-address').value.trim();
+  const source=document.getElementById('mk-source').value.trim();
+  if(!name||!marketVal){ showToast('Name and micro-market are required','error'); return; }
+  const coords=await geocodeMarket(marketVal,'Pune');
+  const result=await insertMarketSpace({name,operator,market:marketVal,city:'Pune',address,source_url:source,lat:coords.lat,lng:coords.lng});
+  if(!result.ok){ showToast('Could not save: '+result.error,'error'); return; }
+  document.getElementById('mk-name').value='';document.getElementById('mk-operator').value='';
+  document.getElementById('mk-market').value='';document.getElementById('mk-address').value='';
+  document.getElementById('mk-source').value='';
+  toggleMarketAddForm();
+  await refreshMarketSpaces();
+  showToast('Market space added ✓','success');
+}
+
+async function deleteMarketSpace(id){
+  if(!currentUser||(currentUser.role!=='admin'&&currentUser.role!=='editor')) return;
+  if(!confirm('Remove this market reference entry?')) return;
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/market_spaces?id=eq.'+id,{
+      method:'DELETE',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(!res.ok) throw new Error('Delete failed: '+res.status);
+    await refreshMarketSpaces();
+    showToast('Removed','success');
+  }catch(err){
+    showToast('Delete failed - check connection','error');
+  }
+}
+
+// Researched from operator websites and public listing aggregators
+// (myHQ, Cofynd, Houssed, etc.) - not exhaustive, and locations can open,
+// close or move, so treat this as a starting point to verify, not gospel.
+var PUNE_MARKET_SEED=[
+  {name:'WeWork World Trade Centre',operator:'WeWork',market:'Kharadi'},
+  {name:'WeWork Futura',operator:'WeWork',market:'Magarpatta'},
+  {name:'WeWork Baner',operator:'WeWork',market:'Baner'},
+  {name:'Awfis Seasons Mall',operator:'Awfis',market:'Hadapsar'},
+  {name:'Awfis The Kode',operator:'Awfis',market:'Baner'},
+  {name:'Awfis Viman Nagar',operator:'Awfis',market:'Viman Nagar'},
+  {name:'Awfis Hinjewadi',operator:'Awfis',market:'Hinjewadi'},
+  {name:'Awfis Pimple Saudagar',operator:'Awfis',market:'Pimple Saudagar'},
+  {name:'Smartworks 43EQ',operator:'Smartworks',market:'Baner'},
+  {name:'Smartworks Amar Pristine',operator:'Smartworks',market:'Mundhwa'},
+  {name:'Smartworks Tech Park One',operator:'Smartworks',market:'Yerawada'},
+  {name:'IndiQube ATP',operator:'IndiQube',market:'Balewadi'},
+  {name:'IndiQube Park Plaza',operator:'IndiQube',market:'Shivaji Nagar'},
+  {name:'IndiQube ABZ',operator:'IndiQube',market:'Baner'},
+  {name:'IndiQube Kode',operator:'IndiQube',market:'Baner'},
+  {name:'IndiQube Kharadi',operator:'IndiQube',market:'Kharadi'},
+  {name:'CoWrks Pune Icon',operator:'CoWrks',market:'Baner'},
+  {name:'91springboard Yerwada',operator:'91springboard',market:'Yerawada'},
+  {name:'91springboard Baner',operator:'91springboard',market:'Baner'},
+  {name:'Regus World Trade Centre',operator:'Regus',market:'Kharadi'},
+  {name:'Regus Koregaon Park',operator:'Regus',market:'Koregaon Park'},
+  {name:'Regus Hinjewadi',operator:'Regus',market:'Hinjewadi'},
+  {name:'Table Space Godrej Koregaon Park',operator:'Table Space',market:'Koregaon Park'},
+  {name:'Table Space ITPP',operator:'Table Space',market:'Kharadi'},
+  {name:'Table Space AP4 Tech Park',operator:'Table Space',market:'Kharadi'},
+  {name:'Table Space Panchshil Business Park',operator:'Table Space',market:'Viman Nagar'},
+  {name:'Table Space Raheja Woods',operator:'Table Space',market:'Kalyani Nagar'}
+];
+
+async function seedMarketSpaces(){
+  if(!currentUser||(currentUser.role!=='admin'&&currentUser.role!=='editor')) return;
+  if(!confirm('Import '+PUNE_MARKET_SEED.length+' researched Pune managed-office locations as reference data? Entries already present (matched by name) will be skipped.')) return;
+  let added=0, skipped=0, failed=0;
+  for(let i=0;i<PUNE_MARKET_SEED.length;i++){
+    const item=PUNE_MARKET_SEED[i];
+    showToast('Importing '+(i+1)+' of '+PUNE_MARKET_SEED.length+'...','success');
+    if(MARKET_SPACES.find(m=>m.name===item.name)){ skipped++; continue; }
+    try{
+      const coords=await geocodeMarket(item.market,'Pune');
+      await new Promise(r=>setTimeout(r,1000));
+      const result=await insertMarketSpace({name:item.name,operator:item.operator,market:item.market,city:'Pune',lat:coords.lat,lng:coords.lng});
+      if(result.ok) added++; else failed++;
+    }catch(e){ failed++; }
+  }
+  await refreshMarketSpaces();
+  showToast(added+' added, '+skipped+' already present'+(failed?', '+failed+' failed':''),'success');
+}
+
 async function enterApp(user){
   currentUser=user;
   document.getElementById('login-overlay').classList.add('hidden');
@@ -871,7 +1116,10 @@ async function enterApp(user){
   rb.className='role-badge role-'+user.role;
   document.getElementById('topbar-name').textContent = user.name;
   if(user.role==='admin') document.getElementById('users-btn').style.display='block';
-  if(user.role==='admin'||user.role==='editor') document.getElementById('nav-add').style.display='block';
+  if(user.role==='admin'||user.role==='editor'){
+    document.getElementById('nav-add').style.display='block';
+    document.getElementById('market-admin-controls').style.display='block';
+  }
   await ensureDataLoaded();
   initMap();
   switchView('map');
@@ -896,6 +1144,7 @@ async function doLogout(){
   document.getElementById('login-err').style.display='none';
   document.getElementById('users-btn').style.display='none';
   document.getElementById('nav-add').style.display='none';
+  document.getElementById('market-admin-controls').style.display='none';
 }
 
 // ── VIEW SWITCHING ──────────────────────────────────
@@ -903,12 +1152,15 @@ function switchView(view){
   if(view==='add' && !(currentUser&&(currentUser.role==='admin'||currentUser.role==='editor'))) view='map';
   document.getElementById('view-map').style.display = view==='map' ? 'flex' : 'none';
   document.getElementById('view-add').style.display = view==='add' ? 'block' : 'none';
+  document.getElementById('view-market').style.display = view==='market' ? 'flex' : 'none';
   document.getElementById('view-activity').style.display = view==='activity' ? 'block' : 'none';
   document.getElementById('nav-map').classList.toggle('active', view==='map');
   document.getElementById('nav-add').classList.toggle('active', view==='add');
+  document.getElementById('nav-market').classList.toggle('active', view==='market');
   document.getElementById('nav-activity').classList.toggle('active', view==='activity');
   if(view==='activity') renderActivity();
   if(view==='map' && map) setTimeout(()=>map.invalidateSize(), 50);
+  if(view==='market') ensureMarketLoaded();
 }
 
 function initMap(){
