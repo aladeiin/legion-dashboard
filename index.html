@@ -813,7 +813,7 @@ const DEFAULT_USERS=[
 ];
 
 let USERS=[], EDITS={}, currentUser=null, props=[], filtered=[];
-let map, markerLayer, markers=[], editIdx=null, activeListIdx=null;
+let map, markerLayer, markers=[], editIdx=null, activeListIdx=null, fiMarkerIndex={};
 let aiFiles=[], mediaFiles=[], bulkFile=null;
 
 // Team accounts live in Supabase (table "team_users") so a member added by
@@ -948,19 +948,83 @@ async function refreshMarketSpaces(){
   renderMarketSpaces();
 }
 
+// Shared inner HTML for an operator badge (logo image if available, else
+// a colored initials fallback) - used by every marker style that shows an
+// operator: single Managed listings, Market Map pins, and the grouped
+// "multiple listings here" markers below.
+function operatorBadgeInnerHtml(operatorName, logoUrl){
+  const fallback=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${operatorColor(operatorName)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(operatorName)}</div>`;
+  if(!logoUrl) return fallback;
+  return `<img src="${logoUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:${operatorColor(operatorName)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(operatorName)}</div>`;
+}
+
 function getMarketIcon(m){
   const effectiveLogo=m.logo_url||KNOWN_OPERATOR_LOGOS[m.operator]||'';
   const key='mk|'+(m.operator||'')+'|'+effectiveLogo;
   if(!marketBadgeIconCache[key]){
-    const fallback=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${operatorColor(m.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(m.operator)}</div>`;
-    const inner=effectiveLogo
-      ? `<img src="${effectiveLogo}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:${operatorColor(m.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(m.operator)}</div>`
-      : fallback;
+    const inner=operatorBadgeInnerHtml(m.operator, effectiveLogo);
     marketBadgeIconCache[key]=L.divIcon({className:'',
       html:`<div style="width:20px;height:20px;border-radius:6px;border:2px dashed #8A94A6;box-shadow:0 1px 4px rgba(0,0,0,.25);overflow:hidden;background:#fff;opacity:.92">${inner}</div>`,
       iconSize:[20,20],iconAnchor:[10,10]});
   }
   return marketBadgeIconCache[key];
+}
+
+function buildSingleMarketPopup(m){
+  const canManage=currentUser&&(currentUser.role==='admin'||currentUser.role==='editor');
+  return `<div class="pu"><div class="pu-body">
+    <div class="pu-name">${m.name}</div>
+    <div class="pu-mkt">📍 ${m.market||''}${m.operator?' · '+m.operator:''}</div>
+    ${m.address?`<div class="pu-code">${m.address}</div>`:''}
+    ${m.source_url?`<div class="pu-actions"><button class="pu-btn pu-maps" onclick="window.open('${m.source_url}','_blank')">🔗 Source</button>${canManage?`<button class="pu-btn pu-video" onclick="deleteMarketSpace(${m.id})">🗑 Remove</button>`:''}</div>`:(canManage?`<div class="pu-actions"><button class="pu-btn pu-video" onclick="deleteMarketSpace(${m.id})">🗑 Remove</button></div>`:'')}
+  </div></div>`;
+}
+
+var marketGroupPopupRegistry={};
+function buildMarketGroupListHtml(gid, group){
+  var rows=group.items.map(function(m,i){
+    return '<div style="padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer" onclick="showMarketGroupItem(\''+gid+'\','+i+')">'+
+      '<div style="font-size:12px;font-weight:600;color:var(--navy)">'+m.name+'</div>'+
+      '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(m.operator||'—')+'</div>'+
+    '</div>';
+  }).join('');
+  return '<div class="pu"><div class="pu-body">'+
+    '<div class="pu-name">'+(group.items[0].market||'')+' · '+group.items.length+' operators here</div>'+
+    '<div style="max-height:280px;overflow-y:auto;margin-top:6px">'+rows+'</div>'+
+  '</div></div>';
+}
+function showMarketGroupList(gid){
+  var entry=marketGroupPopupRegistry[gid];
+  if(!entry) return;
+  entry.marker.setPopupContent(buildMarketGroupListHtml(gid, entry.group));
+}
+function showMarketGroupItem(gid, i){
+  var entry=marketGroupPopupRegistry[gid];
+  if(!entry) return;
+  var m=entry.group.items[i];
+  var backLink='<div onclick="showMarketGroupList(\''+gid+'\')" style="font-size:11px;color:var(--navy);font-weight:600;cursor:pointer;padding:10px 14px 0">← All '+entry.group.items.length+' here</div>';
+  entry.marker.setPopupContent(backLink+buildSingleMarketPopup(m));
+}
+
+var marketGroupIconCache={};
+function getMarketGroupIcon(group){
+  var items=group.items;
+  if(items.length===1) return getMarketIcon(items[0]);
+  var n=items.length;
+  var operators=[...new Set(items.map(function(m){return m.operator;}).filter(Boolean))];
+  var sameOperator=operators.length===1;
+  var key=sameOperator ? 'mkgrp-op|'+operators[0]+'|'+n+'|'+(items[0].logo_url||'') : 'mkgrp-mixed|'+n;
+  if(marketGroupIconCache[key]) return marketGroupIconCache[key];
+  var effectiveLogo=sameOperator?(items[0].logo_url||KNOWN_OPERATOR_LOGOS[operators[0]]||''):'';
+  var inner=sameOperator?operatorBadgeInnerHtml(operators[0],effectiveLogo):('<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#8A94A6;color:#fff;font-size:9px;font-weight:700;border-radius:6px">'+n+'</div>');
+  var countBadge='<div style="position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#C9973A;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)">'+n+'</div>';
+  var icon=L.divIcon({className:'',
+    html:'<div style="position:relative;width:22px;height:22px">'+
+           '<div style="width:20px;height:20px;border-radius:6px;border:2px dashed #8A94A6;box-shadow:0 1px 4px rgba(0,0,0,.25);overflow:hidden;background:#fff;opacity:.92">'+inner+'</div>'+
+           (sameOperator?countBadge:'')+'</div>',
+    iconSize:[22,22],iconAnchor:[10,10]});
+  marketGroupIconCache[key]=icon;
+  return icon;
 }
 
 function renderMarketSpaces(){
@@ -973,18 +1037,17 @@ function renderMarketSpaces(){
   const filterOp=sel.value;
   const filtered=filterOp?MARKET_SPACES.filter(m=>m.operator===filterOp):MARKET_SPACES;
 
-  marketMarkerLayer.clearLayers(); marketMarkers=[];
-  const spread=spreadCollocated(filtered);
-  spread.forEach(m=>{
-    if(m.lat==null||m.lng==null) return;
-    const mk=L.marker([m.lat,m.lng],{icon:getMarketIcon(m)});
-    const canManage=currentUser&&(currentUser.role==='admin'||currentUser.role==='editor');
-    mk.bindPopup(`<div class="pu"><div class="pu-body">
-      <div class="pu-name">${m.name}</div>
-      <div class="pu-mkt">📍 ${m.market||''}${m.operator?' · '+m.operator:''}</div>
-      ${m.address?`<div class="pu-code">${m.address}</div>`:''}
-      ${m.source_url?`<div class="pu-actions"><button class="pu-btn pu-maps" onclick="window.open('${m.source_url}','_blank')">🔗 Source</button>${canManage?`<button class="pu-btn pu-video" onclick="deleteMarketSpace(${m.id})">🗑 Remove</button>`:''}</div>`:(canManage?`<div class="pu-actions"><button class="pu-btn pu-video" onclick="deleteMarketSpace(${m.id})">🗑 Remove</button></div>`:'')}
-    </div></div>`,{className:'custom-popup',maxWidth:260});
+  marketMarkerLayer.clearLayers(); marketMarkers=[]; marketGroupPopupRegistry={};
+  const groups=groupByLocation(filtered);
+  groups.forEach((group,gi)=>{
+    var gid='mg'+gi;
+    const mk=L.marker([group.lat,group.lng],{icon:getMarketGroupIcon(group)});
+    if(group.items.length===1){
+      mk.bindPopup(buildSingleMarketPopup(group.items[0]),{className:'custom-popup',maxWidth:260});
+    }else{
+      mk.bindPopup(buildMarketGroupListHtml(gid,group),{className:'custom-popup',maxWidth:260});
+      marketGroupPopupRegistry[gid]={marker:mk,group:group};
+    }
     marketMarkerLayer.addLayer(mk); marketMarkers.push(mk);
   });
 
@@ -1211,10 +1274,7 @@ function getManagedIcon(p){
   var key='m|'+(p.operator||'')+'|'+effectiveLogo+'|'+p.status;
   if(!badgeIconCache[key]){
     var border=statusColor(p.status);
-    var fallback=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${operatorColor(p.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(p.operator)}</div>`;
-    var inner=effectiveLogo
-      ? `<img src="${effectiveLogo}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:${operatorColor(p.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(p.operator)}</div>`
-      : fallback;
+    var inner=operatorBadgeInnerHtml(p.operator, effectiveLogo);
     badgeIconCache[key]=L.divIcon({className:'',
       html:`<div style="width:22px;height:22px;border-radius:6px;border:2.5px solid ${border};box-shadow:0 1px 4px rgba(0,0,0,.3);overflow:hidden;background:#fff">${inner}</div>`,
       iconSize:[22,22],iconAnchor:[11,11]});
@@ -1358,41 +1418,103 @@ function clearFilters(){
 }
 
 // When multiple listings share (nearly) the same coordinates - e.g.
-// several managed-office operators inside the same building - plain
-// overlapping markers would hide every one but the topmost, with no way
-// to tell there's more than one. Nudges duplicates into a small visible
-// fan around the shared point so each gets its own clickable pin, without
-// touching the underlying stored lat/lng of the actual listing.
-function spreadCollocated(items){
-  var groups={};
-  items.forEach(function(it,idx){
+// several managed-office operators inside the same building - they get
+// ONE marker, not one each: groupByLocation buckets filtered items by
+// rounded lat/lng (~11m), so a click on that single pin can show every
+// listing there instead of only the topmost one silently hiding the rest.
+function groupByLocation(items){
+  var order=[]; var groups={};
+  items.forEach(function(it,fi){
     if(it.lat==null||it.lng==null) return;
     var key=Number(it.lat).toFixed(4)+','+Number(it.lng).toFixed(4);
-    (groups[key]=groups[key]||[]).push(idx);
+    if(!groups[key]){ groups[key]={lat:it.lat,lng:it.lng,items:[],fis:[]}; order.push(key); }
+    groups[key].items.push(it);
+    groups[key].fis.push(fi);
   });
-  var adjusted=items.slice();
-  Object.keys(groups).forEach(function(key){
-    var idxs=groups[key];
-    if(idxs.length<=1) return;
-    var n=idxs.length;
-    var radius=0.00035; // ~35-40m, visible when zoomed into a building, negligible city-wide
-    idxs.forEach(function(idx,i){
-      if(i===0) return; // first stays exactly on the real point
-      var angle=(2*Math.PI*i)/n;
-      var it=items[idx];
-      adjusted[idx]=Object.assign({},it,{lat:it.lat+radius*Math.sin(angle),lng:it.lng+radius*Math.cos(angle)});
-    });
-  });
-  return adjusted;
+  return order.map(function(key){ return groups[key]; });
+}
+
+// Registry + popup builders for grouped ("N listings here") markers, so
+// the row onclick handlers (which run in global scope) can find the right
+// marker/group to update. gid identifies one group for one render pass.
+var groupPopupRegistry={};
+function buildGroupListHtml(gid, group){
+  var rows=group.items.map(function(p,i){
+    var isManaged=p.space_type==='Managed';
+    var sub=isManaged
+      ? (p.operator||'Managed')+(p.seats?' · '+p.seats+' seats':'')
+      : (p.area?parseInt(p.area).toLocaleString()+' sqft':'')+(p.rate?' · ₹'+p.rate+' PSF':'');
+    return '<div style="padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer" onclick="showGroupItem(\''+gid+'\','+i+')">'+
+      '<div style="font-size:12px;font-weight:600;color:var(--navy)">'+p.name+'</div>'+
+      '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(p.status||'')+' · '+sub+'</div>'+
+    '</div>';
+  }).join('');
+  return '<div class="pu"><div class="pu-body">'+
+    '<div class="pu-name">'+(group.items[0].market||'')+' · '+group.items.length+' listings here</div>'+
+    '<div style="max-height:280px;overflow-y:auto;margin-top:6px">'+rows+'</div>'+
+  '</div></div>';
+}
+function showGroupList(gid){
+  var entry=groupPopupRegistry[gid];
+  if(!entry) return;
+  entry.marker.setPopupContent(buildGroupListHtml(gid, entry.group));
+}
+function showGroupItem(gid, i){
+  var entry=groupPopupRegistry[gid];
+  if(!entry) return;
+  var p=entry.group.items[i];
+  var backLink='<div onclick="showGroupList(\''+gid+'\')" style="font-size:11px;color:var(--navy);font-weight:600;cursor:pointer;padding:10px 14px 0">← All '+entry.group.items.length+' listings here</div>';
+  entry.marker.setPopupContent(backLink+makePopup(p,p._origIdx));
+}
+
+var groupIconCache={};
+function getGroupIcon(group){
+  var items=group.items;
+  if(items.length===1) return getIcon(items[0]);
+  var n=items.length;
+  var operators=[...new Set(items.map(function(p){return p.operator;}).filter(Boolean))];
+  var sameManagedOperator=items.every(function(p){return p.space_type==='Managed';})&&operators.length===1;
+  var key=sameManagedOperator
+    ? 'grp-op|'+operators[0]+'|'+statusColor(items[0].status)+'|'+n+'|'+(items[0].logo_url||'')
+    : 'grp-mixed|'+n;
+  if(groupIconCache[key]) return groupIconCache[key];
+  var icon;
+  var countBadge='<div style="position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#C9973A;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)">'+n+'</div>';
+  if(sameManagedOperator){
+    var effectiveLogo=items[0].logo_url||KNOWN_OPERATOR_LOGOS[operators[0]]||'';
+    var border=statusColor(items[0].status);
+    var inner=operatorBadgeInnerHtml(operators[0], effectiveLogo);
+    icon=L.divIcon({className:'',
+      html:'<div style="position:relative;width:24px;height:24px">'+
+             '<div style="width:22px;height:22px;border-radius:6px;border:2.5px solid '+border+';box-shadow:0 1px 4px rgba(0,0,0,.3);overflow:hidden;background:#fff">'+inner+'</div>'+
+             countBadge+'</div>',
+      iconSize:[24,24],iconAnchor:[11,11]});
+  }else{
+    icon=L.divIcon({className:'',
+      html:'<div style="width:24px;height:24px;border-radius:50%;background:#1B3A6B;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700">'+n+'</div>',
+      iconSize:[24,24],iconAnchor:[12,12]});
+  }
+  groupIconCache[key]=icon;
+  return icon;
 }
 
 function renderMarkers(){
-  markerLayer.clearLayers(); markers=[];
-  var spread=spreadCollocated(filtered);
-  spread.forEach((p,fi)=>{
-    const m=L.marker([p.lat,p.lng],{icon:getIcon(p)});
-    m.bindPopup(makePopup(p,p._origIdx),{className:'custom-popup',maxWidth:280,offset:[0,-2]});
-    m.on('click',()=>highlightItem(fi));
+  markerLayer.clearLayers(); markers=[]; fiMarkerIndex={}; groupPopupRegistry={};
+  var groups=groupByLocation(filtered);
+  groups.forEach((group,gi)=>{
+    var gid='g'+gi;
+    const m=L.marker([group.lat,group.lng],{icon:getGroupIcon(group)});
+    if(group.items.length===1){
+      var only=group.items[0];
+      m.bindPopup(makePopup(only,only._origIdx),{className:'custom-popup',maxWidth:280,offset:[0,-2]});
+    }else{
+      m.bindPopup(buildGroupListHtml(gid,group),{className:'custom-popup',maxWidth:280,offset:[0,-2]});
+      groupPopupRegistry[gid]={marker:m,group:group};
+    }
+    m.on('click',()=>highlightItem(group.fis[0]));
+    group.fis.forEach(function(fi,idxInGroup){
+      fiMarkerIndex[fi]={marker:m,gid:gid,group:group,idxInGroup:idxInGroup};
+    });
     markerLayer.addLayer(m); markers.push(m);
   });
 }
@@ -1434,7 +1556,11 @@ function updateStats(){
 function focusProp(fi){
   const p=filtered[fi];
   map.setView([p.lat,p.lng],15);
-  if(markers[fi]) markers[fi].openPopup();
+  const info=fiMarkerIndex[fi];
+  if(info){
+    if(info.group.items.length>1) showGroupItem(info.gid,info.idxInGroup);
+    info.marker.openPopup();
+  }
   highlightItem(fi);
 }
 function highlightItem(fi){
