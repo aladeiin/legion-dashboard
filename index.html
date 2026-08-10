@@ -292,6 +292,25 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .act-meta{font-size:11px;color:var(--text3);margin-top:2px}
 .act-by{font-size:10px;color:var(--text2);background:var(--bg2);padding:2px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0}
 
+/* ── MANAGE PROPERTIES VIEW ── */
+.manage-toolbar{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.manage-toolbar input,.manage-toolbar select{padding:8px 10px;font-size:12px}
+.manage-actionbar{display:flex;align-items:center;gap:10px;background:var(--white);border:1.5px solid var(--navy);border-radius:8px;padding:10px 14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.manage-actionbar #manage-selected-count{font-size:12px;font-weight:600;color:var(--navy)}
+.manage-delete-btn{padding:7px 16px;background:var(--rented);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.manage-delete-btn:hover{background:#7a1c2a}
+.manage-table-wrap{background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:auto;max-height:calc(100vh - 220px)}
+.manage-table{width:100%;border-collapse:collapse;font-size:12px}
+.manage-table thead th{position:sticky;top:0;background:var(--bg2);color:var(--text2);text-align:left;padding:9px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid var(--border);z-index:2}
+.mg-th-check{width:36px}
+.manage-table tbody tr{border-bottom:1px solid var(--border);cursor:pointer}
+.manage-table tbody tr:hover{background:var(--bg)}
+.manage-table tbody tr.mg-selected{background:#EEF3FB}
+.manage-table td{padding:8px 12px;vertical-align:top}
+.manage-table td.mg-td-check{width:36px}
+.mg-name{font-weight:600;color:var(--navy)}
+.mg-sub{font-size:10px;color:var(--text3);margin-top:1px}
+
 /* ── MOBILE RESPONSIVE ── */
 .mobile-toggle{display:none;position:fixed;bottom:20px;left:16px;z-index:1000;background:var(--navy);color:#fff;border:none;border-radius:50%;width:52px;height:52px;font-size:20px;box-shadow:0 4px 16px rgba(27,58,107,.35);cursor:pointer;align-items:center;justify-content:center}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:499}
@@ -322,6 +341,9 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
   .overlay .login-box{margin:auto;border-radius:16px}
   .user-panel{max-width:100%;border-radius:14px 14px 0 0}
   .sidebar-close{display:flex !important}
+  .manage-toolbar{grid-template-columns:1fr}
+  .manage-table{font-size:11px}
+  .manage-table td,.manage-table thead th{padding:7px 8px}
 }
 .sidebar-close{display:none;position:absolute;top:10px;right:10px;background:var(--bg2);border:none;color:var(--text2);width:30px;height:30px;border-radius:8px;font-size:15px;align-items:center;justify-content:center;cursor:pointer;z-index:10}
 
@@ -493,6 +515,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     <button class="topbar-btn" id="nav-add" onclick="switchView('add')" style="display:none">➕ Add Property</button>
     <button class="topbar-btn" id="nav-market" onclick="switchView('market')">🏢 Market Map</button>
     <button class="topbar-btn" id="nav-activity" onclick="switchView('activity')">📋 Activity</button>
+    <button class="topbar-btn" id="nav-manage" onclick="switchView('manage')" style="display:none">☑ Manage</button>
     <button class="topbar-btn" id="users-btn" onclick="openUsers()" style="display:none">👥 Team</button>
     <button class="topbar-btn" onclick="doLogout()">Sign out</button>
   </div>
@@ -757,6 +780,41 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <button id="act-filter-mine" onclick="setActivityFilter(true)">My Uploads</button>
       </div>
       <div id="activity-list"></div>
+    </div>
+  </div>
+
+  <!-- MANAGE PROPERTIES VIEW (bulk select + delete) -->
+  <div class="view-panel" id="view-manage" style="display:none">
+    <div class="view-container" style="max-width:920px">
+      <div class="manage-toolbar">
+        <input class="fs" type="text" id="mg-search" placeholder="Search by name or micro-market..." oninput="renderManageTable()"/>
+        <select class="fs" id="mg-market" onchange="renderManageTable()"><option value="">All Markets</option></select>
+        <select class="fs" id="mg-status" onchange="renderManageTable()">
+          <option value="">All Status</option><option value="Available">Available</option>
+          <option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option>
+        </select>
+        <select class="fs" id="mg-spacetype" onchange="renderManageTable()">
+          <option value="">All Types</option><option value="Conventional">Conventional</option><option value="Managed">Managed Office</option>
+        </select>
+      </div>
+      <div class="manage-actionbar" id="manage-actionbar" style="display:none">
+        <span id="manage-selected-count">0 selected</span>
+        <span class="spacer"></span>
+        <button class="cbtn" onclick="clearManageSelection()">Clear Selection</button>
+        <button class="manage-delete-btn" onclick="bulkDeleteSelected()">🗑 Delete Selected</button>
+      </div>
+      <div class="manage-table-wrap">
+        <table class="manage-table">
+          <thead>
+            <tr>
+              <th class="mg-th-check"><input type="checkbox" id="mg-select-all" onchange="toggleSelectAllManage(this.checked)"/></th>
+              <th>Name</th><th>Market</th><th>Type</th><th>Status</th><th>Details</th><th>Added By</th>
+            </tr>
+          </thead>
+          <tbody id="manage-tbody"></tbody>
+        </table>
+        <div id="manage-empty" style="display:none;text-align:center;padding:30px;color:var(--text3);font-size:12px">No properties match your filters</div>
+      </div>
     </div>
   </div>
 
@@ -1196,7 +1254,10 @@ async function enterApp(user){
   rb.textContent=user.role.charAt(0).toUpperCase()+user.role.slice(1);
   rb.className='role-badge role-'+user.role;
   document.getElementById('topbar-name').textContent = user.name;
-  if(user.role==='admin') document.getElementById('users-btn').style.display='block';
+  if(user.role==='admin'){
+    document.getElementById('users-btn').style.display='block';
+    document.getElementById('nav-manage').style.display='block';
+  }
   if(user.role==='admin'||user.role==='editor'){
     document.getElementById('nav-add').style.display='block';
     document.getElementById('market-admin-controls').style.display='block';
@@ -1225,23 +1286,28 @@ async function doLogout(){
   document.getElementById('login-err').style.display='none';
   document.getElementById('users-btn').style.display='none';
   document.getElementById('nav-add').style.display='none';
+  document.getElementById('nav-manage').style.display='none';
   document.getElementById('market-admin-controls').style.display='none';
 }
 
 // ── VIEW SWITCHING ──────────────────────────────────
 function switchView(view){
   if(view==='add' && !(currentUser&&(currentUser.role==='admin'||currentUser.role==='editor'))) view='map';
+  if(view==='manage' && !(currentUser&&currentUser.role==='admin')) view='map';
   document.getElementById('view-map').style.display = view==='map' ? 'flex' : 'none';
   document.getElementById('view-add').style.display = view==='add' ? 'block' : 'none';
   document.getElementById('view-market').style.display = view==='market' ? 'flex' : 'none';
   document.getElementById('view-activity').style.display = view==='activity' ? 'block' : 'none';
+  document.getElementById('view-manage').style.display = view==='manage' ? 'block' : 'none';
   document.getElementById('nav-map').classList.toggle('active', view==='map');
   document.getElementById('nav-add').classList.toggle('active', view==='add');
   document.getElementById('nav-market').classList.toggle('active', view==='market');
   document.getElementById('nav-activity').classList.toggle('active', view==='activity');
+  document.getElementById('nav-manage').classList.toggle('active', view==='manage');
   if(view==='activity') renderActivity();
   if(view==='map' && map) setTimeout(()=>map.invalidateSize(), 50);
   if(view==='market') ensureMarketLoaded();
+  if(view==='manage') renderManageTable();
 }
 
 function initMap(){
@@ -1652,6 +1718,124 @@ async function deleteProperty(){
     showToast('Delete failed - check connection','error');
   }
 }
+
+// ── MANAGE PROPERTIES (bulk select + delete) ──────────
+var manageSelected=new Set(); // _dbId values
+function manageFilteredProps(){
+  const search=(document.getElementById('mg-search').value||'').trim().toLowerCase();
+  const mkt=document.getElementById('mg-market').value;
+  const sts=document.getElementById('mg-status').value;
+  const spaceType=document.getElementById('mg-spacetype').value;
+  return props.filter(function(p){
+    if(search){
+      const hay=((p.name||'')+' '+(p.market||'')+' '+(p.operator||'')).toLowerCase();
+      if(hay.indexOf(search)===-1) return false;
+    }
+    if(mkt&&p.market!==mkt) return false;
+    if(sts&&p.status!==sts) return false;
+    if(spaceType&&(p.space_type||'Conventional')!==spaceType) return false;
+    return true;
+  });
+}
+function renderManageTable(){
+  const marketSel=document.getElementById('mg-market');
+  const curMarket=marketSel.value;
+  marketSel.innerHTML='<option value="">All Markets</option>'+MARKETS.map(m=>`<option value="${m}">${m}</option>`).join('');
+  marketSel.value=MARKETS.includes(curMarket)?curMarket:'';
+
+  const list=manageFilteredProps();
+  const tbody=document.getElementById('manage-tbody');
+  document.getElementById('manage-empty').style.display=list.length?'none':'block';
+  tbody.innerHTML=list.map(function(p){
+    const isManaged=p.space_type==='Managed';
+    const details=isManaged
+      ? (p.operator||'—')+(p.seats?' · '+p.seats+' seats':'')
+      : (p.area?parseInt(p.area).toLocaleString()+' sqft':'—')+(p.rate?' · ₹'+p.rate+' PSF':'');
+    const checked=manageSelected.has(p._dbId)?'checked':'';
+    const rowClass=manageSelected.has(p._dbId)?' mg-selected':'';
+    return `<tr class="mg-row${rowClass}" data-dbid="${p._dbId}" onclick="if(event.target.type!=='checkbox')toggleManageRow(${p._dbId},null)">
+      <td class="mg-td-check"><input type="checkbox" onclick="event.stopPropagation()" onchange="toggleManageRow(${p._dbId},this.checked)" ${checked}/></td>
+      <td><div class="mg-name">${p.name}</div><div class="mg-sub">${p.code||''}</div></td>
+      <td>${p.market||'—'}</td>
+      <td>${isManaged?'Managed':'Conventional'}</td>
+      <td><span class="tag ${p.status==='Available'?'ta':p.status==='Rented Out'?'tr':'tn'}">${p.status||'—'}</span></td>
+      <td>${details}</td>
+      <td>${p.created_by||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Selections for rows no longer in view stay remembered, but the
+  // header checkbox should only reflect what's currently visible.
+  const selectAll=document.getElementById('mg-select-all');
+  selectAll.checked=list.length>0&&list.every(p=>manageSelected.has(p._dbId));
+  selectAll.indeterminate=!selectAll.checked&&list.some(p=>manageSelected.has(p._dbId));
+
+  updateManageActionbar();
+}
+// Toggling selection updates only the affected row(s) in place rather than
+// re-rendering the whole table - with a large portfolio (1000s of rows)
+// rebuilding every row's HTML on every single checkbox click would be
+// wasteful and janky.
+function setManageRowDom(dbId,checked){
+  var row=document.querySelector('#manage-tbody tr[data-dbid="'+dbId+'"]');
+  if(!row) return;
+  row.classList.toggle('mg-selected',checked);
+  var cb=row.querySelector('input[type=checkbox]');
+  if(cb) cb.checked=checked;
+}
+function updateManageSelectAllState(){
+  var list=manageFilteredProps();
+  var selectAll=document.getElementById('mg-select-all');
+  selectAll.checked=list.length>0&&list.every(function(p){return manageSelected.has(p._dbId);});
+  selectAll.indeterminate=!selectAll.checked&&list.some(function(p){return manageSelected.has(p._dbId);});
+}
+function toggleManageRow(dbId,checked){
+  if(checked===null) checked=!manageSelected.has(dbId);
+  if(checked) manageSelected.add(dbId); else manageSelected.delete(dbId);
+  setManageRowDom(dbId,checked);
+  updateManageSelectAllState();
+  updateManageActionbar();
+}
+function toggleSelectAllManage(checked){
+  manageFilteredProps().forEach(function(p){
+    if(checked) manageSelected.add(p._dbId); else manageSelected.delete(p._dbId);
+    setManageRowDom(p._dbId,checked);
+  });
+  updateManageActionbar();
+}
+function clearManageSelection(){
+  manageSelected.forEach(function(dbId){ setManageRowDom(dbId,false); });
+  manageSelected.clear();
+  const selectAll=document.getElementById('mg-select-all');
+  selectAll.checked=false; selectAll.indeterminate=false;
+  updateManageActionbar();
+}
+function updateManageActionbar(){
+  const bar=document.getElementById('manage-actionbar');
+  const n=manageSelected.size;
+  bar.style.display=n>0?'flex':'none';
+  document.getElementById('manage-selected-count').textContent=n+' selected';
+}
+async function bulkDeleteSelected(){
+  if(!currentUser||currentUser.role!=='admin') return;
+  const ids=Array.from(manageSelected);
+  if(!ids.length) return;
+  if(!confirm('Delete '+ids.length+' propert'+(ids.length===1?'y':'ies')+' permanently? This cannot be undone.')) return;
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/properties?id=in.('+ids.join(',')+')',{
+      method:'DELETE',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(!res.ok) throw new Error('Bulk delete failed: '+res.status);
+    manageSelected.clear();
+    await refreshProps();
+    renderManageTable();
+    showToast(ids.length+' propert'+(ids.length===1?'y':'ies')+' deleted','success');
+  }catch(err){
+    showToast('Bulk delete failed - check connection','error');
+  }
+}
+
 async function saveEdit(){
   if(editIdx===null) return;
   document.getElementById('ep-saving').style.display='block';
