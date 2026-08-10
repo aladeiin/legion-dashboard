@@ -974,7 +974,8 @@ function renderMarketSpaces(){
   const filtered=filterOp?MARKET_SPACES.filter(m=>m.operator===filterOp):MARKET_SPACES;
 
   marketMarkerLayer.clearLayers(); marketMarkers=[];
-  filtered.forEach(m=>{
+  const spread=spreadCollocated(filtered);
+  spread.forEach(m=>{
     if(m.lat==null||m.lng==null) return;
     const mk=L.marker([m.lat,m.lng],{icon:getMarketIcon(m)});
     const canManage=currentUser&&(currentUser.role==='admin'||currentUser.role==='editor');
@@ -1356,9 +1357,39 @@ function clearFilters(){
   applyFilters();
 }
 
+// When multiple listings share (nearly) the same coordinates - e.g.
+// several managed-office operators inside the same building - plain
+// overlapping markers would hide every one but the topmost, with no way
+// to tell there's more than one. Nudges duplicates into a small visible
+// fan around the shared point so each gets its own clickable pin, without
+// touching the underlying stored lat/lng of the actual listing.
+function spreadCollocated(items){
+  var groups={};
+  items.forEach(function(it,idx){
+    if(it.lat==null||it.lng==null) return;
+    var key=Number(it.lat).toFixed(4)+','+Number(it.lng).toFixed(4);
+    (groups[key]=groups[key]||[]).push(idx);
+  });
+  var adjusted=items.slice();
+  Object.keys(groups).forEach(function(key){
+    var idxs=groups[key];
+    if(idxs.length<=1) return;
+    var n=idxs.length;
+    var radius=0.00035; // ~35-40m, visible when zoomed into a building, negligible city-wide
+    idxs.forEach(function(idx,i){
+      if(i===0) return; // first stays exactly on the real point
+      var angle=(2*Math.PI*i)/n;
+      var it=items[idx];
+      adjusted[idx]=Object.assign({},it,{lat:it.lat+radius*Math.sin(angle),lng:it.lng+radius*Math.cos(angle)});
+    });
+  });
+  return adjusted;
+}
+
 function renderMarkers(){
   markerLayer.clearLayers(); markers=[];
-  filtered.forEach((p,fi)=>{
+  var spread=spreadCollocated(filtered);
+  spread.forEach((p,fi)=>{
     const m=L.marker([p.lat,p.lng],{icon:getIcon(p)});
     m.bindPopup(makePopup(p,p._origIdx),{className:'custom-popup',maxWidth:280,offset:[0,-2]});
     m.on('click',()=>highlightItem(fi));
