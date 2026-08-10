@@ -130,6 +130,29 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .pu{padding:0}
 .pu-photo{width:100%;height:120px;object-fit:cover;border-radius:7px 7px 0 0;display:block}
 .pu-photo-placeholder{width:100%;height:72px;background:linear-gradient(135deg,var(--navy),var(--navy-light));border-radius:7px 7px 0 0;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,.4)}
+.pu-carousel{position:relative;overflow:hidden;border-radius:7px 7px 0 0;touch-action:pan-y}
+.pu-slides{display:flex;transition:transform .25s ease}
+.pu-slide{flex:0 0 100%;width:100%;height:140px;object-fit:cover;display:block;background:var(--bg2)}
+.pu-arrow{position:absolute;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;border:none;font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;padding:0}
+.pu-arrow:hover{background:rgba(0,0,0,.65)}
+.pu-prev{left:6px}
+.pu-next{right:6px}
+.pu-dots{position:absolute;bottom:6px;left:0;right:0;display:flex;justify-content:center;gap:4px;z-index:5}
+.pu-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.6);cursor:pointer;transition:.15s}
+.pu-dot.active{background:#fff;width:14px;border-radius:3px}
+.pu-count{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.5);color:#fff;font-size:9px;padding:2px 7px;border-radius:8px;z-index:5}
+/* ── MULTI-LISTING CAROUSEL (one map pin, several listings) ── */
+.pu-lc{padding:0}
+.pu-lc-head{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;text-align:center;padding:10px 12px 8px;border-bottom:1px solid var(--border)}
+.pu-lc-viewport{position:relative;overflow:hidden;touch-action:pan-y}
+.pu-lc-track{display:flex;transition:transform .25s ease}
+.pu-lc-slide{flex:0 0 100%;width:100%}
+.pu-lc-nav{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 10px 10px;border-top:1px solid var(--border)}
+.pu-lc-navbtn{width:26px;height:26px;border-radius:50%;background:var(--bg);color:var(--navy);border:1.5px solid var(--border);font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+.pu-lc-navbtn:hover{background:var(--bg2);border-color:var(--border2)}
+.pu-lc-dots{position:static}
+.pu-lc-dots .pu-dot{background:var(--border2)}
+.pu-lc-dots .pu-dot.active{background:var(--navy)}
 .pu-body{padding:12px}
 .pu-name{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:1px;line-height:1.3}
 .pu-mkt{font-size:10px;color:var(--text3);margin-bottom:6px}
@@ -980,30 +1003,24 @@ function buildSingleMarketPopup(m){
   </div></div>`;
 }
 
-var marketGroupPopupRegistry={};
-function buildMarketGroupListHtml(gid, group){
-  var rows=group.items.map(function(m,i){
-    return '<div style="padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer" onclick="showMarketGroupItem(\''+gid+'\','+i+')">'+
-      '<div style="font-size:12px;font-weight:600;color:var(--navy)">'+m.name+'</div>'+
-      '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(m.operator||'—')+'</div>'+
-    '</div>';
-  }).join('');
-  return '<div class="pu"><div class="pu-body">'+
-    '<div class="pu-name">'+(group.items[0].market||'')+' · '+group.items.length+' operators here</div>'+
-    '<div style="max-height:280px;overflow-y:auto;margin-top:6px">'+rows+'</div>'+
-  '</div></div>';
-}
-function showMarketGroupList(gid){
-  var entry=marketGroupPopupRegistry[gid];
-  if(!entry) return;
-  entry.marker.setPopupContent(buildMarketGroupListHtml(gid, entry.group));
-}
-function showMarketGroupItem(gid, i){
-  var entry=marketGroupPopupRegistry[gid];
-  if(!entry) return;
-  var m=entry.group.items[i];
-  var backLink='<div onclick="showMarketGroupList(\''+gid+'\')" style="font-size:11px;color:var(--navy);font-weight:600;cursor:pointer;padding:10px 14px 0">← All '+entry.group.items.length+' here</div>';
-  entry.marker.setPopupContent(backLink+buildSingleMarketPopup(m));
+// Same slide-carousel technique as buildGroupCarouselHtml above, bound
+// once with every operator's card embedded rather than swapped in later.
+function buildMarketGroupCarouselHtml(gid, group, startIndex){
+  var start=startIndex||0;
+  var n=group.items.length;
+  var slides=group.items.map(function(m){ return '<div class="pu-lc-slide">'+buildSingleMarketPopup(m)+'</div>'; }).join('');
+  var dots=group.items.map(function(_,i){ return '<div class="pu-dot'+(i===start?' active':'')+'" onclick="goListingSlide(\''+gid+'\','+i+')"></div>'; }).join('');
+  return '<div class="pu-lc" id="'+gid+'">'+
+    '<div class="pu-lc-head">'+(group.items[0].market||'')+' · <span id="'+gid+'-pos">'+(start+1)+'</span>/'+n+' operators here</div>'+
+    '<div class="pu-lc-viewport" ontouchstart="carouselTouchStart(event,\''+gid+'\')" ontouchend="carouselTouchEnd(event,\''+gid+'\',\'listing\')">'+
+      '<div class="pu-lc-track" id="'+gid+'-track" style="transform:translateX(-'+(start*100)+'%)">'+slides+'</div>'+
+    '</div>'+
+    '<div class="pu-lc-nav">'+
+      '<button class="pu-lc-navbtn" onclick="goListingSlide(\''+gid+'\',-1,true)">‹</button>'+
+      '<div class="pu-dots pu-lc-dots">'+dots+'</div>'+
+      '<button class="pu-lc-navbtn" onclick="goListingSlide(\''+gid+'\',1,true)">›</button>'+
+    '</div>'+
+  '</div>';
 }
 
 var marketGroupIconCache={};
@@ -1037,7 +1054,7 @@ function renderMarketSpaces(){
   const filterOp=sel.value;
   const filtered=filterOp?MARKET_SPACES.filter(m=>m.operator===filterOp):MARKET_SPACES;
 
-  marketMarkerLayer.clearLayers(); marketMarkers=[]; marketGroupPopupRegistry={};
+  marketMarkerLayer.clearLayers(); marketMarkers=[];
   const groups=groupByLocation(filtered);
   groups.forEach((group,gi)=>{
     var gid='mg'+gi;
@@ -1045,8 +1062,7 @@ function renderMarketSpaces(){
     if(group.items.length===1){
       mk.bindPopup(buildSingleMarketPopup(group.items[0]),{className:'custom-popup',maxWidth:260});
     }else{
-      mk.bindPopup(buildMarketGroupListHtml(gid,group),{className:'custom-popup',maxWidth:260});
-      marketGroupPopupRegistry[gid]={marker:mk,group:group};
+      mk.bindPopup(buildMarketGroupCarouselHtml(gid,group,0),{className:'custom-popup',maxWidth:300});
     }
     marketMarkerLayer.addLayer(mk); marketMarkers.push(mk);
   });
@@ -1314,7 +1330,7 @@ function makePopup(p,idx){
   let carouselHtml='';
   if(photos.length>0){
     const dots=photos.map((_,i)=>`<div class="pu-dot${i===0?' active':''}" onclick="goSlide('${uid}',${i})"></div>`).join('');
-    carouselHtml=`<div class="pu-carousel" id="${uid}">
+    carouselHtml=`<div class="pu-carousel" id="${uid}" ontouchstart="carouselTouchStart(event,'${uid}')" ontouchend="carouselTouchEnd(event,'${uid}','photo')">
       <div class="pu-slides" id="${uid}-slides">
         ${photos.map((url,i)=>`<img class="pu-slide" src="${url}" onerror="this.src=''" alt="Photo ${i+1}"/>`).join('')}
       </div>
@@ -1382,6 +1398,23 @@ function goSlide(uid,val,relative){
   if(count) count.textContent=(next+1)+'/'+n;
 }
 
+// Shared swipe detection for both the photo carousel and the multi-listing
+// carousel below - a horizontal drag past the threshold advances/retreats
+// one slide, same as tapping an arrow.
+var carouselTouchX={};
+function carouselTouchStart(e,id){
+  carouselTouchX[id]=e.touches[0].clientX;
+}
+function carouselTouchEnd(e,id,kind){
+  var startX=carouselTouchX[id];
+  carouselTouchX[id]=null;
+  if(startX==null) return;
+  var dx=e.changedTouches[0].clientX-startX;
+  if(Math.abs(dx)<40) return;
+  if(kind==='photo') goSlide(id,dx<0?1:-1,true);
+  else goListingSlide(id,dx<0?1:-1,true);
+}
+
 function applyFilters(){
   const search=(document.getElementById('f-search').value||'').trim().toLowerCase();
   const mkt=document.getElementById('f-market').value;
@@ -1434,37 +1467,43 @@ function groupByLocation(items){
   return order.map(function(key){ return groups[key]; });
 }
 
-// Registry + popup builders for grouped ("N listings here") markers, so
-// the row onclick handlers (which run in global scope) can find the right
-// marker/group to update. gid identifies one group for one render pass.
-var groupPopupRegistry={};
-function buildGroupListHtml(gid, group){
-  var rows=group.items.map(function(p,i){
-    var isManaged=p.space_type==='Managed';
-    var sub=isManaged
-      ? (p.operator||'Managed')+(p.seats?' · '+p.seats+' seats':'')
-      : (p.area?parseInt(p.area).toLocaleString()+' sqft':'')+(p.rate?' · ₹'+p.rate+' PSF':'');
-    return '<div style="padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer" onclick="showGroupItem(\''+gid+'\','+i+')">'+
-      '<div style="font-size:12px;font-weight:600;color:var(--navy)">'+p.name+'</div>'+
-      '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(p.status||'')+' · '+sub+'</div>'+
-    '</div>';
-  }).join('');
-  return '<div class="pu"><div class="pu-body">'+
-    '<div class="pu-name">'+(group.items[0].market||'')+' · '+group.items.length+' listings here</div>'+
-    '<div style="max-height:280px;overflow-y:auto;margin-top:6px">'+rows+'</div>'+
-  '</div></div>';
+// Every listing's full card is rendered into the popup up front, as slides
+// in a horizontal track (same technique as the photo carousel above) - the
+// whole thing is bound to the marker ONCE. Navigating between listings is
+// then pure CSS transform + class toggles, never touching Leaflet's popup
+// content again, which avoids Leaflet's popup-content-swap quirks (a live
+// setPopupContent() approach was tried first and turned out to close the
+// popup on click instead of updating it).
+function buildGroupCarouselHtml(gid, group, startIndex){
+  var start=startIndex||0;
+  var n=group.items.length;
+  var slides=group.items.map(function(p){ return '<div class="pu-lc-slide">'+makePopup(p,p._origIdx)+'</div>'; }).join('');
+  var dots=group.items.map(function(_,i){ return '<div class="pu-dot'+(i===start?' active':'')+'" onclick="goListingSlide(\''+gid+'\','+i+')"></div>'; }).join('');
+  return '<div class="pu-lc" id="'+gid+'">'+
+    '<div class="pu-lc-head">'+(group.items[0].market||'')+' · <span id="'+gid+'-pos">'+(start+1)+'</span>/'+n+' listings here</div>'+
+    '<div class="pu-lc-viewport" ontouchstart="carouselTouchStart(event,\''+gid+'\')" ontouchend="carouselTouchEnd(event,\''+gid+'\',\'listing\')">'+
+      '<div class="pu-lc-track" id="'+gid+'-track" style="transform:translateX(-'+(start*100)+'%)">'+slides+'</div>'+
+    '</div>'+
+    '<div class="pu-lc-nav">'+
+      '<button class="pu-lc-navbtn" onclick="goListingSlide(\''+gid+'\',-1,true)">‹</button>'+
+      '<div class="pu-dots pu-lc-dots">'+dots+'</div>'+
+      '<button class="pu-lc-navbtn" onclick="goListingSlide(\''+gid+'\',1,true)">›</button>'+
+    '</div>'+
+  '</div>';
 }
-function showGroupList(gid){
-  var entry=groupPopupRegistry[gid];
-  if(!entry) return;
-  entry.marker.setPopupContent(buildGroupListHtml(gid, entry.group));
-}
-function showGroupItem(gid, i){
-  var entry=groupPopupRegistry[gid];
-  if(!entry) return;
-  var p=entry.group.items[i];
-  var backLink='<div onclick="showGroupList(\''+gid+'\')" style="font-size:11px;color:var(--navy);font-weight:600;cursor:pointer;padding:10px 14px 0">← All '+entry.group.items.length+' listings here</div>';
-  entry.marker.setPopupContent(backLink+makePopup(p,p._origIdx));
+var listingCarouselState={};
+function goListingSlide(gid,val,relative){
+  var track=document.getElementById(gid+'-track');
+  if(!track) return;
+  var n=track.querySelectorAll('.pu-lc-slide').length;
+  if(!n) return;
+  var cur=listingCarouselState[gid]||0;
+  var next=relative?(cur+val+n)%n:val;
+  listingCarouselState[gid]=next;
+  track.style.transform='translateX(-'+next+'00%)';
+  document.querySelectorAll('#'+gid+' .pu-lc-dots .pu-dot').forEach(function(d,i){ d.classList.toggle('active',i===next); });
+  var pos=document.getElementById(gid+'-pos');
+  if(pos) pos.textContent=(next+1);
 }
 
 var groupIconCache={};
@@ -1499,7 +1538,7 @@ function getGroupIcon(group){
 }
 
 function renderMarkers(){
-  markerLayer.clearLayers(); markers=[]; fiMarkerIndex={}; groupPopupRegistry={};
+  markerLayer.clearLayers(); markers=[]; fiMarkerIndex={};
   var groups=groupByLocation(filtered);
   groups.forEach((group,gi)=>{
     var gid='g'+gi;
@@ -1508,8 +1547,7 @@ function renderMarkers(){
       var only=group.items[0];
       m.bindPopup(makePopup(only,only._origIdx),{className:'custom-popup',maxWidth:280,offset:[0,-2]});
     }else{
-      m.bindPopup(buildGroupListHtml(gid,group),{className:'custom-popup',maxWidth:280,offset:[0,-2]});
-      groupPopupRegistry[gid]={marker:m,group:group};
+      m.bindPopup(buildGroupCarouselHtml(gid,group,0),{className:'custom-popup',maxWidth:300,offset:[0,-2]});
     }
     m.on('click',()=>highlightItem(group.fis[0]));
     group.fis.forEach(function(fi,idxInGroup){
@@ -1558,8 +1596,12 @@ function focusProp(fi){
   map.setView([p.lat,p.lng],15);
   const info=fiMarkerIndex[fi];
   if(info){
-    if(info.group.items.length>1) showGroupItem(info.gid,info.idxInGroup);
     info.marker.openPopup();
+    if(info.group.items.length>1){
+      // Popup content already has every slide embedded (bound once at
+      // render time) - just jump the existing carousel to the right one.
+      setTimeout(()=>goListingSlide(info.gid,info.idxInGroup,false),0);
+    }
   }
   highlightItem(fi);
 }
