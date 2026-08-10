@@ -117,6 +117,10 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 /* ── MAP ── */
 .map-wrap{flex:1;position:relative}
 #map{width:100%;height:100%}
+.map-legend{position:absolute;bottom:22px;right:10px;z-index:450;background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;box-shadow:var(--shadow-md);font-size:11px;color:var(--text2);display:flex;flex-direction:column;gap:6px}
+.map-legend-item{display:flex;align-items:center;gap:7px}
+.map-legend-dot{width:11px;height:11px;border-radius:50%;background:#1B3A6B;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25);flex-shrink:0}
+.map-legend-badge{width:14px;height:14px;border-radius:4px;background:#1B3A6B;border:2px solid #1B3A6B;flex-shrink:0}
 
 /* ── POPUP ── */
 .custom-popup .leaflet-popup-content-wrapper{background:var(--white);border:1.5px solid var(--border);border-top:3px solid var(--navy);border-radius:10px;box-shadow:var(--shadow-md);padding:0;min-width:240px;max-width:280px}
@@ -341,11 +345,18 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
       <button class="ep-close" onclick="closeEdit()">✕</button>
     </div>
     <div class="ep-body">
-      <div class="ep-section">Availability & Pricing</div>
+      <div class="ep-section">Space Type</div>
       <div class="ep-grid">
+        <div class="ep-field"><label>Category</label>
+          <select id="ef-spacetype" onchange="onSpaceTypeChange('ef')"><option value="Conventional">Conventional (per sqft)</option><option value="Managed">Managed Office (per seat)</option></select>
+        </div>
         <div class="ep-field"><label>Status</label>
           <select id="ef-status"><option value="Available">Available</option><option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option></select>
         </div>
+      </div>
+      <div id="ef-conventional-fields">
+      <div class="ep-section">Availability & Pricing</div>
+      <div class="ep-grid">
         <div class="ep-field"><label>Furnishing</label>
           <select id="ef-furnish"><option value="Bare Shell">Bare Shell</option><option value="Furnished">Furnished</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Plug & Play">Plug & Play</option></select>
         </div>
@@ -357,6 +368,21 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <div class="ep-field"><label>Lease Tenure (years)</label><input type="text" id="ef-tenure"/></div>
         <div class="ep-field"><label>Escalation (%)</label><input type="text" id="ef-escal"/></div>
         <div class="ep-field"><label>Parking Ratio</label><input type="text" id="ef-parking"/></div>
+      </div>
+      </div>
+      <div id="ef-managed-fields" style="display:none">
+      <div class="ep-section">Managed Office Details</div>
+      <div class="ep-grid">
+        <div class="ep-field"><label>Operator / Brand</label><input type="text" id="ef-operator" placeholder="e.g. WeWork"/></div>
+        <div class="ep-field"><label>Plan Type</label>
+          <select id="ef-plantype"><option value="">Select...</option><option value="Hot Desk">Hot Desk</option><option value="Dedicated Desk">Dedicated Desk</option><option value="Private Cabin">Private Cabin</option><option value="Managed Floor">Managed Floor</option></select>
+        </div>
+        <div class="ep-field"><label>Seats</label><input type="text" id="ef-seats"/></div>
+        <div class="ep-field"><label>Price per Seat (₹/month)</label><input type="text" id="ef-priceperseat"/></div>
+        <div class="ep-field"><label>Minimum Commitment (months)</label><input type="text" id="ef-mincommitment"/></div>
+        <div class="ep-field"><label>Logo URL</label><input type="text" id="ef-logourl" placeholder="https://..."/></div>
+      </div>
+      <div class="field-hint" style="margin:-6px 0 4px 2px">Logo is used for this operator's map pin - leave blank for an auto-generated initials badge.</div>
       </div>
       <div class="ep-section">Amenities</div>
       <div class="ep-grid">
@@ -455,6 +481,12 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <div class="sidebar-section-title">Search</div>
         <div class="fg"><input class="fs" type="text" id="f-search" placeholder="Search by name or micro-market..." oninput="applyFilters()"/></div>
         <div class="sidebar-section-title">Filters</div>
+        <div class="fg"><span class="fl">Space Type</span>
+          <select class="fs" id="f-spacetype">
+            <option value="">All</option><option value="Conventional">Conventional</option>
+            <option value="Managed">Managed Office</option>
+          </select>
+        </div>
         <div class="fg"><span class="fl">Micro-Market</span><select class="fs" id="f-market"><option value="">All Markets</option></select></div>
         <div class="fg"><span class="fl">Status</span>
           <select class="fs" id="f-status">
@@ -481,7 +513,13 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <div id="pli"></div>
       </div>
     </div>
-    <div class="map-wrap"><div id="map"></div></div>
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div class="map-legend">
+        <div class="map-legend-item"><span class="map-legend-dot"></span> Conventional</div>
+        <div class="map-legend-item"><span class="map-legend-badge"></span> Managed Office</div>
+      </div>
+    </div>
     <button class="mobile-toggle" id="mobile-toggle" onclick="toggleSidebar()">☰</button>
   </div>
 
@@ -562,6 +600,9 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
             <div class="field"><label>Property Name </label><input type="text" id="nf-name" placeholder="e.g. Tech Park Unit 402"/></div>
           </div>
           <div class="form-grid">
+            <div class="field"><label>Space Type </label>
+              <select id="nf-spacetype" onchange="onSpaceTypeChange('nf')"><option value="Conventional">Conventional (per sqft)</option><option value="Managed">Managed Office (per seat)</option></select>
+            </div>
             <div class="field"><label>Micro-Market </label><input type="text" id="nf-market" placeholder="e.g. Kharadi"/></div>
             <div class="field"><label>Status </label>
               <select id="nf-status"><option value="Available">Available</option><option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option></select>
@@ -572,6 +613,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
             <div class="field"><label>Floor</label><input type="text" id="nf-floor" placeholder="e.g. 4th Floor"/></div>
           </div>
         </div>
+        <div id="nf-conventional-fields">
         <div class="form-card">
           <div class="form-section">Area</div>
           <div class="form-grid">
@@ -590,6 +632,22 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
             <div class="field"><label>Lease Tenure (years) </label><input type="text" id="nf-tenure" placeholder="e.g. 5"/></div>
             <div class="field"><label>Escalation </label><input type="text" id="nf-escal" placeholder="e.g. 5% per year"/></div>
           </div>
+        </div>
+        </div>
+        <div id="nf-managed-fields" style="display:none">
+        <div class="form-card">
+          <div class="form-section">Managed Office Details</div>
+          <div class="form-grid">
+            <div class="field"><label>Operator / Brand </label><input type="text" id="nf-operator" placeholder="e.g. WeWork"/></div>
+            <div class="field"><label>Plan Type</label>
+              <select id="nf-plantype"><option value="">Select...</option><option value="Hot Desk">Hot Desk</option><option value="Dedicated Desk">Dedicated Desk</option><option value="Private Cabin">Private Cabin</option><option value="Managed Floor">Managed Floor</option></select>
+            </div>
+            <div class="field"><label>Seats </label><input type="text" id="nf-seats" placeholder="e.g. 25"/></div>
+            <div class="field"><label>Price per Seat (₹/month) </label><input type="text" id="nf-priceperseat" placeholder="e.g. 8000"/></div>
+            <div class="field"><label>Minimum Commitment (months)</label><input type="text" id="nf-mincommitment" placeholder="e.g. 12"/></div>
+            <div class="field"><label>Logo URL (optional)</label><input type="text" id="nf-logourl" placeholder="https://..."/><span class="field-hint">Used for this operator's map pin - leave blank for an auto-generated badge</span></div>
+          </div>
+        </div>
         </div>
         <div class="form-card">
           <div class="form-section">Owner and Contact</div>
@@ -677,6 +735,9 @@ async function loadPropsFromSupabase() {
       photos: r.photos || [], notes: r.notes, lat: r.lat, lng: r.lng,
       edited_by: r.edited_by, edited_at: r.edited_at,
       created_by: r.created_by, created_at: r.created_at,
+      space_type: r.space_type || 'Conventional', operator: r.operator,
+      seats: r.seats, price_per_seat: r.price_per_seat, plan_type: r.plan_type,
+      min_commitment: r.min_commitment, logo_url: r.logo_url,
       _dbId: r.id
     }));
     MARKETS = [...new Set(BASE_PROPS.map(p => p.market).filter(Boolean))].sort();
@@ -848,9 +909,45 @@ const mkIcon=(color,sz,border)=>L.divIcon({className:'',
   html:`<div style="width:${sz}px;height:${sz}px;background:${color};border:2px solid ${border||'#fff'};border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.25)"></div>`,
   iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
 let iAvail,iRented,iNego;
-function getIcon(s){
+function statusColor(s){
+  return s==='Available' ? '#1B3A6B' : s==='Under Negotiation' ? '#C9973A' : '#9B2335';
+}
+// Deterministic color per operator name so the same brand always looks the
+// same on the map, without needing real logo assets for every operator.
+function operatorColor(name){
+  var s=(name||'?').trim();
+  var hash=0;
+  for(var i=0;i<s.length;i++){ hash=(hash*31+s.charCodeAt(i))>>>0; }
+  return 'hsl('+(hash%360)+',55%,40%)';
+}
+function operatorInitials(name){
+  var s=(name||'?').trim();
+  if(!s) return '?';
+  var parts=s.split(/\s+/).filter(Boolean);
+  return parts.length===1 ? parts[0].substring(0,2).toUpperCase() : (parts[0][0]+parts[1][0]).toUpperCase();
+}
+// Managed-office pins get a square logo/initials badge (ringed in the
+// status color) instead of the plain circle, so they read as a distinct
+// category on the map at a glance rather than just another dot.
+var badgeIconCache={};
+function getManagedIcon(p){
+  var key='m|'+(p.operator||'')+'|'+(p.logo_url||'')+'|'+p.status;
+  if(!badgeIconCache[key]){
+    var border=statusColor(p.status);
+    var fallback=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${operatorColor(p.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(p.operator)}</div>`;
+    var inner=p.logo_url
+      ? `<img src="${p.logo_url}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:${operatorColor(p.operator)};color:#fff;font-size:9px;font-weight:700;border-radius:6px">${operatorInitials(p.operator)}</div>`
+      : fallback;
+    badgeIconCache[key]=L.divIcon({className:'',
+      html:`<div style="width:22px;height:22px;border-radius:6px;border:2.5px solid ${border};box-shadow:0 1px 4px rgba(0,0,0,.3);overflow:hidden;background:#fff">${inner}</div>`,
+      iconSize:[22,22],iconAnchor:[11,11]});
+  }
+  return badgeIconCache[key];
+}
+function getIcon(p){
+  if(p.space_type==='Managed') return getManagedIcon(p);
   if(!iAvail){ iAvail=mkIcon('#1B3A6B',11,'#fff'); iRented=mkIcon('#9B2335',8,'#fff'); iNego=mkIcon('#C9973A',9,'#fff'); }
-  return s==='Available'?iAvail:s==='Under Negotiation'?iNego:iRented;
+  return p.status==='Available'?iAvail:p.status==='Under Negotiation'?iNego:iRented;
 }
 
 function statusStyle(s){
@@ -867,6 +964,7 @@ function driveToImg(url){
 }
 
 function makePopup(p,idx){
+  const isManaged=p.space_type==='Managed';
   const rate=p.rate?'₹'+p.rate+' PSF':'—';
   const area=p.area?parseInt(p.area).toLocaleString()+' sqft':'—';
   const canEdit=currentUser&&(currentUser.role==='admin'||currentUser.role==='editor');
@@ -898,9 +996,18 @@ function makePopup(p,idx){
     ${carouselHtml}
     <div class="pu-body">
       <div class="pu-name">${p.name}${isEdited?'<span class="edited-tag">Updated</span>':''}</div>
-      <div class="pu-mkt">📍 ${p.market}</div>
+      <div class="pu-mkt">📍 ${p.market}${isManaged&&p.operator?' · '+p.operator:''}</div>
       <div class="pu-code">${p.code||''}${p.created_by?' · Added by '+p.created_by:''}</div>
       <span class="pu-status" style="${statusStyle(p.status)}">${p.status}</span>
+      ${isManaged?`
+      <div class="pu-grid">
+        <div class="pu-stat"><div class="psl">Seats</div><div class="psv">${p.seats||'—'}</div></div>
+        <div class="pu-stat"><div class="psl">Rate</div><div class="psv">${p.price_per_seat?'₹'+p.price_per_seat+'/seat':'—'}</div></div>
+        <div class="pu-stat"><div class="psl">Plan</div><div class="psv">${p.plan_type||'—'}</div></div>
+        <div class="pu-stat"><div class="psl">Min. Commitment</div><div class="psv">${p.min_commitment?p.min_commitment+' mo':'—'}</div></div>
+        ${p.owner?`<div class="pu-stat"><div class="psl">Owner</div><div class="psv">${p.owner}</div></div>`:''}
+        ${p.phone?`<div class="pu-stat"><div class="psl">Phone</div><div class="psv">${p.phone}</div></div>`:''}
+      </div>`:`
       <div class="pu-grid">
         <div class="pu-stat"><div class="psl">Area</div><div class="psv">${area}</div></div>
         <div class="pu-stat"><div class="psl">Rate</div><div class="psv">${rate}</div></div>
@@ -908,7 +1015,7 @@ function makePopup(p,idx){
         <div class="pu-stat"><div class="psl">Owner</div><div class="psv">${p.owner||'—'}</div></div>
         ${p.cam?`<div class="pu-stat"><div class="psl">CAM</div><div class="psv">₹${p.cam} PSF</div></div>`:''}
         ${p.phone?`<div class="pu-stat"><div class="psl">Phone</div><div class="psv">${p.phone}</div></div>`:''}
-      </div>
+      </div>`}
       <div class="pu-actions">
         ${canEdit?`<button class="pu-btn pu-edit" onclick="openEdit(${idx})">✏️ Edit</button>`:''}
         ${p.video?`<button class="pu-btn pu-video" onclick="window.open('${p.video}','_blank')">▶ Video</button>`:''}
@@ -946,11 +1053,13 @@ function applyFilters(){
   const aMax=parseFloat(document.getElementById('f-amax').value)||Infinity;
   const rMax=parseFloat(document.getElementById('f-rate').value)||Infinity;
   const fur=document.getElementById('f-furnish').value;
+  const spaceType=document.getElementById('f-spacetype').value;
   filtered=props.reduce((acc,p,i)=>{
     if(search){
-      const hay=((p.name||'')+' '+(p.market||'')).toLowerCase();
+      const hay=((p.name||'')+' '+(p.market||'')+' '+(p.operator||'')).toLowerCase();
       if(hay.indexOf(search)===-1) return acc;
     }
+    if(spaceType&&(p.space_type||'Conventional')!==spaceType) return acc;
     if(mkt&&p.market!==mkt) return acc;
     if(sts&&p.status!==sts) return acc;
     if(fur&&p.furnish!==fur) return acc;
@@ -966,7 +1075,7 @@ function applyFilters(){
 
 function clearFilters(){
   document.getElementById('f-search').value='';
-  ['f-market','f-status','f-furnish'].forEach(id=>document.getElementById(id).value='');
+  ['f-market','f-status','f-furnish','f-spacetype'].forEach(id=>document.getElementById(id).value='');
   ['f-amin','f-amax','f-rate'].forEach(id=>document.getElementById(id).value='');
   applyFilters();
 }
@@ -974,7 +1083,7 @@ function clearFilters(){
 function renderMarkers(){
   markerLayer.clearLayers(); markers=[];
   filtered.forEach((p,fi)=>{
-    const m=L.marker([p.lat,p.lng],{icon:getIcon(p.status)});
+    const m=L.marker([p.lat,p.lng],{icon:getIcon(p)});
     m.bindPopup(makePopup(p,p._origIdx),{className:'custom-popup',maxWidth:280,offset:[0,-2]});
     m.on('click',()=>highlightItem(fi));
     markerLayer.addLayer(m); markers.push(m);
@@ -988,14 +1097,21 @@ function renderList(){
   const show=filtered.slice(0,200);
   el.innerHTML=show.map((p,fi)=>{
     const photoUrl=p.photo?driveToImg(p.photo):'';
+    const isManaged=p.space_type==='Managed';
     return `<div class="pi" id="li-${fi}" onclick="focusProp(${fi})">
       ${photoUrl?`<img class="pi-photo-thumb" src="${photoUrl}" onerror="this.style.display='none'" alt=""/>`:''}
       <div class="pi-name">${p.name}</div>
-      <div class="pi-mkt">📍 ${p.market}</div>
+      <div class="pi-mkt">📍 ${p.market}${isManaged&&p.operator?' · '+p.operator:''}</div>
       <div class="pi-row">
         <span class="tag ${p.status==='Available'?'ta':p.status==='Rented Out'?'tr':'tn'}">${p.status}</span>
+        ${isManaged?`
+        <span class="pi-meta">🪑 Managed</span>
+        ${p.seats?`<span class="pi-meta">${p.seats} seats</span>`:''}
+        ${p.price_per_seat?`<span class="pi-meta">₹${p.price_per_seat}/seat</span>`:''}
+        `:`
         ${p.area?`<span class="pi-meta">${parseInt(p.area).toLocaleString()} sqft</span>`:''}
         ${p.rate?`<span class="pi-meta">₹${p.rate} PSF</span>`:''}
+        `}
       </div>
     </div>`;
   }).join('');
@@ -1032,8 +1148,12 @@ function openEdit(origIdx){
     'ef-escal':p.escal,'ef-parking':p.parking,'ef-power':p.power,'ef-ac':p.ac,
     'ef-owner':p.owner,'ef-phone':p.phone,'ef-photo':p.photo,'ef-video':p.video,
     'ef-floorplan':p.floorplan,'ef-maps':p.maps,'ef-notes':p.notes,
-    'ef-lat':p.lat,'ef-lng':p.lng};
+    'ef-lat':p.lat,'ef-lng':p.lng,
+    'ef-operator':p.operator,'ef-plantype':p.plan_type,'ef-seats':p.seats,
+    'ef-priceperseat':p.price_per_seat,'ef-mincommitment':p.min_commitment,'ef-logourl':p.logo_url};
   Object.entries(fields).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val||'';});
+  document.getElementById('ef-spacetype').value=p.space_type==='Managed'?'Managed':'Conventional';
+  onSpaceTypeChange('ef');
   document.getElementById('edit-overlay').classList.remove('hidden');
   document.getElementById('ep-saving').style.display='none';
   document.getElementById('ep-delete-btn').style.display=(currentUser&&currentUser.role==='admin')?'block':'none';
@@ -1071,6 +1191,7 @@ async function saveEdit(){
     lat:latVal,
     lng:lngVal,
     status:document.getElementById('ef-status').value,
+    space_type:document.getElementById('ef-spacetype').value,
     furnish:document.getElementById('ef-furnish').value,
     area:document.getElementById('ef-area').value,
     rate:document.getElementById('ef-rate').value,
@@ -1082,6 +1203,12 @@ async function saveEdit(){
     parking:document.getElementById('ef-parking').value,
     power:document.getElementById('ef-power').value,
     ac:document.getElementById('ef-ac').value,
+    operator:document.getElementById('ef-operator').value,
+    plan_type:document.getElementById('ef-plantype').value,
+    seats:document.getElementById('ef-seats').value,
+    price_per_seat:document.getElementById('ef-priceperseat').value,
+    min_commitment:document.getElementById('ef-mincommitment').value,
+    logo_url:document.getElementById('ef-logourl').value,
     owner:document.getElementById('ef-owner').value,
     phone:document.getElementById('ef-phone').value,
     photo:document.getElementById('ef-photo').value,
@@ -1093,27 +1220,17 @@ async function saveEdit(){
     edited_at:new Date().toISOString(),
   };
   const dbId = props[editIdx]._dbId;
-  try {
-    const res = await fetch(SUPABASE_URL + "/rest/v1/properties?id=eq." + dbId, {
-      method: "PATCH",
-      headers: {
-        "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + SUPABASE_KEY,
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal"
-      },
-      body: JSON.stringify(updated)
-    });
-    if (!res.ok) throw new Error("Save failed: " + res.status);
-    props[editIdx]={...props[editIdx],...updated};
-    applyFilters();
+  const result = await patchProperty(dbId, updated);
+  if (!result.ok) {
     document.getElementById('ep-saving').style.display='none';
-    closeEdit();
-    showToast('Changes saved to database ✓','success');
-  } catch(err) {
-    document.getElementById('ep-saving').style.display='none';
-    showToast('Save failed - check connection','error');
+    showToast('Save failed: ' + result.error, 'error');
+    return;
   }
+  props[editIdx]={...props[editIdx],...result.saved};
+  applyFilters();
+  document.getElementById('ep-saving').style.display='none';
+  closeEdit();
+  showToast('Changes saved to database ✓','success');
 }
 
 function openUsers(){renderUserList();document.getElementById('user-overlay').classList.remove('hidden');}
@@ -1214,6 +1331,18 @@ function setMode(mode) {
   if (mode === 'ai') {
     document.getElementById('ai-loading').style.display = 'none';
   }
+}
+
+// Toggles the conventional (per-sqft) vs managed-office (per-seat) field
+// blocks in the Add Property form or Edit panel, based on the prefix
+// ("nf" for the add form, "ef" for the edit panel).
+function onSpaceTypeChange(prefix) {
+  var val = document.getElementById(prefix + '-spacetype').value;
+  var isManaged = val === 'Managed';
+  var conv = document.getElementById(prefix + '-conventional-fields');
+  var mgd = document.getElementById(prefix + '-managed-fields');
+  if (conv) conv.style.display = isManaged ? 'none' : '';
+  if (mgd) mgd.style.display = isManaged ? '' : 'none';
 }
 
 function onAIFiles(files) {
@@ -1321,7 +1450,7 @@ async function doExtract() {
     document.getElementById('ai-status-text').textContent = 'Extracting data with AI...';
 
     var payload = {
-      prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300). salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field.',
+      prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed". IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","space_type":"Conventional","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300), only for Conventional space. salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.',
       files: files
     };
 
@@ -1349,8 +1478,13 @@ async function doExtract() {
     fill('nf-tenure', d.tenure); fill('nf-escal', d.escal); fill('nf-owner', d.owner);
     fill('nf-phone', d.phone);
     fill('nf-salerate', d.salerate);
+    fill('nf-operator', d.operator); fill('nf-seats', d.seats);
+    fill('nf-priceperseat', d.price_per_seat); fill('nf-mincommitment', d.min_commitment);
     if (d.status) document.getElementById('nf-status').value = d.status;
     if (d.furnishing) document.getElementById('nf-furnish').value = d.furnishing;
+    if (d.plan_type) document.getElementById('nf-plantype').value = d.plan_type;
+    document.getElementById('nf-spacetype').value = d.space_type === 'Managed' ? 'Managed' : 'Conventional';
+    onSpaceTypeChange('nf');
 
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('form-section').style.display = 'block';
@@ -1395,31 +1529,52 @@ function validateSubmit() {
 // POST to Supabase with created_by attribution; if the column doesn't
 // exist yet in the table, fall back to an insert without it so the
 // submission still succeeds (attribution is added once the column exists).
+// POST to Supabase with created_by attribution. If a column referenced in
+// the insert doesn't exist yet in the table (e.g. a new field added before
+// its migration has been run), strip just that column and retry, so the
+// rest of the property still saves instead of failing outright.
 async function insertProperty(body) {
-  var withAttribution = Object.assign({}, body, { created_by: currentUser ? currentUser.username : '' });
-  var res = await fetch(SUPABASE_URL + '/rest/v1/properties', {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json', 'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify(withAttribution)
-  });
-  if (res.ok) return { ok: true };
-  var errText = await res.text();
-  if (errText.indexOf('created_by') >= 0) {
-    var res2 = await fetch(SUPABASE_URL + '/rest/v1/properties', {
+  var payload = Object.assign({}, body, { created_by: currentUser ? currentUser.username : '' });
+  for (var attempts = 0; attempts < 10; attempts++) {
+    var res = await fetch(SUPABASE_URL + '/rest/v1/properties', {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
         'Content-Type': 'application/json', 'Prefer': 'return=minimal'
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(payload)
     });
-    if (res2.ok) return { ok: true, noAttribution: true };
-    return { ok: false, error: await res2.text() };
+    if (res.ok) return { ok: true };
+    var errText = await res.text();
+    var m = errText.match(/Could not find the '([^']+)' column/);
+    if (m && (m[1] in payload)) {
+      delete payload[m[1]];
+      continue;
+    }
+    return { ok: false, error: errText };
   }
-  return { ok: false, error: errText };
+  return { ok: false, error: 'Too many missing columns - check your properties table schema' };
+}
+
+// Same missing-column resilience as insertProperty, for edits.
+async function patchProperty(dbId, body) {
+  var payload = Object.assign({}, body);
+  for (var attempts = 0; attempts < 10; attempts++) {
+    var res = await fetch(SUPABASE_URL + "/rest/v1/properties?id=eq." + dbId, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json", "Prefer": "return=minimal"
+      },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) return { ok: true, saved: payload };
+    var errText = await res.text();
+    var m = errText.match(/Could not find the '([^']+)' column/);
+    if (m && (m[1] in payload)) { delete payload[m[1]]; continue; }
+    return { ok: false, error: errText };
+  }
+  return { ok: false, error: 'Too many missing columns - check your properties table schema' };
 }
 
 async function doSubmit() {
@@ -1458,6 +1613,7 @@ async function doSubmit() {
   try {
     var salerate = document.getElementById('nf-salerate').value;
     var marketVal = document.getElementById('nf-market').value;
+    var spaceType = document.getElementById('nf-spacetype').value;
     document.getElementById('prog-title').textContent = 'Locating on map...';
     var coords = await geocodeMarket(marketVal, 'Pune');
     var insertBody = {
@@ -1467,6 +1623,7 @@ async function doSubmit() {
       city: 'Pune',
       status: document.getElementById('nf-status').value,
       furnish: document.getElementById('nf-furnish').value,
+      space_type: spaceType,
       area: document.getElementById('nf-area').value,
       rate: document.getElementById('nf-rate').value,
       cam: document.getElementById('nf-cam').value,
@@ -1474,6 +1631,12 @@ async function doSubmit() {
       lockin: document.getElementById('nf-lockin').value,
       tenure: document.getElementById('nf-tenure').value,
       escal: document.getElementById('nf-escal').value,
+      operator: document.getElementById('nf-operator').value,
+      plan_type: document.getElementById('nf-plantype').value,
+      seats: document.getElementById('nf-seats').value,
+      price_per_seat: document.getElementById('nf-priceperseat').value,
+      min_commitment: document.getElementById('nf-mincommitment').value,
+      logo_url: document.getElementById('nf-logourl').value,
       owner: document.getElementById('nf-owner').value,
       phone: document.getElementById('nf-phone').value,
       photo: photoUrls[0] || '',
@@ -1514,6 +1677,9 @@ function doClear() {
   document.getElementById('nf-status').value = 'Available';
   document.getElementById('nf-salerate').value = '';
   document.getElementById('nf-furnish').value = '';
+  document.getElementById('nf-spacetype').value = 'Conventional';
+  document.getElementById('nf-plantype').value = '';
+  onSpaceTypeChange('nf');
   mediaFiles = []; renderMedia();
 }
 
@@ -1571,7 +1737,7 @@ async function doBulkImport() {
     document.getElementById('bulk-status-text').textContent = 'Extracting listings with AI...';
     document.getElementById('bulk-sub-text').textContent = 'Claude is reading every property in the sheet';
 
-    var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","owner":"","phone":"","building_grade":"","notes":""}\n\nSpreadsheet content:\n' + sheetText;
+    var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed" for each listing. Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","notes":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.\n\nSpreadsheet content:\n' + sheetText;
 
     var res = await fetch(EXTRACT_API, {
       method: 'POST',
@@ -1617,8 +1783,12 @@ async function doBulkImport() {
         var insertBody = {
           code: code, name: item.name, market: item.market || '', city: item.city || 'Pune',
           status: item.status || 'Available', furnish: item.furnish || '', area: item.area || '',
+          space_type: item.space_type === 'Managed' ? 'Managed' : 'Conventional',
           rate: item.rate || '', cam: item.cam || '', deposit: item.deposit || '',
           lockin: item.lockin || '', tenure: item.tenure || '', escal: item.escal || '',
+          operator: item.operator || '', plan_type: item.plan_type || '',
+          seats: item.seats || '', price_per_seat: item.price_per_seat || '',
+          min_commitment: item.min_commitment || '',
           owner: item.owner || '', phone: item.phone || '', building_grade: item.building_grade || '',
           notes: (item.notes || '') + (item.salerate ? ' | Sale rate: Rs' + item.salerate + ' PSF' : ''),
           lat: coords.lat, lng: coords.lng
