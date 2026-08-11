@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root{
   --navy:#1B3A6B;
@@ -2468,14 +2469,151 @@ function clearBulkFile() {
   document.getElementById('bulk-extract-btn').disabled = true;
 }
 
+// Each data line is tagged with its TRUE spreadsheet row number
+// ("[ROW 12] ...") so the AI can be asked to echo back exactly which row
+// (or, for wide "options as columns" sheets, which option/column) a given
+// listing came from - that's what lets an embedded photo in the original
+// file get matched back to the right extracted listing later.
 function sheetToText(workbook) {
   var out = '';
   workbook.SheetNames.forEach(function(name) {
     var sheet = workbook.Sheets[name];
-    var csv = XLSX.utils.sheet_to_csv(sheet);
-    out += '=== SHEET: ' + name + ' ===\n' + csv + '\n\n';
+    var range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+    var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, blankrows: true });
+    var lines = [];
+    for (var i = 0; i < rows.length; i++) {
+      var rowNum = range.s.r + i + 1;
+      var cells = (rows[i] || []).map(function(v){
+        v = v == null ? '' : String(v);
+        return /[,"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+      });
+      lines.push('[ROW ' + rowNum + '] ' + cells.join(','));
+    }
+    out += '=== SHEET: ' + name + ' ===\n' + lines.join('\n') + '\n\n';
   });
   return out;
+}
+
+function colLettersToIndex(letters){
+  var n = 0;
+  for (var i = 0; i < letters.length; i++) n = n * 26 + (letters.charCodeAt(i) - 64);
+  return n - 1; // 0-indexed
+}
+function mimeFromExt(path){
+  var ext = (path.split('.').pop() || '').toLowerCase();
+  return { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif', bmp:'image/bmp', webp:'image/webp' }[ext] || 'image/png';
+}
+
+// Finds every image embedded in the workbook's first sheet and the cell
+// each is anchored to, covering the two ways Excel embeds pictures:
+// classic floating images (xl/drawings/*, positioned via an anchor) and
+// the newer "Place in Cell" feature (xl/richData/*, referenced from a
+// cell's vm= attribute). SheetJS's own API doesn't expose either, since an
+// .xlsx is just a zip of XML, this unzips it directly and parses the
+// relevant parts. Best-effort: any missing/unexpected part is skipped
+// rather than treated as an error, since most sheets have no images at all
+// and that must stay a harmless no-op, not a failure.
+async function extractXlsxCellImages(arrayBuffer){
+  var images = []; // {row, col, blob} - both 0-indexed
+  try {
+    var zip = await JSZip.loadAsync(arrayBuffer);
+    var readText = async function(path){ var f = zip.file(path); return f ? await f.async('text') : null; };
+    var readBlob = async function(path){
+      var f = zip.file(path);
+      if (!f) return null;
+      var buf = await f.async('arraybuffer');
+      return new Blob([buf], { type: mimeFromExt(path) });
+    };
+    var parseXml = function(str){ return new DOMParser().parseFromString(str, 'application/xml'); };
+
+    // --- Mechanism 1: classic floating images ---
+    var sheetRelsText = await readText('xl/worksheets/_rels/sheet1.xml.rels');
+    if (sheetRelsText) {
+      var sheetRelsDoc = parseXml(sheetRelsText);
+      var drawingRel = Array.from(sheetRelsDoc.getElementsByTagName('Relationship'))
+        .find(function(r){ return /drawing/.test(r.getAttribute('Type') || ''); });
+      if (drawingRel) {
+        var drawingPath = 'xl/' + drawingRel.getAttribute('Target').replace(/^\.\.\//, '');
+        var drawingXmlText = await readText(drawingPath);
+        var drawingRelsPath = drawingPath.replace(/([^/]+)$/, '_rels/$1.rels');
+        var drawingRelsText = await readText(drawingRelsPath);
+        if (drawingXmlText && drawingRelsText) {
+          var relMap = {};
+          Array.from(parseXml(drawingRelsText).getElementsByTagName('Relationship')).forEach(function(r){
+            relMap[r.getAttribute('Id')] = r.getAttribute('Target');
+          });
+          var drawingDoc = parseXml(drawingXmlText);
+          var anchors = [].concat(
+            Array.from(drawingDoc.getElementsByTagName('xdr:twoCellAnchor')),
+            Array.from(drawingDoc.getElementsByTagName('xdr:oneCellAnchor'))
+          );
+          for (var ai = 0; ai < anchors.length; ai++) {
+            var anchor = anchors[ai];
+            var blip = anchor.getElementsByTagName('a:blip')[0];
+            if (!blip) continue; // e.g. empty placeholder shapes with no actual picture
+            var rid = blip.getAttribute('r:embed');
+            var from = anchor.getElementsByTagName('xdr:from')[0];
+            if (!from || !rid || !relMap[rid]) continue;
+            var colEl = from.getElementsByTagName('xdr:col')[0];
+            var rowEl = from.getElementsByTagName('xdr:row')[0];
+            if (!colEl || !rowEl) continue;
+            var mediaTarget = 'xl/' + relMap[rid].replace(/^\.\.\//, '');
+            var blob = await readBlob(mediaTarget);
+            if (blob) images.push({ row: parseInt(rowEl.textContent, 10), col: parseInt(colEl.textContent, 10), blob: blob });
+          }
+        }
+      }
+    }
+
+    // --- Mechanism 2: "Place in Cell" rich-value images ---
+    var metadataText = await readText('xl/metadata.xml');
+    var richValueText = await readText('xl/richData/rdrichvalue.xml');
+    var richRelText = await readText('xl/richData/richValueRel.xml');
+    var richRelsText = await readText('xl/richData/_rels/richValueRel.xml.rels');
+    if (metadataText && richValueText && richRelText && richRelsText) {
+      var vmBlock = parseXml(metadataText).getElementsByTagName('valueMetadata')[0];
+      var vmToRvIndex = vmBlock ? Array.from(vmBlock.getElementsByTagName('bk')).map(function(bk){
+        var rc = bk.getElementsByTagName('rc')[0];
+        return rc ? parseInt(rc.getAttribute('v'), 10) : null;
+      }) : [];
+      var rvList = Array.from(parseXml(richValueText).getElementsByTagName('rv')).map(function(rv){
+        var v = rv.getElementsByTagName('v')[0];
+        return v ? parseInt(v.textContent, 10) : null;
+      });
+      var relIds = Array.from(parseXml(richRelText).getElementsByTagName('rel')).map(function(rel){
+        return rel.getAttribute('r:id');
+      });
+      var relPathMap = {};
+      Array.from(parseXml(richRelsText).getElementsByTagName('Relationship')).forEach(function(r){
+        relPathMap[r.getAttribute('Id')] = r.getAttribute('Target');
+      });
+      var vmToMedia = {};
+      vmToRvIndex.forEach(function(rvIdx, i){
+        if (rvIdx == null || rvList[rvIdx] == null) return;
+        var rid = relIds[rvList[rvIdx]];
+        var target = rid && relPathMap[rid];
+        if (target) vmToMedia[i + 1] = 'xl/' + target.replace(/^\.\.\//, '');
+      });
+
+      var sheetXmlText = await readText('xl/worksheets/sheet1.xml');
+      if (sheetXmlText) {
+        var cells = Array.from(parseXml(sheetXmlText).getElementsByTagName('c'));
+        for (var ci = 0; ci < cells.length; ci++) {
+          var c = cells[ci];
+          var vm = c.getAttribute('vm');
+          if (!vm || !vmToMedia[parseInt(vm, 10)]) continue;
+          var ref = c.getAttribute('r');
+          var m = ref && ref.match(/^([A-Z]+)(\d+)$/);
+          if (!m) continue;
+          var blob2 = await readBlob(vmToMedia[parseInt(vm, 10)]);
+          if (blob2) images.push({ row: parseInt(m[2], 10) - 1, col: colLettersToIndex(m[1]), blob: blob2 });
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Image extraction from spreadsheet failed (continuing without photos):', e);
+  }
+  return images;
 }
 
 // Splits sheetToText()'s output into per-sheet batches of ROWS_PER_CHUNK
@@ -2529,6 +2667,13 @@ async function doBulkImport() {
     var workbook = XLSX.read(arrayBuffer, { type: 'array' });
     var sheetText = sheetToText(workbook);
 
+    var xlsxImages = /\.xlsx$/i.test(bulkFile.name) ? await extractXlsxCellImages(arrayBuffer) : [];
+    var imagesByCol = {}, imagesByRow = {};
+    xlsxImages.forEach(function(img){
+      if (!(img.col in imagesByCol)) imagesByCol[img.col] = img.blob;
+      if (!(img.row in imagesByRow)) imagesByRow[img.row] = img.blob;
+    });
+
     if (sheetText.length > 100000) {
       sheetText = sheetText.substring(0, 100000);
     }
@@ -2549,7 +2694,7 @@ async function doBulkImport() {
         ? 'Extracting listings with AI (batch ' + (ci + 1) + ' of ' + chunks.length + ')...'
         : 'Extracting listings with AI...';
 
-      var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. ' + spaceTypeInstruction + ' Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","notes":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.\n\nSpreadsheet content:\n' + chunks[ci];
+      var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. Each data line is prefixed with "[ROW N]" giving its true spreadsheet row number - use this to fill source_row. ' + spaceTypeInstruction + ' Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","notes":"","source_row":"","source_option":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead. source_row = the [ROW N] number this listing\'s data primarily came from (for row-per-property sheets, or the label-column row a wide-format sheet reads down from). source_option = if the sheet is in wide "options as columns" format (column A = attribute labels, each other column is one listing, e.g. headed "Option 1", "Option 2"...), the number of the option/column this listing came from (1 for the first data column, 2 for the second, etc) - leave blank for row-per-property sheets.\n\nSpreadsheet content:\n' + chunks[ci];
 
       var res = await fetch(EXTRACT_API, {
         method: 'POST',
@@ -2575,6 +2720,7 @@ async function doBulkImport() {
     var updated = [];
     var skipped = [];
     var failed = [];
+    var photosAttached = 0;
 
     for (var i = 0; i < listings.length; i++) {
       var item = listings[i];
@@ -2605,6 +2751,24 @@ async function doBulkImport() {
           owner: item.owner || '', phone: item.phone || '', building_grade: item.building_grade || '',
           notes: (item.notes || '') + (item.salerate ? ' | Sale rate: Rs' + item.salerate + ' PSF' : '')
         };
+
+        var matchedImage = null;
+        if (item.source_option !== undefined && item.source_option !== null && item.source_option !== '') {
+          matchedImage = imagesByCol[parseInt(item.source_option, 10)];
+        }
+        if (!matchedImage && item.source_row !== undefined && item.source_row !== null && item.source_row !== '') {
+          matchedImage = imagesByRow[parseInt(item.source_row, 10) - 1];
+        }
+        if (matchedImage) {
+          try {
+            var photoUrl = await uploadToSupabaseStorage(matchedImage, 'bulk-import/' + Date.now() + '_' + i + '.png');
+            propBody.photo = photoUrl;
+            propBody.photos = [photoUrl];
+            photosAttached++;
+          } catch (imgErr) {
+            console.error('Bulk import: failed to upload photo for "' + item.name + '":', imgErr);
+          }
+        }
 
         if (existing && existing.length > 0) {
           var patchRes = await patchProperty(existing[0].id, propBody);
@@ -2648,6 +2812,7 @@ async function doBulkImport() {
       '<b style="color:var(--green)">' + added.length + '</b> new properties added<br>' +
       (updateExisting ? '<b style="color:var(--navy)">' + updated.length + '</b> existing properties updated<br>' : '') +
       '<b style="color:var(--text3)">' + skipped.length + '</b> skipped (already in database)' +
+      (photosAttached ? '<br><b style="color:var(--green)">' + photosAttached + '</b> photos attached' : '') +
       (failed.length ? '<br><b style="color:var(--red)">' + failed.length + '</b> failed to save' : '');
 
     var listHtml = '';
