@@ -1110,21 +1110,35 @@ async function geocodeMarket(market, city){
 let MARKET_SPACES=[], marketMap, marketMarkerLayer, marketMarkers=[], marketLoaded=false;
 var marketBadgeIconCache={};
 
+// Fetches every row in pages of 1000 (PostgREST's per-request cap),
+// firing several pages at once instead of waiting for each one to finish
+// before requesting the next - with a reference dataset running into the
+// thousands of rows, that one-at-a-time wait was most of this view's load
+// time. Doesn't rely on a total-count response header to know how many
+// pages exist up front (Content-Range isn't reliably readable from
+// cross-origin fetch() unless the API explicitly exposes it via CORS) -
+// instead it speculatively fetches a batch of pages in parallel and just
+// stops once a page comes back short.
 async function loadMarketSpacesFromSupabase(){
   try{
-    const pageSize=1000;
-    let rows=[]; let from=0;
-    while(true){
-      const res=await fetch(SUPABASE_URL+"/rest/v1/market_spaces?select=*&order=id.asc",{
-        headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Range":from+"-"+(from+pageSize-1)}
-      });
-      if(!res.ok) return null;
-      const page=await res.json();
-      if(!Array.isArray(page)||!page.length) break;
-      rows=rows.concat(page);
-      if(page.length<pageSize) break;
-      from+=pageSize;
+    const pageSize=1000, batchSize=4;
+    const baseUrl=SUPABASE_URL+"/rest/v1/market_spaces?select=*&order=id.asc";
+    const fetchPage=(from)=>fetch(baseUrl,{
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Range":from+"-"+(from+pageSize-1)}
+    }).then(res=>res.ok?res.json():null);
+
+    let rows=[], from=0, done=false, failed=false;
+    while(!done){
+      const froms=[]; for(let i=0;i<batchSize;i++) froms.push(from+i*pageSize);
+      const pages=await Promise.all(froms.map(fetchPage));
+      for(const page of pages){
+        if(!Array.isArray(page)){ done=true; failed=true; break; }
+        rows=rows.concat(page);
+        if(page.length<pageSize){ done=true; break; }
+      }
+      from+=batchSize*pageSize;
     }
+    if(failed && rows.length===0) return null;
     return rows;
   }catch(e){
     return null;
@@ -1141,6 +1155,7 @@ async function ensureMarketLoaded(){
     setTimeout(()=>marketMap.invalidateSize(),50);
   }
   if(marketLoaded) return;
+  document.getElementById('market-lc').textContent='Loading market spaces…';
   const rows=await loadMarketSpacesFromSupabase();
   if(rows===null){
     showToast('Market reference table not set up yet - see setup instructions','error');
@@ -1246,10 +1261,16 @@ function renderMarketSpaces(){
   groups.forEach((group,gi)=>{
     var gid='mg'+gi;
     const mk=L.marker([group.lat,group.lng],{icon:getMarketGroupIcon(group)});
+    // Popup content is built lazily (a function, not a pre-built string) so
+    // the work only happens for the handful of markers someone actually
+    // clicks, instead of every marker on the map up front - with hundreds
+    // of reference locations, eagerly building every popup's HTML (each one
+    // its own carousel of operator cards) was a big chunk of the initial
+    // render time.
     if(group.items.length===1){
-      mk.bindPopup(buildSingleMarketPopup(group.items[0]),{className:'custom-popup',maxWidth:260});
+      mk.bindPopup(()=>buildSingleMarketPopup(group.items[0]),{className:'custom-popup',maxWidth:260});
     }else{
-      mk.bindPopup(buildMarketGroupCarouselHtml(gid,group,0),{className:'custom-popup',maxWidth:300});
+      mk.bindPopup(()=>buildMarketGroupCarouselHtml(gid,group,0),{className:'custom-popup',maxWidth:300});
     }
     marketMarkerLayer.addLayer(mk); marketMarkers.push(mk);
   });
