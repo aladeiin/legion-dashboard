@@ -81,8 +81,11 @@ button{font-family:inherit;cursor:pointer}
 .view-container{max-width:600px;margin:0 auto;padding:20px 16px}
 
 /* ── SIDEBAR ── */
-.sidebar{width:284px;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;box-shadow:2px 0 8px rgba(27,58,107,.04)}
+.sidebar{width:284px;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;box-shadow:2px 0 8px rgba(27,58,107,.04)}
 .sidebar-head{padding:14px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--white)}
+
+/* ── RESULTS PANEL (right side) ── */
+.list-panel{width:300px;background:var(--white);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;box-shadow:-2px 0 8px rgba(27,58,107,.04)}
 .sidebar-section-title{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .sidebar-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
 .fg{margin-bottom:8px}
@@ -327,8 +330,11 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 
 /* ── MOBILE RESPONSIVE ── */
 .mobile-toggle{display:none;position:fixed;bottom:20px;left:16px;z-index:1000;background:var(--navy);color:#fff;border:none;border-radius:50%;width:52px;height:52px;font-size:20px;box-shadow:0 4px 16px rgba(27,58,107,.35);cursor:pointer;align-items:center;justify-content:center}
-.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:499}
-.sidebar-backdrop.show{display:block}
+.list-toggle{left:auto;right:16px}
+.list-toggle-badge{position:absolute;top:-2px;right:-2px;background:var(--gold);color:var(--navy-dark);font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--white)}
+.list-toggle-badge.show{display:flex}
+.sidebar-backdrop,.list-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:499}
+.sidebar-backdrop.show,.list-backdrop.show{display:block}
 
 @media (max-width: 768px) {
   .mobile-toggle{display:flex}
@@ -343,6 +349,17 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     box-shadow:4px 0 24px rgba(0,0,0,.2);
   }
   .sidebar.open{transform:translateX(0)}
+  .list-panel{
+    position:fixed;
+    top:0;right:0;bottom:0;
+    z-index:500;
+    width:85%;
+    max-width:320px;
+    transform:translateX(100%);
+    transition:transform .28s ease;
+    box-shadow:-4px 0 24px rgba(0,0,0,.2);
+  }
+  .list-panel.open{transform:translateX(0)}
   .map-wrap{width:100%}
   .topbar{padding:0 10px;gap:6px;overflow-x:auto}
   .topbar-logo img{height:28px}
@@ -576,10 +593,6 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <button class="fbtn" onclick="applyFilters()">Apply Filters</button>
         <button class="cbtn" onclick="clearFilters()">Clear All</button>
       </div>
-      <div class="prop-list">
-        <div class="lc" id="lc"></div>
-        <div id="pli"></div>
-      </div>
     </div>
     <div class="map-wrap">
       <div id="map"></div>
@@ -588,7 +601,16 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <div class="map-legend-item"><span class="map-legend-badge"></span> Managed Office</div>
       </div>
     </div>
+    <div class="list-backdrop" id="list-backdrop" onclick="toggleListPanel(false)"></div>
+    <div class="list-panel" id="list-panel">
+      <button class="sidebar-close" onclick="toggleListPanel(false)">✕</button>
+      <div class="prop-list">
+        <div class="lc" id="lc"></div>
+        <div id="pli"></div>
+      </div>
+    </div>
     <button class="mobile-toggle" id="mobile-toggle" onclick="toggleSidebar()">☰</button>
+    <button class="mobile-toggle list-toggle" id="list-toggle" onclick="toggleListPanel()">📋<span class="list-toggle-badge" id="list-toggle-badge"></span></button>
   </div>
 
   <!-- ADD PROPERTY VIEW -->
@@ -1646,6 +1668,9 @@ function renderMarkers(){
 function renderList(){
   const el=document.getElementById('pli');
   document.getElementById('lc').textContent=filtered.length+' properties';
+  const badge=document.getElementById('list-toggle-badge');
+  badge.textContent=filtered.length>99?'99+':filtered.length;
+  badge.classList.toggle('show',filtered.length>0);
   if(!filtered.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:11px">No properties match your filters</div>';return;}
   const show=filtered.slice(0,200);
   el.innerHTML=show.map((p,fi)=>{
@@ -1868,7 +1893,7 @@ function renderManageTable(){
       : (p.area?parseInt(p.area).toLocaleString()+' sqft':'—')+(p.rate?' · ₹'+p.rate+' PSF':'');
     const checked=manageSelected.has(p._dbId)?'checked':'';
     const rowClass=manageSelected.has(p._dbId)?' mg-selected':'';
-    return `<tr class="mg-row${rowClass}" data-dbid="${p._dbId}" onclick="if(event.target.type!=='checkbox')toggleManageRow(${p._dbId},null)">
+    return `<tr class="mg-row${rowClass}" data-dbid="${p._dbId}" onclick="if(event.target.type!=='checkbox')openManagePropertyDetail(${p._dbId})">
       <td class="mg-td-check"><input type="checkbox" onclick="event.stopPropagation()" onchange="toggleManageRow(${p._dbId},this.checked)" ${checked}/></td>
       <td><div class="mg-name">${p.name}</div><div class="mg-sub">${p.code||''}</div></td>
       <td>${p.market||'—'}</td>
@@ -1904,6 +1929,15 @@ function updateManageSelectAllState(){
   var selectAll=document.getElementById('mg-select-all');
   selectAll.checked=list.length>0&&list.every(function(p){return manageSelected.has(p._dbId);});
   selectAll.indeterminate=!selectAll.checked&&list.some(function(p){return manageSelected.has(p._dbId);});
+}
+// Clicking a Manage row opens the full property detail/edit panel (same
+// one used from the map) rather than toggling selection - selection is
+// now checkbox-only. openEdit() indexes into the global props array by
+// position, not by _dbId, so resolve that first.
+function openManagePropertyDetail(dbId){
+  var idx=props.findIndex(function(p){ return p._dbId===dbId; });
+  if(idx<0) return;
+  openEdit(idx);
 }
 function toggleManageRow(dbId,checked){
   if(checked===null) checked=!manageSelected.has(dbId);
@@ -2132,11 +2166,22 @@ function toggleSidebar(force) {
   bd.classList.toggle('show', newState);
 }
 
-// Close sidebar when a property is clicked on mobile
+function toggleListPanel(force) {
+  var lp = document.getElementById('list-panel');
+  var bd = document.getElementById('list-backdrop');
+  var isOpen = lp.classList.contains('open');
+  var newState = (force !== undefined) ? force : !isOpen;
+  lp.classList.toggle('open', newState);
+  bd.classList.toggle('show', newState);
+}
+
+// Close sidebar/results panel when a property is clicked on mobile, so the
+// map (with the now-focused pin) is actually visible instead of staying
+// hidden behind whichever drawer was open.
 var origFocusProp = focusProp;
 focusProp = function(fi) {
   origFocusProp(fi);
-  if (window.innerWidth <= 768) toggleSidebar(false);
+  if (window.innerWidth <= 768) { toggleSidebar(false); toggleListPanel(false); }
 };
 
 // ── ADD PROPERTY (ported from upload page) ──────────
