@@ -2206,7 +2206,7 @@ async function doExtract() {
     document.getElementById('ai-status-text').textContent = 'Extracting data with AI...';
 
     var payload = {
-      prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed". IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","space_type":"Conventional","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300), only for Conventional space. salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.',
+      prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed". NAMING: for a MANAGED OFFICE listing, "name" must be the coworking OPERATOR\'s brand name, NOT the building name - if the document gives both, put the building name in notes instead. For CONVENTIONAL listings, name should be the building/property name as usual. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","space_type":"Conventional","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300), only for Conventional space. salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.',
       files: files
     };
 
@@ -2694,7 +2694,7 @@ async function doBulkImport() {
         ? 'Extracting listings with AI (batch ' + (ci + 1) + ' of ' + chunks.length + ')...'
         : 'Extracting listings with AI...';
 
-      var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. Each data line is prefixed with "[ROW N]" giving its true spreadsheet row number - use this to fill source_row. ' + spaceTypeInstruction + ' Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","notes":"","source_row":"","source_option":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead. source_row = the [ROW N] number this listing\'s data primarily came from (for row-per-property sheets, or the label-column row a wide-format sheet reads down from). source_option = if the sheet is in wide "options as columns" format (column A = attribute labels, each other column is one listing, e.g. headed "Option 1", "Option 2"...), the number of the option/column this listing came from (1 for the first data column, 2 for the second, etc) - leave blank for row-per-property sheets.\n\nSpreadsheet content:\n' + chunks[ci];
+      var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. Each data line is prefixed with "[ROW N]" giving its true spreadsheet row number - use this to fill source_row. ' + spaceTypeInstruction + ' NAMING: for a MANAGED OFFICE listing, the "name" field must be the coworking/managed-office OPERATOR\'s brand name (e.g. "Awfis", "EFC", "Bigbox", "IndiQube", "WeWork") - NOT the building name; if the sheet gives both, put the building name in notes instead. For CONVENTIONAL listings, name should be the building/property name as usual. Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","notes":"","source_row":"","source_option":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead. source_row = the [ROW N] number this listing\'s data primarily came from (for row-per-property sheets, or the label-column row a wide-format sheet reads down from). source_option = if the sheet is in wide "options as columns" format (column A = attribute labels, each other column is one listing, e.g. headed "Option 1", "Option 2"...), the number of the option/column this listing came from (1 for the first data column, 2 for the second, etc) - leave blank for row-per-property sheets.\n\nSpreadsheet content:\n' + chunks[ci];
 
       var res = await fetch(EXTRACT_API, {
         method: 'POST',
@@ -2728,13 +2728,31 @@ async function doBulkImport() {
       document.getElementById('bulk-status-text').textContent = 'Processing ' + (i+1) + ' of ' + listings.length + '...';
 
       try {
-        var checkUrl = SUPABASE_URL + '/rest/v1/properties?select=id,name,market&name=ilike.' + encodeURIComponent(item.name.trim()) + '&market=ilike.' + encodeURIComponent((item.market||'').trim());
+        var checkUrl = SUPABASE_URL + '/rest/v1/properties?select=id,name,market,photo&name=ilike.' + encodeURIComponent(item.name.trim()) + '&market=ilike.' + encodeURIComponent((item.market||'').trim());
         var checkRes = await fetch(checkUrl, {
           headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
         });
         var existing = await checkRes.json();
 
         if (existing && existing.length > 0 && !updateExisting) {
+          // Not updating this duplicate's data, but if it's still missing a
+          // photo and this sheet has one for it, backfill just that -
+          // otherwise a duplicate stays photo-less forever unless the user
+          // opts into a full overwrite via "Update existing".
+          var skipImg = null;
+          if (!existing[0].photo) {
+            if (item.source_option) skipImg = imagesByCol[parseInt(item.source_option, 10)];
+            if (!skipImg && item.source_row) skipImg = imagesByRow[parseInt(item.source_row, 10) - 1];
+          }
+          if (skipImg) {
+            try {
+              var skipPhotoUrl = await uploadToSupabaseStorage(skipImg, 'bulk-import/' + Date.now() + '_' + i + '.png');
+              await patchProperty(existing[0].id, { photo: skipPhotoUrl, photos: [skipPhotoUrl] });
+              photosAttached++;
+            } catch (imgErr) {
+              console.error('Bulk import: failed to backfill photo for "' + item.name + '":', imgErr);
+            }
+          }
           skipped.push(item.name + ' (' + (item.market||'-') + ') - already exists');
           continue;
         }
