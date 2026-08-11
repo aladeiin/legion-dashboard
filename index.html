@@ -310,6 +310,19 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .manage-table td.mg-td-check{width:36px}
 .mg-name{font-weight:600;color:var(--navy)}
 .mg-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.mg-td-contact{min-width:160px}
+.mg-contact-view{cursor:pointer;border-radius:6px;padding:4px 6px;margin:-4px -6px}
+.mg-contact-view:hover{background:var(--bg2)}
+.mg-contact-name{font-size:11.5px;font-weight:600;color:var(--text)}
+.mg-contact-phone{font-size:11px;color:var(--text2);margin-top:1px}
+.mg-contact-missing{font-size:11px;color:var(--nego);font-weight:600}
+.mg-contact-edit{display:flex;flex-direction:column;gap:5px;min-width:150px}
+.mg-contact-edit input{padding:5px 7px;font-size:11px}
+.mg-contact-edit-actions{display:flex;gap:6px;margin-top:1px}
+.mg-contact-save{padding:4px 10px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:10.5px;font-weight:600;cursor:pointer}
+.mg-contact-save:hover{background:var(--navy-dark)}
+.mg-contact-cancel{padding:4px 10px;background:transparent;color:var(--text3);border:1.5px solid var(--border);border-radius:6px;font-size:10.5px;cursor:pointer}
+.mg-contact-cancel:hover{border-color:var(--border2);color:var(--text2)}
 
 /* ── MOBILE RESPONSIVE ── */
 .mobile-toggle{display:none;position:fixed;bottom:20px;left:16px;z-index:1000;background:var(--navy);color:#fff;border:none;border-radius:50%;width:52px;height:52px;font-size:20px;box-shadow:0 4px 16px rgba(27,58,107,.35);cursor:pointer;align-items:center;justify-content:center}
@@ -808,7 +821,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           <thead>
             <tr>
               <th class="mg-th-check"><input type="checkbox" id="mg-select-all" onchange="toggleSelectAllManage(this.checked)"/></th>
-              <th>Name</th><th>Market</th><th>Type</th><th>Status</th><th>Details</th><th>Added By</th>
+              <th>Name</th><th>Market</th><th>Type</th><th>Status</th><th>Details</th><th>Contact</th><th>Added By</th>
             </tr>
           </thead>
           <tbody id="manage-tbody"></tbody>
@@ -1750,6 +1763,65 @@ function manageFilteredProps(){
     return true;
   });
 }
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function contactCellHtml(p){
+  if(p.owner||p.phone){
+    return '<div class="mg-contact-view" onclick="event.stopPropagation();startEditContact('+p._dbId+')">'+
+      (p.owner?'<div class="mg-contact-name">'+escapeHtml(p.owner)+'</div>':'')+
+      (p.phone?'<div class="mg-contact-phone">'+escapeHtml(p.phone)+'</div>':'')+
+    '</div>';
+  }
+  return '<div class="mg-contact-view mg-contact-missing" onclick="event.stopPropagation();startEditContact('+p._dbId+')">+ Add contact</div>';
+}
+function startEditContact(dbId){
+  const p=props.find(x=>x._dbId===dbId);
+  if(!p) return;
+  const td=document.querySelector('#manage-tbody td.mg-td-contact[data-dbid="'+dbId+'"]');
+  if(!td) return;
+  td.innerHTML=
+    '<div class="mg-contact-edit" onclick="event.stopPropagation()">'+
+      '<input type="text" class="fs" id="mgc-owner-'+dbId+'" placeholder="Owner name" value="'+escapeHtml(p.owner||'')+'" onkeydown="if(event.key===\'Enter\')saveContact('+dbId+');if(event.key===\'Escape\')cancelEditContact('+dbId+')"/>'+
+      '<input type="text" class="fs" id="mgc-phone-'+dbId+'" placeholder="Phone number" value="'+escapeHtml(p.phone||'')+'" onkeydown="if(event.key===\'Enter\')saveContact('+dbId+');if(event.key===\'Escape\')cancelEditContact('+dbId+')"/>'+
+      '<div class="mg-contact-edit-actions">'+
+        '<button class="mg-contact-save" onclick="saveContact('+dbId+')">✓ Save</button>'+
+        '<button class="mg-contact-cancel" onclick="cancelEditContact('+dbId+')">Cancel</button>'+
+      '</div>'+
+    '</div>';
+  document.getElementById('mgc-owner-'+dbId).focus();
+}
+function cancelEditContact(dbId){
+  const p=props.find(x=>x._dbId===dbId);
+  const td=document.querySelector('#manage-tbody td.mg-td-contact[data-dbid="'+dbId+'"]');
+  if(td&&p) td.innerHTML=contactCellHtml(p);
+}
+async function saveContact(dbId){
+  const ownerVal=document.getElementById('mgc-owner-'+dbId).value.trim();
+  const phoneVal=document.getElementById('mgc-phone-'+dbId).value.trim();
+  const result=await patchProperty(dbId,{
+    owner:ownerVal, phone:phoneVal,
+    edited_by:currentUser.username, edited_at:new Date().toISOString()
+  });
+  if(!result.ok){
+    showToast('Could not save contact: '+result.error,'error');
+    return;
+  }
+  const p=props.find(x=>x._dbId===dbId);
+  if(p){ p.owner=ownerVal; p.phone=phoneVal; p.edited_by=currentUser.username; }
+  const bp=BASE_PROPS.find(x=>x._dbId===dbId);
+  if(bp){ bp.owner=ownerVal; bp.phone=phoneVal; bp.edited_by=currentUser.username; }
+  const td=document.querySelector('#manage-tbody td.mg-td-contact[data-dbid="'+dbId+'"]');
+  if(td&&p) td.innerHTML=contactCellHtml(p);
+  // Keep the map view's markers/popups/list in sync too, without a network
+  // refetch - props already has the new value, applyFilters() just rebuilds
+  // filtered/markers/list from what's already in memory.
+  if(typeof applyFilters==='function') applyFilters();
+  showToast('Contact updated ✓','success');
+}
+
 function renderManageTable(){
   const marketSel=document.getElementById('mg-market');
   const curMarket=marketSel.value;
@@ -1773,6 +1845,7 @@ function renderManageTable(){
       <td>${isManaged?'Managed':'Conventional'}</td>
       <td><span class="tag ${p.status==='Available'?'ta':p.status==='Rented Out'?'tr':'tn'}">${p.status||'—'}</span></td>
       <td>${details}</td>
+      <td class="mg-td-contact" data-dbid="${p._dbId}">${contactCellHtml(p)}</td>
       <td>${p.created_by||'—'}</td>
     </tr>`;
   }).join('');
