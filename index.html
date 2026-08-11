@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Legion Realty — Portfolio Dashboard</title>
+<script>
+// Set the theme before first paint so switching pages/reloading never
+// flashes the wrong theme for a frame.
+(function(){
+  try{
+    var saved=localStorage.getItem('legion-theme');
+    var theme=saved||(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+    document.documentElement.setAttribute('data-theme',theme);
+  }catch(e){}
+})();
+</script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
@@ -34,11 +45,49 @@
   --red:#9B2335;
   --shadow:0 1px 4px rgba(27,58,107,.08);
   --shadow-md:0 4px 16px rgba(27,58,107,.12);
+  --topbar-bg:#1B3A6B;
+  --info:#2a518f;
+  --info-bg:#EEF3FB;
+}
+:root[data-theme="dark"]{
+  --navy:#5B8DEF;
+  --navy-dark:#4A7ADC;
+  --navy-light:#7FA6F5;
+  --gold:#E8B84B;
+  --gold-light:#F2CC72;
+  --white:#1B2537;
+  --bg:#0F1622;
+  --bg2:#212D42;
+  --border:#2E3B54;
+  --border2:#3E4D6B;
+  --text:#E8ECF4;
+  --text2:#AEB9CC;
+  --text3:#7C8AA3;
+  --avail:#4ADE80;
+  --avail-bg:#153824;
+  --rented:#F87171;
+  --rented-bg:#3B1519;
+  --nego:#FBBF24;
+  --nego-bg:#3A2E0A;
+  --green:#4ADE80;
+  --green-bg:#153824;
+  --red:#F87171;
+  --shadow:0 1px 4px rgba(0,0,0,.35);
+  --shadow-md:0 4px 16px rgba(0,0,0,.45);
+  --topbar-bg:#132038;
+  --info:#7FA6F5;
+  --info-bg:#1B2E4D;
 }
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 body{background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
 input,select,textarea{outline:none;font-family:inherit;color:var(--text)}
 button{font-family:inherit;cursor:pointer}
+.icon{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-0.15em;flex-shrink:0}
+body,.sidebar,.list-panel,.map-wrap,.pu,.pi,.mg-row,.form-card,.login-box,.edit-panel,.user-panel,.overlay,.topbar,input.fs,select.fs,.chip,.media-thumb,.pu-btn{transition:background-color .2s ease,border-color .2s ease,color .2s ease}
+.login-btn,.fbtn,.ep-save,.extract-btn,.submit-btn,.mode-btn,.pu-btn,.add-btn,.az-btn,.manage-delete-btn,.mg-contact-save{transition:transform .1s ease,background-color .15s ease,filter .15s ease}
+.login-btn:active,.fbtn:active,.ep-save:active,.extract-btn:active,.submit-btn:active,.mode-btn:active,.pu-btn:active,.add-btn:active,.az-btn:active,.manage-delete-btn:active,.mg-contact-save:active,.topbar-btn:active,.cbtn:active{transform:scale(.97)}
+.mode-btn{transition:transform .15s ease,border-color .15s ease,background-color .15s ease}
+.mode-btn:hover:not(.active){border-color:var(--navy-light);transform:translateY(-1px)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── OVERLAY ── */
@@ -60,7 +109,7 @@ button{font-family:inherit;cursor:pointer}
 .login-hint{font-size:10px;color:var(--text3);margin-top:14px;line-height:1.8;border-top:1px solid var(--border);padding-top:12px}
 
 /* ── TOPBAR ── */
-.topbar{height:56px;background:var(--navy);display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;z-index:100;box-shadow:0 2px 8px rgba(27,58,107,.25)}
+.topbar{height:56px;background:var(--topbar-bg);display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;z-index:100;box-shadow:0 2px 8px rgba(27,58,107,.25)}
 .topbar-logo img{height:36px;object-fit:contain;display:block}
 .topbar-sep{width:1px;height:22px;background:rgba(255,255,255,.2)}
 .role-badge{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:600;letter-spacing:.03em}
@@ -74,6 +123,8 @@ button{font-family:inherit;cursor:pointer}
 .topbar-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);padding:5px 12px;border-radius:6px;font-size:11px;transition:.15s;white-space:nowrap}
 .topbar-btn:hover{background:rgba(255,255,255,.2);color:#fff}
 .topbar-btn.active{background:rgba(255,255,255,.28);color:#fff;border-color:rgba(255,255,255,.4)}
+.theme-toggle{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.85);width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s;font-size:14px}
+.theme-toggle:hover{background:rgba(255,255,255,.2);color:#fff;transform:rotate(15deg)}
 
 /* ── LAYOUT / VIEWS ── */
 .main{flex:1;display:flex;overflow:hidden}
@@ -105,8 +156,9 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .prop-list::-webkit-scrollbar-track{background:var(--bg)}
 .prop-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 .lc{font-size:10px;color:var(--text3);padding:4px 4px 6px;text-align:center}
-.pi{background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
-.pi:hover{border-color:var(--navy-light);box-shadow:var(--shadow)}
+.pi{background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:10px;margin-bottom:6px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+.pi:hover{border-color:var(--navy-light);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.pi:active{transform:translateY(0)}
 .pi.active{border-color:var(--navy);box-shadow:0 0 0 3px rgba(27,58,107,.08)}
 .pi-name{font-size:11px;font-weight:600;color:var(--navy);margin-bottom:2px;line-height:1.3}
 .pi-mkt{font-size:10px;color:var(--text3);margin-bottom:5px}
@@ -121,6 +173,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 /* ── MAP ── */
 .map-wrap{flex:1;position:relative}
 #map{width:100%;height:100%}
+:root[data-theme="dark"] #map .leaflet-tile-pane{filter:brightness(.68) contrast(1.15) saturate(.85) invert(1) hue-rotate(180deg)}
 #market-map-el{width:100%;height:100%}
 .map-legend{position:absolute;bottom:22px;right:10px;z-index:450;background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;box-shadow:var(--shadow-md);font-size:11px;color:var(--text2);display:flex;flex-direction:column;gap:6px}
 .map-legend-item{display:flex;align-items:center;gap:7px}
@@ -128,7 +181,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .map-legend-badge{width:14px;height:14px;border-radius:4px;background:#1B3A6B;border:2px solid #1B3A6B;flex-shrink:0}
 
 /* ── POPUP ── */
-.custom-popup .leaflet-popup-content-wrapper{background:var(--white);border:1.5px solid var(--border);border-top:3px solid var(--navy);border-radius:10px;box-shadow:var(--shadow-md);padding:0;min-width:240px;max-width:280px}
+.custom-popup .leaflet-popup-content-wrapper{background:var(--white);border:1.5px solid var(--border);border-top:3px solid var(--navy);border-radius:12px;box-shadow:0 8px 28px rgba(15,23,42,.18);padding:0;min-width:240px;max-width:280px;overflow:hidden}
 .custom-popup .leaflet-popup-tip-container{display:none}
 .custom-popup .leaflet-popup-content{margin:0}
 .pu{padding:0}
@@ -157,10 +210,13 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .pu-lc-dots{position:static}
 .pu-lc-dots .pu-dot{background:var(--border2)}
 .pu-lc-dots .pu-dot.active{background:var(--navy)}
-.pu-body{padding:12px}
+.pu-body{padding:13px}
+.pu-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .pu-name{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:1px;line-height:1.3}
 .pu-mkt{font-size:10px;color:var(--text3);margin-bottom:6px}
-.pu-status{display:inline-block;font-size:10px;padding:2px 9px;border-radius:10px;font-weight:600;margin-bottom:8px}
+.pu-status{display:inline-block;font-size:10px;padding:2px 9px;border-radius:10px;font-weight:600;flex-shrink:0}
+.pu-price{font-size:18px;font-weight:800;color:var(--navy);letter-spacing:-.01em;margin:2px 0 9px}
+.pu-price .pu-price-unit{font-size:11px;font-weight:600;color:var(--text3);margin-left:3px}
 .pu-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
 .pu-stat{background:var(--bg);border-radius:5px;padding:5px 7px}
 .pu-stat .psl{font-size:9px;color:var(--text3);margin-bottom:1px}
@@ -171,10 +227,10 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .pu-edit:hover{background:var(--navy-dark)}
 .pu-maps{background:var(--bg);color:var(--text2);border:1px solid var(--border)}
 .pu-maps:hover{background:var(--bg2)}
-.pu-video{background:#E8F5EE;color:var(--avail);border:1px solid #C6E6D4}
-.pu-video:hover{background:#D4EDDF}
-.pu-fp{background:#EEF3FB;color:var(--navy);border:1px solid #C8D8F0}
-.pu-fp:hover{background:#DDE8F6}
+.pu-video{background:var(--avail-bg);color:var(--avail);border:none}
+.pu-video:hover{filter:brightness(.95)}
+.pu-fp{background:var(--info-bg);color:var(--info);border:none}
+.pu-fp:hover{filter:brightness(.95)}
 .pu-code{font-size:9px;color:var(--text3);margin-bottom:5px}
 .edited-tag{font-size:9px;color:var(--nego);background:var(--nego-bg);padding:1px 7px;border-radius:8px;display:inline-block;margin-left:5px;vertical-align:middle}
 
@@ -227,8 +283,8 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .del-btn:hover{color:var(--rented)}
 
 /* ── TOAST ── */
-.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:9px 20px;border-radius:8px;font-size:12px;z-index:9000;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow-md)}
-.toast.show{opacity:1}
+.toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,8px);background:var(--navy);color:#fff;padding:9px 20px;border-radius:8px;font-size:12px;z-index:9000;opacity:0;transition:opacity .25s ease,transform .25s ease;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow-md)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
 .toast.success{border-left:3px solid #68d391}
 .toast.error{border-left:3px solid #fc8181}
 
@@ -385,6 +441,36 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 </head>
 <body>
 
+<!-- SVG ICON SPRITE - stroke-based (Feather-style) icons, referenced via <use> instead of emoji for a consistent, crisp look across devices -->
+<svg style="display:none" aria-hidden="true">
+  <symbol id="icon-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="icon-map-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></symbol>
+  <symbol id="icon-map" viewBox="0 0 24 24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></symbol>
+  <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="icon-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="9" y1="8" x2="9" y2="8.01"/><line x1="15" y1="8" x2="15" y2="8.01"/><line x1="9" y1="13" x2="9" y2="13.01"/><line x1="15" y1="13" x2="15" y2="13.01"/><path d="M9 21v-4h6v4"/></symbol>
+  <symbol id="icon-clipboard-list" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="3" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/><line x1="8" y1="19" x2="13" y2="19"/></symbol>
+  <symbol id="icon-users" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M17 3.13a4 4 0 0 1 0 7.75"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></symbol>
+  <symbol id="icon-menu" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></symbol>
+  <symbol id="icon-sparkles" viewBox="0 0 24 24"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.7 2.1L22 18l-2.3.9L19 21l-.7-2.1L16 18l2.3-.9L19 15z"/><path d="M5 15l.6 1.8L7.5 17.5l-1.9.7L5 20l-.6-1.8L2.5 17.5l1.9-.7L5 15z"/></symbol>
+  <symbol id="icon-bar-chart" viewBox="0 0 24 24"><line x1="5" y1="20" x2="5" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/></symbol>
+  <symbol id="icon-camera" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h1.2a2 2 0 0 0 1.66-.9l.8-1.2a2 2 0 0 1 1.66-.9h1.36a2 2 0 0 1 1.66.9l.8 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><line x1="4" y1="21" x2="20" y2="21"/></symbol>
+  <symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/></symbol>
+  <symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+  <symbol id="icon-film" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="7" y1="4" x2="7" y2="20"/><line x1="17" y1="4" x2="17" y2="20"/><line x1="2" y1="9" x2="7" y2="9"/><line x1="2" y1="15" x2="7" y2="15"/><line x1="17" y1="9" x2="22" y2="9"/><line x1="17" y1="15" x2="22" y2="15"/></symbol>
+  <symbol id="icon-external-link" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
+  <symbol id="icon-ruler" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="6" rx="1"/><line x1="7" y1="9" x2="7" y2="12"/><line x1="11" y1="9" x2="11" y2="12"/><line x1="15" y1="9" x2="15" y2="12"/><line x1="19" y1="9" x2="19" y2="12"/></symbol>
+  <symbol id="icon-armchair" viewBox="0 0 24 24"><path d="M5 12V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v5"/><path d="M4 12h16a1 1 0 0 1 1 1v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a1 1 0 0 1 1-1z"/><line x1="6" y1="18" x2="6" y2="21"/><line x1="18" y1="18" x2="18" y2="21"/></symbol>
+  <symbol id="icon-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="icon-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="8.5 12.5 11 15 16 9"/></symbol>
+  <symbol id="icon-check-square" viewBox="0 0 24 24"><polyline points="8 12 11 15 16 9"/><rect x="3" y="3" width="18" height="18" rx="2"/></symbol>
+  <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+  <symbol id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+  <symbol id="icon-moon" viewBox="0 0 24 24"><path d="M21 12.5A9 9 0 1 1 11.5 3a7 7 0 0 0 9.5 9.5z"/></symbol>
+  <symbol id="icon-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3" fill="currentColor" stroke="none"/></symbol>
+</svg>
+
 <!-- LOGIN -->
 <div class="overlay" id="login-overlay">
   <div class="login-box">
@@ -419,7 +505,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <div class="ep-topbar-title" id="ep-title">Edit Property</div>
         <div class="ep-topbar-sub" id="ep-sub"></div>
       </div>
-      <button class="ep-close" onclick="closeEdit()">✕</button>
+      <button class="ep-close" onclick="closeEdit()"><svg class="icon"><use href="#icon-x"/></svg></button>
     </div>
     <div class="ep-body">
       <div class="ep-section">Space Type</div>
@@ -484,7 +570,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
       <div class="ep-section">Media & Links</div>
       <div class="media-zone" onclick="document.getElementById('ef-media-input').click()">
         <input type="file" id="ef-media-input" multiple accept="image/*,video/*" style="display:none" onchange="onEditMedia(this.files)"/>
-        <div class="mz-text">📷 Tap to add photos or videos from this device</div>
+        <div class="mz-text"><svg class="icon"><use href="#icon-camera"/></svg> Tap to add photos or videos from this device</div>
       </div>
       <div class="media-preview" id="ef-media-preview"></div>
       <div class="field-hint" style="margin:-2px 0 10px 2px">Uploaded photos are added to this property's gallery; an uploaded video replaces the walkthrough below. Or paste links directly instead:</div>
@@ -503,7 +589,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <button class="ep-cancel" onclick="closeEdit()">Cancel</button>
         <button class="ep-save" onclick="saveEdit()">Save Changes</button>
       </div>
-      <button class="ep-delete" id="ep-delete-btn" onclick="deleteProperty()" style="display:none">🗑 Delete Property</button>
+      <button class="ep-delete" id="ep-delete-btn" onclick="deleteProperty()" style="display:none"><svg class="icon"><use href="#icon-trash"/></svg> Delete Property</button>
     </div>
   </div>
 </div>
@@ -513,7 +599,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
   <div class="user-panel">
     <div class="up-topbar">
       <span class="up-title">Manage Team</span>
-      <button class="up-close" onclick="closeUsers()">✕</button>
+      <button class="up-close" onclick="closeUsers()"><svg class="icon"><use href="#icon-x"/></svg></button>
     </div>
     <div class="up-body">
       <div id="user-list"></div>
@@ -548,12 +634,13 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     <div class="stat-pill">Available <span id="s-avail">0</span></div>
     <div class="stat-pill">Markets <span id="s-mkts">0</span></div>
     <div class="spacer"></div>
-    <button class="topbar-btn active" id="nav-map" onclick="switchView('map')">🗺 Map</button>
-    <button class="topbar-btn" id="nav-add" onclick="switchView('add')" style="display:none">➕ Add Property</button>
-    <button class="topbar-btn" id="nav-market" onclick="switchView('market')">🏢 Market Map</button>
-    <button class="topbar-btn" id="nav-activity" onclick="switchView('activity')">📋 Activity</button>
-    <button class="topbar-btn" id="nav-manage" onclick="switchView('manage')" style="display:none">☑ Manage</button>
-    <button class="topbar-btn" id="users-btn" onclick="openUsers()" style="display:none">👥 Team</button>
+    <button class="topbar-btn active" id="nav-map" onclick="switchView('map')"><svg class="icon"><use href="#icon-map"/></svg> Map</button>
+    <button class="topbar-btn" id="nav-add" onclick="switchView('add')" style="display:none"><svg class="icon"><use href="#icon-plus"/></svg> Add Property</button>
+    <button class="topbar-btn" id="nav-market" onclick="switchView('market')"><svg class="icon"><use href="#icon-building"/></svg> Market Map</button>
+    <button class="topbar-btn" id="nav-activity" onclick="switchView('activity')"><svg class="icon"><use href="#icon-clipboard-list"/></svg> Activity</button>
+    <button class="topbar-btn" id="nav-manage" onclick="switchView('manage')" style="display:none"><svg class="icon"><use href="#icon-check-square"/></svg> Manage</button>
+    <button class="topbar-btn" id="users-btn" onclick="openUsers()" style="display:none"><svg class="icon"><use href="#icon-users"/></svg> Team</button>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"><svg class="icon" id="theme-toggle-icon"><use href="#icon-moon"/></svg></button>
     <button class="topbar-btn" onclick="doLogout()">Sign out</button>
   </div>
 
@@ -561,7 +648,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
   <div class="main" id="view-map">
     <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
     <div class="sidebar" id="sidebar">
-      <button class="sidebar-close" onclick="toggleSidebar(false)">✕</button>
+      <button class="sidebar-close" onclick="toggleSidebar(false)"><svg class="icon"><use href="#icon-x"/></svg></button>
       <div class="sidebar-head">
         <div class="sidebar-section-title">Search</div>
         <div class="fg"><input class="fs" type="text" id="f-search" placeholder="Search by name or micro-market..." oninput="applyFilters()"/></div>
@@ -603,14 +690,14 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     </div>
     <div class="list-backdrop" id="list-backdrop" onclick="toggleListPanel(false)"></div>
     <div class="list-panel" id="list-panel">
-      <button class="sidebar-close" onclick="toggleListPanel(false)">✕</button>
+      <button class="sidebar-close" onclick="toggleListPanel(false)"><svg class="icon"><use href="#icon-x"/></svg></button>
       <div class="prop-list">
         <div class="lc" id="lc"></div>
         <div id="pli"></div>
       </div>
     </div>
-    <button class="mobile-toggle" id="mobile-toggle" onclick="toggleSidebar()">☰</button>
-    <button class="mobile-toggle list-toggle" id="list-toggle" onclick="toggleListPanel()">📋<span class="list-toggle-badge" id="list-toggle-badge"></span></button>
+    <button class="mobile-toggle" id="mobile-toggle" onclick="toggleSidebar()"><svg class="icon"><use href="#icon-menu"/></svg></button>
+    <button class="mobile-toggle list-toggle" id="list-toggle" onclick="toggleListPanel()"><svg class="icon"><use href="#icon-clipboard-list"/></svg><span class="list-toggle-badge" id="list-toggle-badge"></span></button>
   </div>
 
   <!-- ADD PROPERTY VIEW -->
@@ -618,17 +705,17 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     <div class="view-container">
       <div class="mode-toggle">
         <button class="mode-btn active" id="mode-ai" onclick="setMode('ai')">
-          <span class="mb-icon">✨</span>
+          <span class="mb-icon"><svg class="icon"><use href="#icon-sparkles"/></svg></span>
           <span class="mb-label">Upload Document</span>
           <span class="mb-sub">AI auto-fills the form</span>
         </button>
         <button class="mode-btn" id="mode-manual" onclick="setMode('manual')">
-          <span class="mb-icon">✏️</span>
+          <span class="mb-icon"><svg class="icon"><use href="#icon-edit"/></svg></span>
           <span class="mb-label">Fill Manually</span>
           <span class="mb-sub">Type details yourself</span>
         </button>
         <button class="mode-btn" id="mode-bulk" onclick="setMode('bulk')">
-          <span class="mb-icon">📊</span>
+          <span class="mb-icon"><svg class="icon"><use href="#icon-bar-chart"/></svg></span>
           <span class="mb-label">Bulk Import</span>
           <span class="mb-sub">Upload a listings sheet</span>
         </button>
@@ -637,7 +724,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
       <div id="bulk-section" style="display:none">
         <div class="ai-zone" onclick="document.getElementById('bulk-input').click()">
           <input type="file" id="bulk-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="onBulkFile(this.files)"/>
-          <span class="az-icon">📊</span>
+          <span class="az-icon"><svg class="icon"><use href="#icon-bar-chart"/></svg></span>
           <div class="az-title">Upload an Excel sheet of property listings</div>
           <div class="az-sub">Any format - AI will read every listing in the sheet, skip properties already in the database, and add only the new ones</div>
           <span class="az-btn">Choose Excel File</span>
@@ -657,7 +744,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           <input type="checkbox" id="bulk-update-existing" style="width:auto"/>
           Update properties already in the database instead of skipping them
         </label>
-        <button class="extract-btn" id="bulk-extract-btn" onclick="doBulkImport()" disabled>📥 Import Listings</button>
+        <button class="extract-btn" id="bulk-extract-btn" onclick="doBulkImport()" disabled><svg class="icon"><use href="#icon-download"/></svg> Import Listings</button>
 
         <div class="ai-loading" id="bulk-loading">
           <div class="spinner"></div>
@@ -678,7 +765,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
       <div id="ai-section">
         <div class="ai-zone" onclick="document.getElementById('ai-input').click()">
           <input type="file" id="ai-input" multiple accept=".pdf,image/*,.txt,video/*" style="display:none" onchange="onAIFiles(this.files)"/>
-          <span class="az-icon">📄</span>
+          <span class="az-icon"><svg class="icon"><use href="#icon-file-text"/></svg></span>
           <div class="az-title">Upload brochure, pricing sheet or any property document</div>
           <div class="az-sub">PDF, JPG, PNG - AI will read it and auto-fill the form below. Videos go straight into "Photos and Videos" below instead.</div>
           <span class="az-btn">Choose Files</span>
@@ -688,7 +775,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Or paste a WhatsApp / SMS message</label>
           <textarea id="ai-pasted-text" rows="4" placeholder="Paste the broker's message text here..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:13px;padding:9px 11px;color:var(--text);font-family:inherit;resize:vertical" oninput="updateExtractBtn()"></textarea>
         </div>
-        <button class="extract-btn" id="extract-btn" onclick="doExtract()" disabled>✨ Auto-fill form with AI</button>
+        <button class="extract-btn" id="extract-btn" onclick="doExtract()" disabled><svg class="icon"><use href="#icon-sparkles"/></svg> Auto-fill form with AI</button>
       </div>
 
       <div class="ai-loading" id="ai-loading">
@@ -764,7 +851,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           <div class="form-section">Photos and Videos (optional)</div>
           <div class="media-zone" onclick="document.getElementById('media-input').click()">
             <input type="file" id="media-input" multiple accept="image/*,video/*" style="display:none" onchange="onMedia(this.files)"/>
-            <div class="mz-text">📷 Tap to add photos or videos</div>
+            <div class="mz-text"><svg class="icon"><use href="#icon-camera"/></svg> Tap to add photos or videos</div>
           </div>
           <div class="media-preview" id="media-preview"></div>
         </div>
@@ -778,7 +865,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
       </div>
 
       <div class="success" id="success">
-        <span class="success-icon">✅</span>
+        <span class="success-icon"><svg class="icon"><use href="#icon-check-circle"/></svg></span>
         <div class="success-title">Property Submitted!</div>
         <div class="success-sub" id="success-sub">Saved to database.</div>
         <button class="success-again" onclick="doReset()">Submit Another</button>
@@ -794,8 +881,8 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <div class="field-hint" style="margin-bottom:10px">Public managed-office/coworking locations in Pune, for reference only - not part of your team's own deal pipeline. Data may be incomplete or out of date; verify before quoting a client.</div>
         <div class="fg"><span class="fl">Operator</span><select class="fs" id="mk-operator-filter" onchange="renderMarketSpaces()"><option value="">All Operators</option></select></div>
         <div class="fg" id="market-admin-controls" style="display:none">
-          <button class="fbtn" onclick="toggleMarketAddForm()">➕ Add Market Space</button>
-          <button class="cbtn" onclick="seedMarketSpaces()">📥 Import Pune Reference Data</button>
+          <button class="fbtn" onclick="toggleMarketAddForm()"><svg class="icon"><use href="#icon-plus"/></svg> Add Market Space</button>
+          <button class="cbtn" onclick="seedMarketSpaces()"><svg class="icon"><use href="#icon-download"/></svg> Import Pune Reference Data</button>
         </div>
         <div id="market-add-form" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:8px">
           <div class="fg"><span class="fl">Building / Center Name</span><input class="fs" type="text" id="mk-name" placeholder="e.g. WeWork Futura"/></div>
@@ -843,7 +930,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <span id="manage-selected-count">0 selected</span>
         <span class="spacer"></span>
         <button class="cbtn" onclick="clearManageSelection()">Clear Selection</button>
-        <button class="manage-delete-btn" onclick="bulkDeleteSelected()">🗑 Delete Selected</button>
+        <button class="manage-delete-btn" onclick="bulkDeleteSelected()"><svg class="icon"><use href="#icon-trash"/></svg> Delete Selected</button>
       </div>
       <div class="manage-table-wrap">
         <table class="manage-table">
@@ -1097,9 +1184,9 @@ function buildSingleMarketPopup(m){
   const canManage=currentUser&&(currentUser.role==='admin'||currentUser.role==='editor');
   return `<div class="pu"><div class="pu-body">
     <div class="pu-name">${m.name}</div>
-    <div class="pu-mkt">📍 ${m.market||''}${m.operator?' · '+m.operator:''}</div>
+    <div class="pu-mkt"><svg class="icon"><use href="#icon-map-pin"/></svg> ${m.market||''}${m.operator?' · '+m.operator:''}</div>
     ${m.address?`<div class="pu-code">${m.address}</div>`:''}
-    ${m.source_url?`<div class="pu-actions"><button class="pu-btn pu-maps" onclick="window.open('${m.source_url}','_blank')">🔗 Source</button>${canManage?`<button class="pu-btn pu-video" onclick="deleteMarketSpace(${m.id})">🗑 Remove</button>`:''}</div>`:(canManage?`<div class="pu-actions"><button class="pu-btn pu-video" onclick="deleteMarketSpace(${m.id})">🗑 Remove</button></div>`:'')}
+    ${m.source_url?`<div class="pu-actions"><button class="pu-btn pu-maps" onclick="window.open('${m.source_url}','_blank')"><svg class="icon"><use href="#icon-external-link"/></svg> Source</button>${canManage?`<button class="pu-btn pu-video" onclick="deleteMarketSpace(${m.id})"><svg class="icon"><use href="#icon-trash"/></svg> Remove</button>`:''}</div>`:(canManage?`<div class="pu-actions"><button class="pu-btn pu-video" onclick="deleteMarketSpace(${m.id})"><svg class="icon"><use href="#icon-trash"/></svg> Remove</button></div>`:'')}
   </div></div>`;
 }
 
@@ -1172,8 +1259,8 @@ function renderMarketSpaces(){
   document.getElementById('market-list').innerHTML=filtered.map(m=>`
     <div class="pi">
       <div class="pi-name">${m.name}</div>
-      <div class="pi-mkt">📍 ${m.market||'—'}${m.operator?' · '+m.operator:''}</div>
-      ${canManage?`<button class="del-btn" style="float:right;margin-top:-24px" onclick="deleteMarketSpace(${m.id})">✕</button>`:''}
+      <div class="pi-mkt"><svg class="icon"><use href="#icon-map-pin"/></svg> ${m.market||'—'}${m.operator?' · '+m.operator:''}</div>
+      ${canManage?`<button class="del-btn" style="float:right;margin-top:-24px" onclick="deleteMarketSpace(${m.id})"><svg class="icon"><use href="#icon-x"/></svg></button>`:''}
     </div>`).join('');
 }
 
@@ -1450,16 +1537,25 @@ function makePopup(p,idx){
       `:''}
     </div>`;
   } else {
-    carouselHtml=`<div class="pu-photo-placeholder">🏢</div>`;
+    carouselHtml=`<div class="pu-photo-placeholder"><svg class="icon"><use href="#icon-building"/></svg></div>`;
   }
+
+  const priceHtml=isManaged
+    ?(p.price_per_seat?`<div class="pu-price">₹${p.price_per_seat}<span class="pu-price-unit">/seat/mo</span></div>`:'')
+    :(p.rate?`<div class="pu-price">₹${p.rate}<span class="pu-price-unit">PSF/mo</span></div>`:'');
 
   return `<div class="pu">
     ${carouselHtml}
     <div class="pu-body">
-      <div class="pu-name">${p.name}${isEdited?'<span class="edited-tag">Updated</span>':''}</div>
-      <div class="pu-mkt">📍 ${p.market}${isManaged&&p.operator?' · '+p.operator:''}</div>
+      <div class="pu-header">
+        <div>
+          <div class="pu-name">${p.name}${isEdited?'<span class="edited-tag">Updated</span>':''}</div>
+          <div class="pu-mkt"><svg class="icon"><use href="#icon-map-pin"/></svg> ${p.market}${isManaged&&p.operator?' · '+p.operator:''}</div>
+        </div>
+        <span class="pu-status" style="${statusStyle(p.status)}">${p.status}</span>
+      </div>
+      ${priceHtml}
       <div class="pu-code">${p.code||''}${p.created_by?' · Added by '+p.created_by:''}</div>
-      <span class="pu-status" style="${statusStyle(p.status)}">${p.status}</span>
       ${isManaged?`
       <div class="pu-grid">
         <div class="pu-stat"><div class="psl">Seats</div><div class="psv">${p.seats||'—'}</div></div>
@@ -1478,10 +1574,10 @@ function makePopup(p,idx){
         ${p.phone?`<div class="pu-stat"><div class="psl">Phone</div><div class="psv">${p.phone}</div></div>`:''}
       </div>`}
       <div class="pu-actions">
-        ${canEdit?`<button class="pu-btn pu-edit" onclick="openEdit(${idx})">✏️ Edit</button>`:''}
-        ${p.video?`<button class="pu-btn pu-video" onclick="window.open('${p.video}','_blank')">▶ Video</button>`:''}
-        ${p.floorplan?`<button class="pu-btn pu-fp" onclick="window.open('${p.floorplan}','_blank')">📐 Plan</button>`:''}
-        <button class="pu-btn pu-maps" onclick="window.open('${mapsUrl}','_blank')">🗺 Maps</button>
+        ${canEdit?`<button class="pu-btn pu-edit" onclick="openEdit(${idx})"><svg class="icon"><use href="#icon-edit"/></svg> Edit</button>`:''}
+        ${p.video?`<button class="pu-btn pu-video" onclick="window.open('${p.video}','_blank')"><svg class="icon"><use href="#icon-play"/></svg> Video</button>`:''}
+        ${p.floorplan?`<button class="pu-btn pu-fp" onclick="window.open('${p.floorplan}','_blank')"><svg class="icon"><use href="#icon-ruler"/></svg> Plan</button>`:''}
+        <button class="pu-btn pu-maps" onclick="window.open('${mapsUrl}','_blank')"><svg class="icon"><use href="#icon-map"/></svg> Maps</button>
       </div>
     </div>
   </div>`;
@@ -1679,11 +1775,11 @@ function renderList(){
     return `<div class="pi" id="li-${fi}" onclick="focusProp(${fi})">
       ${photoUrl?`<img class="pi-photo-thumb" src="${photoUrl}" onerror="this.style.display='none'" alt=""/>`:''}
       <div class="pi-name">${p.name}</div>
-      <div class="pi-mkt">📍 ${p.market}${isManaged&&p.operator?' · '+p.operator:''}</div>
+      <div class="pi-mkt"><svg class="icon"><use href="#icon-map-pin"/></svg> ${p.market}${isManaged&&p.operator?' · '+p.operator:''}</div>
       <div class="pi-row">
         <span class="tag ${p.status==='Available'?'ta':p.status==='Rented Out'?'tr':'tn'}">${p.status}</span>
         ${isManaged?`
-        <span class="pi-meta">🪑 Managed</span>
+        <span class="pi-meta"><svg class="icon"><use href="#icon-armchair"/></svg> Managed</span>
         ${p.seats?`<span class="pi-meta">${p.seats} seats</span>`:''}
         ${p.price_per_seat?`<span class="pi-meta">₹${p.price_per_seat}/seat</span>`:''}
         `:`
@@ -1763,8 +1859,8 @@ function renderEditMedia() {
   for (var i = 0; i < editMediaFiles.length; i++) {
     var f = editMediaFiles[i];
     var url = URL.createObjectURL(f);
-    var thumb = f.type.indexOf('image') >= 0 ? '<img src="' + url + '" alt=""/>' : '🎬';
-    html += '<div class="media-thumb">' + thumb + '<button onclick="removeEditMedia(' + i + ')">x</button></div>';
+    var thumb = f.type.indexOf('image') >= 0 ? '<img src="' + url + '" alt=""/>' : '<svg class="icon"><use href="#icon-film"/></svg>';
+    html += '<div class="media-thumb">' + thumb + '<button onclick="removeEditMedia(' + i + ')"><svg class="icon"><use href="#icon-x"/></svg></button></div>';
   }
   document.getElementById('ef-media-preview').innerHTML = html;
 }
@@ -1842,7 +1938,7 @@ function startEditContact(dbId){
       '<input type="text" class="fs" id="mgc-owner-'+dbId+'" placeholder="Owner name" value="'+escapeHtml(p.owner||'')+'" onkeydown="if(event.key===\'Enter\')saveContact('+dbId+');if(event.key===\'Escape\')cancelEditContact('+dbId+')"/>'+
       '<input type="text" class="fs" id="mgc-phone-'+dbId+'" placeholder="Phone number" value="'+escapeHtml(p.phone||'')+'" onkeydown="if(event.key===\'Enter\')saveContact('+dbId+');if(event.key===\'Escape\')cancelEditContact('+dbId+')"/>'+
       '<div class="mg-contact-edit-actions">'+
-        '<button class="mg-contact-save" onclick="saveContact('+dbId+')">✓ Save</button>'+
+        '<button class="mg-contact-save" onclick="saveContact('+dbId+')"><svg class="icon"><use href="#icon-check"/></svg> Save</button>'+
         '<button class="mg-contact-cancel" onclick="cancelEditContact('+dbId+')">Cancel</button>'+
       '</div>'+
     '</div>';
@@ -2100,7 +2196,7 @@ function renderUserList(){
         <div class="user-name">${u.name} <span style="color:var(--text3);font-size:10px">(${u.username})</span></div>
         <span class="urb role-${u.role}">${u.role}</span>
       </div>
-      ${u.username!=='admin'?`<button class="del-btn" onclick="deleteUser(${i})">✕</button>`:''}
+      ${u.username!=='admin'?`<button class="del-btn" onclick="deleteUser(${i})"><svg class="icon"><use href="#icon-x"/></svg></button>`:''}
     </div>`).join('');
 }
 async function addUser(){
@@ -2155,6 +2251,19 @@ function showToast(msg,type='success'){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast '+type+' show';
   setTimeout(()=>t.className='toast',2500);
+}
+
+function updateThemeToggleIcon(){
+  var isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  var use=document.querySelector('#theme-toggle-icon use');
+  if(use) use.setAttribute('href', isDark ? '#icon-sun' : '#icon-moon');
+}
+function toggleTheme(){
+  var isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  var next=isDark?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  try{ localStorage.setItem('legion-theme',next); }catch(e){}
+  updateThemeToggleIcon();
 }
 
 function toggleSidebar(force) {
@@ -2245,8 +2354,8 @@ function updateExtractBtn() {
 function renderChips() {
   var html = '';
   for (var i = 0; i < aiFiles.length; i++) {
-    var icon = aiFiles[i].type.indexOf('pdf') >= 0 ? '📄' : '🖼️';
-    html += '<div class="chip">' + icon + ' ' + aiFiles[i].name + ' <button onclick="removeAI(' + i + ')">x</button></div>';
+    var icon = aiFiles[i].type.indexOf('pdf') >= 0 ? '<svg class="icon"><use href="#icon-file-text"/></svg>' : '<svg class="icon"><use href="#icon-image"/></svg>';
+    html += '<div class="chip">' + icon + ' ' + aiFiles[i].name + ' <button onclick="removeAI(' + i + ')"><svg class="icon"><use href="#icon-x"/></svg></button></div>';
   }
   document.getElementById('ai-chips').innerHTML = html;
 }
@@ -2485,8 +2594,8 @@ function renderMedia() {
   for (var i = 0; i < mediaFiles.length; i++) {
     var f = mediaFiles[i];
     var url = URL.createObjectURL(f);
-    var thumb = f.type.indexOf('image') >= 0 ? '<img src="' + url + '" alt=""/>' : '🎬';
-    html += '<div class="media-thumb">' + thumb + '<button onclick="removeMedia(' + i + ')">x</button></div>';
+    var thumb = f.type.indexOf('image') >= 0 ? '<img src="' + url + '" alt=""/>' : '<svg class="icon"><use href="#icon-film"/></svg>';
+    html += '<div class="media-thumb">' + thumb + '<button onclick="removeMedia(' + i + ')"><svg class="icon"><use href="#icon-x"/></svg></button></div>';
   }
   document.getElementById('media-preview').innerHTML = html;
 }
@@ -2673,7 +2782,7 @@ function onBulkFile(files) {
   if (!files.length) return;
   bulkFile = files[0];
   document.getElementById('bulk-chip').innerHTML =
-    '<div class="chip">📊 ' + bulkFile.name + ' <button onclick="clearBulkFile()">x</button></div>';
+    '<div class="chip"><svg class="icon"><use href="#icon-bar-chart"/></svg> ' + bulkFile.name + ' <button onclick="clearBulkFile()"><svg class="icon"><use href="#icon-x"/></svg></button></div>';
   document.getElementById('bulk-extract-btn').disabled = false;
 }
 
@@ -3105,7 +3214,7 @@ function renderActivity(filterMine){
     return '<div class="act-item" onclick="jumpToProperty(\'' + safeCode + '\')">' +
       '<div class="act-main">' +
         '<div class="act-name">' + p.name + '</div>' +
-        '<div class="act-meta">📍 ' + (p.market||'—') + ' · ' + when + '</div>' +
+        '<div class="act-meta"><svg class="icon"><use href="#icon-map-pin"/></svg> ' + (p.market||'—') + ' · ' + when + '</div>' +
       '</div>' +
       '<span class="act-by">' + by + '</span>' +
     '</div>';
@@ -3124,6 +3233,7 @@ function jumpToProperty(code){
 }
 
 init();
+updateThemeToggleIcon();
 </script>
 </body>
 </html>
