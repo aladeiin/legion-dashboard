@@ -221,6 +221,9 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .pu-stat{background:var(--bg);border-radius:5px;padding:5px 7px}
 .pu-stat .psl{font-size:9px;color:var(--text3);margin-bottom:1px}
 .pu-stat .psv{font-size:11px;font-weight:600;color:var(--text)}
+.pu-docs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.pu-doc-chip{display:inline-flex;align-items:center;gap:4px;background:var(--info-bg);color:var(--info);font-size:10px;font-weight:600;padding:4px 9px;border-radius:14px;text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pu-doc-chip:hover{filter:brightness(.95)}
 .pu-actions{display:flex;gap:5px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap}
 .pu-btn{flex:1;padding:6px 4px;font-size:10px;font-weight:600;border:none;border-radius:6px;cursor:pointer;min-width:48px;transition:.15s}
 .pu-edit{background:var(--navy);color:#fff}
@@ -321,12 +324,21 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .field input.ai-filled{border-color:var(--green);background:#F0FBF4}
 .field-hint{font-size:10px;color:var(--text3)}
 .media-zone{border:1.5px dashed var(--border);border-radius:8px;padding:14px;text-align:center;cursor:pointer;background:var(--bg);margin-top:4px}
-.media-zone:hover{border-color:var(--navy);background:#EEF3FB}
+.media-zone:hover{border-color:var(--navy);background:var(--info-bg)}
 .mz-text{font-size:12px;color:var(--text3)}
 .media-preview{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
 .media-thumb{aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:18px;position:relative}
 .media-thumb img{width:100%;height:100%;object-fit:cover}
 .media-thumb button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.5);border:none;color:#fff;width:18px;height:18px;border-radius:50%;font-size:10px;cursor:pointer}
+.doc-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.doc-item{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:11.5px;color:var(--text2)}
+.doc-item .icon{color:var(--info);flex-shrink:0}
+.doc-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-item a{color:var(--text2);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-item a:hover{color:var(--navy);text-decoration:underline}
+.doc-item button{background:transparent;border:none;color:var(--text3);width:20px;height:20px;border-radius:5px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.doc-item button:hover{background:var(--rented-bg);color:var(--rented)}
+.doc-item button .icon{width:.85em;height:.85em}
 .submit-btn{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px}
 .submit-btn:disabled{opacity:.4;cursor:not-allowed}
 .clear-btn{width:100%;padding:10px;background:transparent;color:var(--text2);border:1.5px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer}
@@ -580,6 +592,12 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <div class="ep-field"><label>Floor Plan URL</label><input type="text" id="ef-floorplan" placeholder="https://..."/></div>
         <div class="ep-field"><label>Google Maps URL</label><input type="text" id="ef-maps" placeholder="https://maps.google.com/..."/></div>
       </div>
+      <div class="ep-section">Documents</div>
+      <div class="media-zone" onclick="document.getElementById('ef-doc-input').click()">
+        <input type="file" id="ef-doc-input" multiple accept=".pdf,.doc,.docx,.ppt,.pptx" style="display:none" onchange="onEditDocs(this.files)"/>
+        <div class="mz-text"><svg class="icon"><use href="#icon-file-text"/></svg> Tap to add brochures, floor plans or presentations</div>
+      </div>
+      <div class="doc-list" id="ef-doc-list"></div>
       <div class="ep-section">Notes</div>
       <div class="ep-grid full">
         <div class="ep-field"><textarea id="ef-notes" placeholder="Internal notes about this property..."></textarea></div>
@@ -986,7 +1004,7 @@ async function loadPropsFromSupabase() {
       deposit: r.deposit, lockin: r.lockin, tenure: r.tenure, escal: r.escal,
       parking: r.parking, power: r.power, ac: r.ac, owner: r.owner, phone: r.phone,
       video: r.video, floorplan: r.floorplan, maps: r.maps, photo: r.photo,
-      photos: r.photos || [], notes: r.notes, lat: r.lat, lng: r.lng,
+      photos: r.photos || [], documents: r.documents || [], notes: r.notes, lat: r.lat, lng: r.lng,
       edited_by: r.edited_by, edited_at: r.edited_at,
       created_by: r.created_by, created_at: r.created_at,
       space_type: r.space_type || 'Conventional', operator: r.operator,
@@ -1024,7 +1042,7 @@ const DEFAULT_USERS=[
 
 let USERS=[], EDITS={}, currentUser=null, props=[], filtered=[];
 let map, markerLayer, markers=[], editIdx=null, activeListIdx=null, fiMarkerIndex={};
-let aiFiles=[], mediaFiles=[], editMediaFiles=[], bulkFile=null;
+let aiFiles=[], mediaFiles=[], editMediaFiles=[], editDocFiles=[], editDocsList=[], bulkFile=null;
 
 // Team accounts live in Supabase (table "team_users") so a member added by
 // one admin works for that person on any device. Falls back to a
@@ -1594,6 +1612,7 @@ function makePopup(p,idx){
         ${p.cam?`<div class="pu-stat"><div class="psl">CAM</div><div class="psv">₹${p.cam} PSF</div></div>`:''}
         ${p.phone?`<div class="pu-stat"><div class="psl">Phone</div><div class="psv">${p.phone}</div></div>`:''}
       </div>`}
+      ${p.documents&&p.documents.length?`<div class="pu-docs">${p.documents.map(d=>`<a class="pu-doc-chip" href="${d.url}" target="_blank"><svg class="icon"><use href="#icon-file-text"/></svg> ${escapeHtml(d.name)}</a>`).join('')}</div>`:''}
       <div class="pu-actions">
         ${canEdit?`<button class="pu-btn pu-edit" onclick="openEdit(${idx})"><svg class="icon"><use href="#icon-edit"/></svg> Edit</button>`:''}
         ${p.video?`<button class="pu-btn pu-video" onclick="window.open('${p.video}','_blank')"><svg class="icon"><use href="#icon-play"/></svg> Video</button>`:''}
@@ -1859,11 +1878,14 @@ function openEdit(origIdx){
   onSpaceTypeChange('ef');
   editMediaFiles=[];
   renderEditMedia();
+  editDocFiles=[];
+  editDocsList=Array.isArray(p.documents)?p.documents.slice():[];
+  renderEditDocs();
   document.getElementById('edit-overlay').classList.remove('hidden');
   document.getElementById('ep-saving').style.display='none';
   document.getElementById('ep-delete-btn').style.display=(currentUser&&currentUser.role==='admin')?'block':'none';
 }
-function closeEdit(){document.getElementById('edit-overlay').classList.add('hidden');editIdx=null;editMediaFiles=[];}
+function closeEdit(){document.getElementById('edit-overlay').classList.add('hidden');editIdx=null;editMediaFiles=[];editDocFiles=[];editDocsList=[];}
 function onEditMedia(files) {
   for (var i = 0; i < files.length; i++) {
     var exists = false;
@@ -1884,6 +1906,30 @@ function renderEditMedia() {
     html += '<div class="media-thumb">' + thumb + '<button onclick="removeEditMedia(' + i + ')"><svg class="icon"><use href="#icon-x"/></svg></button></div>';
   }
   document.getElementById('ef-media-preview').innerHTML = html;
+}
+function onEditDocs(files){
+  for(var i=0;i<files.length;i++){
+    var exists=false;
+    for(var j=0;j<editDocFiles.length;j++){ if(editDocFiles[j].name===files[i].name){ exists=true; break; } }
+    if(!exists) editDocFiles.push(files[i]);
+  }
+  renderEditDocs();
+}
+function removeEditDocFile(i){ editDocFiles.splice(i,1); renderEditDocs(); }
+function removeExistingDoc(i){ editDocsList.splice(i,1); renderEditDocs(); }
+function renderEditDocs(){
+  var html='';
+  editDocsList.forEach(function(d,i){
+    html+='<div class="doc-item"><svg class="icon"><use href="#icon-file-text"/></svg>'+
+      '<a href="'+d.url+'" target="_blank">'+escapeHtml(d.name)+'</a>'+
+      '<button onclick="removeExistingDoc('+i+')" title="Remove"><svg class="icon"><use href="#icon-x"/></svg></button></div>';
+  });
+  editDocFiles.forEach(function(f,i){
+    html+='<div class="doc-item"><svg class="icon"><use href="#icon-file-text"/></svg>'+
+      '<span>'+escapeHtml(f.name)+' (will upload on save)</span>'+
+      '<button onclick="removeEditDocFile('+i+')" title="Remove"><svg class="icon"><use href="#icon-x"/></svg></button></div>';
+  });
+  document.getElementById('ef-doc-list').innerHTML=html;
 }
 async function deleteProperty(){
   if(editIdx===null||!currentUser||currentUser.role!=='admin') return;
@@ -2148,6 +2194,21 @@ async function saveEdit(){
     epSaving.textContent='Saving changes…';
   }
 
+  var safeFolder2=((p.code||'PROP')+'_'+(p.name||'')).replace(/[^a-zA-Z0-9_-]/g,'_');
+  var finalDocs=editDocsList.slice();
+  for(var di=0; di<editDocFiles.length; di++){
+    try{
+      var df=editDocFiles[di];
+      epSaving.textContent='Uploading '+df.name+'...';
+      var dpath='docs/'+safeFolder2+'/'+Date.now()+'_'+df.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      var dUrl=await uploadToSupabaseStorage(df,dpath,function(pct){ epSaving.textContent='Uploading '+df.name+'... '+pct+'%'; });
+      finalDocs.push({name:df.name,url:dUrl});
+    }catch(e){
+      uploadErrors.push(editDocFiles[di].name+': '+e.message);
+    }
+  }
+  epSaving.textContent='Saving changes…';
+
   const updated={
     lat:latVal,
     lng:lngVal,
@@ -2177,6 +2238,7 @@ async function saveEdit(){
     floorplan:document.getElementById('ef-floorplan').value,
     maps:document.getElementById('ef-maps').value,
     notes:document.getElementById('ef-notes').value,
+    documents:finalDocs,
     edited_by:currentUser.username,
     edited_at:new Date().toISOString(),
   };
