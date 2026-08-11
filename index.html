@@ -2234,6 +2234,17 @@ async function uploadToSupabaseStorage(file, path) {
 // safely under Vercel's 4.5MB serverless function body limit.
 var LARGE_FILE_THRESHOLD = 2 * 1024 * 1024;
 
+// Rejects if the wrapped promise doesn't settle within ms - ffmpeg.wasm is
+// known to hang outright (never resolve or reject) on some mobile browsers
+// under memory pressure, which without this would freeze the save with no
+// error at all rather than just failing.
+function withTimeout(promise, ms, message) {
+  return new Promise(function(resolve, reject) {
+    var timer = setTimeout(function(){ reject(new Error(message)); }, ms);
+    promise.then(function(v){ clearTimeout(timer); resolve(v); }, function(e){ clearTimeout(timer); reject(e); });
+  });
+}
+
 // ── VIDEO COMPRESSION ────────────────────────────────
 // Phone videos can run 50-200MB+; ffmpeg.wasm re-encodes them client-side
 // (scaled down + lower bitrate) before upload so storage and load times
@@ -2270,18 +2281,24 @@ async function compressVideo(file, onStatus) {
   if (file.size < 3 * 1024 * 1024) return file; // not worth the CPU/battery cost
   try {
     if (onStatus) onStatus('Loading video compressor...');
-    var ffmpeg = await loadFFmpeg();
+    var ffmpeg;
+    try {
+      ffmpeg = await withTimeout(loadFFmpeg(), 25000, 'Video compressor took too long to load');
+    } catch (loadErr) {
+      ffmpegLoadPromise = null; // don't leave a permanently-hung load cached for the rest of the session
+      throw loadErr;
+    }
     if (onStatus) onStatus('Compressing ' + file.name + '...');
     var inName = 'in_' + Date.now() + (file.name.match(/\.\w+$/) || ['.mp4'])[0];
     var outName = 'out_' + Date.now() + '.mp4';
     ffmpeg.FS('writeFile', inName, await window.FFmpeg.fetchFile(file));
-    await ffmpeg.run(
+    await withTimeout(ffmpeg.run(
       '-i', inName,
       '-vf', "scale='min(1280,iw)':-2",
       '-c:v', 'libx264', '-crf', '28', '-preset', 'veryfast',
       '-c:a', 'aac', '-b:a', '96k',
       outName
-    );
+    ), 120000, 'Video compression took too long');
     var data = ffmpeg.FS('readFile', outName);
     ffmpeg.FS('unlink', inName);
     ffmpeg.FS('unlink', outName);
@@ -2290,6 +2307,7 @@ async function compressVideo(file, onStatus) {
     return new File([blob], file.name.replace(/\.\w+$/, '.mp4'), { type: 'video/mp4' });
   } catch (e) {
     console.error('Video compression failed, uploading original file instead:', e);
+    if (onStatus) onStatus('Compression unavailable - uploading ' + file.name + ' as-is...');
     return file;
   }
 }
