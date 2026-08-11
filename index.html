@@ -2720,11 +2720,37 @@ async function doBulkImport() {
     var updated = [];
     var skipped = [];
     var failed = [];
+    var photoFailed = [];
     var photosAttached = 0;
+
+    // Matching a listing to its photo primarily relies on the AI correctly
+    // echoing back source_row/source_option - if it doesn't (or gets it
+    // wrong), and this import is unambiguously "one wide-format column per
+    // listing" (as many listings as image-bearing columns), fall back to
+    // matching by plain left-to-right position instead of trusting those
+    // fields at all.
+    var sortedImageCols = Object.keys(imagesByCol).map(Number).sort(function(a, b){ return a - b; });
+    var namedListingCount = listings.filter(function(l){ return l.name; }).length;
+    var useOrderFallback = sortedImageCols.length > 0 && sortedImageCols.length === namedListingCount;
+    var orderIdx = 0;
+    function findMatchedImage(item, idx) {
+      var img = null;
+      if (item.source_option !== undefined && item.source_option !== null && item.source_option !== '') {
+        img = imagesByCol[parseInt(item.source_option, 10)];
+      }
+      if (!img && item.source_row !== undefined && item.source_row !== null && item.source_row !== '') {
+        img = imagesByRow[parseInt(item.source_row, 10) - 1];
+      }
+      if (!img && useOrderFallback) {
+        img = imagesByCol[sortedImageCols[idx]];
+      }
+      return img;
+    }
 
     for (var i = 0; i < listings.length; i++) {
       var item = listings[i];
       if (!item.name) { continue; }
+      var myOrderIdx = orderIdx++;
       document.getElementById('bulk-status-text').textContent = 'Processing ' + (i+1) + ' of ' + listings.length + '...';
 
       try {
@@ -2739,11 +2765,7 @@ async function doBulkImport() {
           // photo and this sheet has one for it, backfill just that -
           // otherwise a duplicate stays photo-less forever unless the user
           // opts into a full overwrite via "Update existing".
-          var skipImg = null;
-          if (!existing[0].photo) {
-            if (item.source_option) skipImg = imagesByCol[parseInt(item.source_option, 10)];
-            if (!skipImg && item.source_row) skipImg = imagesByRow[parseInt(item.source_row, 10) - 1];
-          }
+          var skipImg = existing[0].photo ? null : findMatchedImage(item, myOrderIdx);
           if (skipImg) {
             try {
               var skipPhotoUrl = await uploadToSupabaseStorage(skipImg, 'bulk-import/' + Date.now() + '_' + i + '.png');
@@ -2751,6 +2773,7 @@ async function doBulkImport() {
               photosAttached++;
             } catch (imgErr) {
               console.error('Bulk import: failed to backfill photo for "' + item.name + '":', imgErr);
+              photoFailed.push(item.name + ': ' + imgErr.message);
             }
           }
           skipped.push(item.name + ' (' + (item.market||'-') + ') - already exists');
@@ -2770,13 +2793,7 @@ async function doBulkImport() {
           notes: (item.notes || '') + (item.salerate ? ' | Sale rate: Rs' + item.salerate + ' PSF' : '')
         };
 
-        var matchedImage = null;
-        if (item.source_option !== undefined && item.source_option !== null && item.source_option !== '') {
-          matchedImage = imagesByCol[parseInt(item.source_option, 10)];
-        }
-        if (!matchedImage && item.source_row !== undefined && item.source_row !== null && item.source_row !== '') {
-          matchedImage = imagesByRow[parseInt(item.source_row, 10) - 1];
-        }
+        var matchedImage = findMatchedImage(item, myOrderIdx);
         if (matchedImage) {
           try {
             var photoUrl = await uploadToSupabaseStorage(matchedImage, 'bulk-import/' + Date.now() + '_' + i + '.png');
@@ -2785,6 +2802,7 @@ async function doBulkImport() {
             photosAttached++;
           } catch (imgErr) {
             console.error('Bulk import: failed to upload photo for "' + item.name + '":', imgErr);
+            photoFailed.push(item.name + ': ' + imgErr.message);
           }
         }
 
@@ -2830,14 +2848,16 @@ async function doBulkImport() {
       '<b style="color:var(--green)">' + added.length + '</b> new properties added<br>' +
       (updateExisting ? '<b style="color:var(--navy)">' + updated.length + '</b> existing properties updated<br>' : '') +
       '<b style="color:var(--text3)">' + skipped.length + '</b> skipped (already in database)' +
-      (photosAttached ? '<br><b style="color:var(--green)">' + photosAttached + '</b> photos attached' : '') +
-      (failed.length ? '<br><b style="color:var(--red)">' + failed.length + '</b> failed to save' : '');
+      (xlsxImages.length ? '<br><b style="color:var(--text3)">' + xlsxImages.length + '</b> photo(s) found in spreadsheet, <b style="color:var(--green)">' + photosAttached + '</b> attached' : '') +
+      (failed.length ? '<br><b style="color:var(--red)">' + failed.length + '</b> failed to save' : '') +
+      (photoFailed.length ? '<br><b style="color:var(--red)">' + photoFailed.length + '</b> photo(s) failed to upload' : '');
 
     var listHtml = '';
     if (added.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--green);margin:10px 0 6px">ADDED</div>' + added.map(function(n){return '<div style="font-size:11px;color:var(--text2);padding:3px 0">+ '+n+'</div>';}).join('');
     if (updated.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--navy);margin:10px 0 6px">UPDATED</div>' + updated.map(function(n){return '<div style="font-size:11px;color:var(--text2);padding:3px 0">~ '+n+'</div>';}).join('');
     if (skipped.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--text3);margin:10px 0 6px">SKIPPED (DUPLICATES)</div>' + skipped.map(function(n){return '<div style="font-size:11px;color:var(--text3);padding:3px 0">- '+n+'</div>';}).join('');
     if (failed.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--red);margin:10px 0 6px">FAILED (see reason below - check console for full detail)</div>' + failed.map(function(f){return '<div style="font-size:11px;color:var(--red);padding:3px 0">- '+f.name+': '+f.reason+'</div>';}).join('');
+    if (photoFailed.length) listHtml += '<div style="font-size:11px;font-weight:700;color:var(--red);margin:10px 0 6px">PHOTO UPLOAD FAILURES</div>' + photoFailed.map(function(m){return '<div style="font-size:11px;color:var(--red);padding:3px 0">- '+m+'</div>';}).join('');
     document.getElementById('bulk-list').innerHTML = listHtml;
 
     showToast(added.length + ' added, ' + updated.length + ' updated', 'success');
