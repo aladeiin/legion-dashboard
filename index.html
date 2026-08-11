@@ -1706,14 +1706,23 @@ async function deleteProperty(){
   if(!confirm('Delete "'+p.name+'" permanently? This cannot be undone.')) return;
   const dbId=p._dbId;
   try{
+    // Prefer "return=representation" so the response body echoes the rows
+    // that were actually deleted. A DELETE blocked by a missing/too-strict
+    // Row Level Security policy still returns 200/204 "success" with zero
+    // rows affected - the only way to tell a real delete from a silent
+    // no-op is to check what actually came back.
     const res=await fetch(SUPABASE_URL+"/rest/v1/properties?id=eq."+dbId,{
       method:"DELETE",
-      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Prefer":"return=minimal"}
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Prefer":"return=representation"}
     });
     if(!res.ok){
       const errText=await res.text();
       console.error('Delete failed:',res.status,errText);
       throw new Error(errText||('HTTP '+res.status));
+    }
+    const deletedRows=await res.json();
+    if(!Array.isArray(deletedRows)||deletedRows.length===0){
+      throw new Error('Request succeeded but 0 rows were deleted - this usually means a database permission (Row Level Security) policy is blocking deletes. See setup notes.');
     }
     closeEdit();
     await refreshProps();
@@ -1826,19 +1835,25 @@ async function bulkDeleteSelected(){
   if(!ids.length) return;
   if(!confirm('Delete '+ids.length+' propert'+(ids.length===1?'y':'ies')+' permanently? This cannot be undone.')) return;
   try{
+    // See deleteProperty() - return=representation lets us detect a
+    // silent RLS no-op (200/204 "success" that actually deleted nothing).
     const res=await fetch(SUPABASE_URL+'/rest/v1/properties?id=in.('+ids.join(',')+')',{
       method:'DELETE',
-      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Prefer':'return=minimal'}
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Prefer':'return=representation'}
     });
     if(!res.ok){
       const errText=await res.text();
       console.error('Bulk delete failed:',res.status,errText);
       throw new Error(errText||('HTTP '+res.status));
     }
+    const deletedRows=await res.json();
+    if(!Array.isArray(deletedRows)||deletedRows.length===0){
+      throw new Error('Request succeeded but 0 rows were deleted - this usually means a database permission (Row Level Security) policy is blocking deletes. See setup notes.');
+    }
     manageSelected.clear();
     await refreshProps();
     renderManageTable();
-    showToast(ids.length+' propert'+(ids.length===1?'y':'ies')+' deleted','success');
+    showToast(deletedRows.length+' propert'+(deletedRows.length===1?'y':'ies')+' deleted','success');
   }catch(err){
     showToast('Bulk delete failed: '+err.message,'error');
   }
