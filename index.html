@@ -465,6 +465,12 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
       </div>
       <div class="field-hint" style="margin:-6px 0 4px 2px">New properties are located automatically from their micro-market. Correct here if the pin is in the wrong spot - right-click the exact spot on Google Maps to copy coordinates.</div>
       <div class="ep-section">Media & Links</div>
+      <div class="media-zone" onclick="document.getElementById('ef-media-input').click()">
+        <input type="file" id="ef-media-input" multiple accept="image/*,video/*" style="display:none" onchange="onEditMedia(this.files)"/>
+        <div class="mz-text">📷 Tap to add photos or videos from this device</div>
+      </div>
+      <div class="media-preview" id="ef-media-preview"></div>
+      <div class="field-hint" style="margin:-2px 0 10px 2px">Uploaded photos are added to this property's gallery; an uploaded video replaces the walkthrough below. Or paste links directly instead:</div>
       <div class="ep-grid full">
         <div class="ep-field"><label>Photo URL</label><input type="text" id="ef-photo" placeholder="https://..."/></div>
         <div class="ep-field"><label>Video Walkthrough URL</label><input type="text" id="ef-video" placeholder="https://youtube.com/..."/></div>
@@ -649,10 +655,10 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 
       <div id="ai-section">
         <div class="ai-zone" onclick="document.getElementById('ai-input').click()">
-          <input type="file" id="ai-input" multiple accept=".pdf,image/*,.txt" style="display:none" onchange="onAIFiles(this.files)"/>
+          <input type="file" id="ai-input" multiple accept=".pdf,image/*,.txt,video/*" style="display:none" onchange="onAIFiles(this.files)"/>
           <span class="az-icon">📄</span>
           <div class="az-title">Upload brochure, pricing sheet or any property document</div>
-          <div class="az-sub">PDF, JPG, PNG - AI will read it and auto-fill the form below</div>
+          <div class="az-sub">PDF, JPG, PNG - AI will read it and auto-fill the form below. Videos go straight into "Photos and Videos" below instead.</div>
           <span class="az-btn">Choose Files</span>
         </div>
         <div class="file-chips" id="ai-chips"></div>
@@ -909,7 +915,7 @@ const DEFAULT_USERS=[
 
 let USERS=[], EDITS={}, currentUser=null, props=[], filtered=[];
 let map, markerLayer, markers=[], editIdx=null, activeListIdx=null, fiMarkerIndex={};
-let aiFiles=[], mediaFiles=[], bulkFile=null;
+let aiFiles=[], mediaFiles=[], editMediaFiles=[], bulkFile=null;
 
 // Team accounts live in Supabase (table "team_users") so a member added by
 // one admin works for that person on any device. Falls back to a
@@ -1709,11 +1715,34 @@ function openEdit(origIdx){
   Object.entries(fields).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val||'';});
   document.getElementById('ef-spacetype').value=p.space_type==='Managed'?'Managed':'Conventional';
   onSpaceTypeChange('ef');
+  editMediaFiles=[];
+  renderEditMedia();
   document.getElementById('edit-overlay').classList.remove('hidden');
   document.getElementById('ep-saving').style.display='none';
   document.getElementById('ep-delete-btn').style.display=(currentUser&&currentUser.role==='admin')?'block':'none';
 }
-function closeEdit(){document.getElementById('edit-overlay').classList.add('hidden');editIdx=null;}
+function closeEdit(){document.getElementById('edit-overlay').classList.add('hidden');editIdx=null;editMediaFiles=[];}
+function onEditMedia(files) {
+  for (var i = 0; i < files.length; i++) {
+    var exists = false;
+    for (var j = 0; j < editMediaFiles.length; j++) {
+      if (editMediaFiles[j].name === files[i].name) { exists = true; break; }
+    }
+    if (!exists) editMediaFiles.push(files[i]);
+  }
+  renderEditMedia();
+}
+function removeEditMedia(i) { editMediaFiles.splice(i, 1); renderEditMedia(); }
+function renderEditMedia() {
+  var html = '';
+  for (var i = 0; i < editMediaFiles.length; i++) {
+    var f = editMediaFiles[i];
+    var url = URL.createObjectURL(f);
+    var thumb = f.type.indexOf('image') >= 0 ? '<img src="' + url + '" alt=""/>' : '🎬';
+    html += '<div class="media-thumb">' + thumb + '<button onclick="removeEditMedia(' + i + ')">x</button></div>';
+  }
+  document.getElementById('ef-media-preview').innerHTML = html;
+}
 async function deleteProperty(){
   if(editIdx===null||!currentUser||currentUser.role!=='admin') return;
   const p=props[editIdx];
@@ -1935,14 +1964,36 @@ async function bulkDeleteSelected(){
 
 async function saveEdit(){
   if(editIdx===null) return;
-  document.getElementById('ep-saving').style.display='block';
+  const epSaving=document.getElementById('ep-saving');
+  epSaving.style.display='block';
   const latVal=parseFloat(document.getElementById('ef-lat').value);
   const lngVal=parseFloat(document.getElementById('ef-lng').value);
   if(isNaN(latVal)||isNaN(lngVal)){
-    document.getElementById('ep-saving').style.display='none';
+    epSaving.style.display='none';
     showToast('Latitude and longitude must be valid numbers','error');
     return;
   }
+
+  const p=props[editIdx];
+  var newPhotoUrls=[], newVideoUrl='';
+  if(editMediaFiles.length){
+    var safeFolder=((p.code||'PROP')+'_'+(p.name||'')).replace(/[^a-zA-Z0-9_-]/g,'_');
+    for(var mi=0; mi<editMediaFiles.length; mi++){
+      try{
+        var mf=editMediaFiles[mi];
+        var isVideo=mf.type.indexOf('video')>=0;
+        epSaving.textContent='Uploading '+mf.name+'...';
+        if(isVideo) mf=await compressVideo(mf,function(s){ epSaving.textContent=s; });
+        var mpath=safeFolder+'/'+Date.now()+'_'+mf.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        var mUrl=await uploadToSupabaseStorage(mf,mpath);
+        if(isVideo){ newVideoUrl=mUrl; } else { newPhotoUrls.push(mUrl); }
+      }catch(e){
+        showToast('Upload failed for one file: '+e.message,'error');
+      }
+    }
+    epSaving.textContent='Saving changes…';
+  }
+
   const updated={
     lat:latVal,
     lng:lngVal,
@@ -1975,16 +2026,25 @@ async function saveEdit(){
     edited_by:currentUser.username,
     edited_at:new Date().toISOString(),
   };
+  if(newPhotoUrls.length){
+    const existingPhotos=Array.isArray(p.photos)?p.photos:(p.photo?[p.photo]:[]);
+    const mergedPhotos=existingPhotos.concat(newPhotoUrls);
+    updated.photos=mergedPhotos;
+    updated.photo=mergedPhotos[0];
+  }
+  if(newVideoUrl){
+    updated.video=newVideoUrl;
+  }
   const dbId = props[editIdx]._dbId;
   const result = await patchProperty(dbId, updated);
   if (!result.ok) {
-    document.getElementById('ep-saving').style.display='none';
+    epSaving.style.display='none';
     showToast('Save failed: ' + result.error, 'error');
     return;
   }
   props[editIdx]={...props[editIdx],...result.saved};
   applyFilters();
-  document.getElementById('ep-saving').style.display='none';
+  epSaving.style.display='none';
   closeEdit();
   showToast('Changes saved to database ✓','success');
 }
@@ -2102,13 +2162,19 @@ function onSpaceTypeChange(prefix) {
 }
 
 function onAIFiles(files) {
+  // Videos can't be read by the AI for data extraction - route them
+  // straight into the same "photos and videos" attachment pipeline as the
+  // dedicated media zone, instead of silently discarding them.
+  var videoFiles = [];
   for (var i = 0; i < files.length; i++) {
+    if (files[i].type.indexOf('video') >= 0) { videoFiles.push(files[i]); continue; }
     var exists = false;
     for (var j = 0; j < aiFiles.length; j++) {
       if (aiFiles[j].name === files[i].name) { exists = true; break; }
     }
     if (!exists) aiFiles.push(files[i]);
   }
+  if (videoFiles.length) onMedia(videoFiles);
   renderChips();
   updateExtractBtn();
 }
@@ -2167,6 +2233,66 @@ async function uploadToSupabaseStorage(file, path) {
 // passed to /api/extract as a URL instead of inline base64, to stay
 // safely under Vercel's 4.5MB serverless function body limit.
 var LARGE_FILE_THRESHOLD = 2 * 1024 * 1024;
+
+// ── VIDEO COMPRESSION ────────────────────────────────
+// Phone videos can run 50-200MB+; ffmpeg.wasm re-encodes them client-side
+// (scaled down + lower bitrate) before upload so storage and load times
+// stay reasonable. Loaded lazily via CDN script tags on first actual use,
+// not up front, since most page loads never touch a video at all and the
+// ffmpeg core is a large (~25MB) one-time download.
+var ffmpegInstance = null, ffmpegLoadPromise = null;
+function loadFFmpeg() {
+  if (ffmpegLoadPromise) return ffmpegLoadPromise;
+  ffmpegLoadPromise = new Promise(function(resolve, reject) {
+    var s = document.createElement('script');
+    s.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js';
+    s.onload = function() {
+      try {
+        var ffmpeg = window.FFmpeg.createFFmpeg({
+          log: false,
+          corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
+        });
+        ffmpeg.load().then(function(){ ffmpegInstance = ffmpeg; resolve(ffmpeg); }).catch(reject);
+      } catch (e) { reject(e); }
+    };
+    s.onerror = function() { reject(new Error('Could not load video compressor')); };
+    document.head.appendChild(s);
+  });
+  return ffmpegLoadPromise;
+}
+
+// Compresses a video File to roughly fit a 1280px-wide, ~28 CRF H.264 MP4.
+// Best-effort: any failure (unsupported browser, OOM on a huge file, CDN
+// hiccup) just returns the original file untouched rather than blocking
+// the upload - a bigger video attached is far better than none at all.
+async function compressVideo(file, onStatus) {
+  if (!file.type || file.type.indexOf('video') < 0) return file;
+  if (file.size < 3 * 1024 * 1024) return file; // not worth the CPU/battery cost
+  try {
+    if (onStatus) onStatus('Loading video compressor...');
+    var ffmpeg = await loadFFmpeg();
+    if (onStatus) onStatus('Compressing ' + file.name + '...');
+    var inName = 'in_' + Date.now() + (file.name.match(/\.\w+$/) || ['.mp4'])[0];
+    var outName = 'out_' + Date.now() + '.mp4';
+    ffmpeg.FS('writeFile', inName, await window.FFmpeg.fetchFile(file));
+    await ffmpeg.run(
+      '-i', inName,
+      '-vf', "scale='min(1280,iw)':-2",
+      '-c:v', 'libx264', '-crf', '28', '-preset', 'veryfast',
+      '-c:a', 'aac', '-b:a', '96k',
+      outName
+    );
+    var data = ffmpeg.FS('readFile', outName);
+    ffmpeg.FS('unlink', inName);
+    ffmpeg.FS('unlink', outName);
+    var blob = new Blob([data.buffer], { type: 'video/mp4' });
+    if (blob.size >= file.size) return file; // compression didn't actually help
+    return new File([blob], file.name.replace(/\.\w+$/, '.mp4'), { type: 'video/mp4' });
+  } catch (e) {
+    console.error('Video compression failed, uploading original file instead:', e);
+    return file;
+  }
+}
 
 async function doExtract() {
   var pastedText = document.getElementById('ai-pasted-text').value.trim();
@@ -2358,6 +2484,7 @@ async function doSubmit() {
     try {
       var f = mediaFiles[i];
       var isVideo = f.type.indexOf('video') >= 0;
+      if (isVideo) f = await compressVideo(f, function(s){ document.getElementById('prog-title').textContent = s; });
       updateProg('Uploading ' + f.name + '...');
       var path = safeFolder + '/' + Date.now() + '_' + f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       var fileUrl = await uploadToSupabaseStorage(f, path);
