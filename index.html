@@ -41,15 +41,51 @@ import { OrbitControls } from 'https://unpkg.com/three@0.185.1/examples/jsm/cont
 import { CSS2DRenderer } from 'https://unpkg.com/three@0.185.1/examples/jsm/renderers/CSS2DRenderer.js';
 window.THREE = THREE;
 
-let scene, camera, renderer, labelRenderer, controls, globe, container, ro;
+let scene, camera, renderer, labelRenderer, controls, globe, container, ro, dirLight;
+
+// Static reference layer so city names are visible no matter where the
+// globe is rotated/zoomed to - the globe texture itself is just satellite
+// imagery with no place names baked in. Not exhaustive, just enough
+// coverage (major world cities + Indian metros, since the portfolio is
+// India-based) that zooming anywhere lands near a labelled city.
+const CITY_LABELS = [
+  { name: 'Mumbai', lat: 19.076, lng: 72.877 }, { name: 'Pune', lat: 18.520, lng: 73.856 },
+  { name: 'Bengaluru', lat: 12.972, lng: 77.594 }, { name: 'Delhi', lat: 28.704, lng: 77.102 },
+  { name: 'Gurugram', lat: 28.459, lng: 77.026 }, { name: 'Noida', lat: 28.535, lng: 77.391 },
+  { name: 'Hyderabad', lat: 17.385, lng: 78.487 }, { name: 'Chennai', lat: 13.083, lng: 80.271 },
+  { name: 'Kolkata', lat: 22.573, lng: 88.364 }, { name: 'Ahmedabad', lat: 23.023, lng: 72.571 },
+  { name: 'Surat', lat: 21.170, lng: 72.831 }, { name: 'Jaipur', lat: 26.912, lng: 75.787 },
+  { name: 'Lucknow', lat: 26.847, lng: 80.947 }, { name: 'Chandigarh', lat: 30.733, lng: 76.779 },
+  { name: 'Kochi', lat: 9.931, lng: 76.267 }, { name: 'Indore', lat: 22.719, lng: 75.858 },
+  { name: 'Nagpur', lat: 21.146, lng: 79.089 }, { name: 'Bhopal', lat: 23.259, lng: 77.412 },
+  { name: 'Coimbatore', lat: 11.017, lng: 76.956 }, { name: 'Visakhapatnam', lat: 17.687, lng: 83.219 },
+  { name: 'Goa', lat: 15.496, lng: 73.828 }, { name: 'Kanpur', lat: 26.449, lng: 80.332 },
+  { name: 'New York', lat: 40.713, lng: -74.006 }, { name: 'Los Angeles', lat: 34.052, lng: -118.244 },
+  { name: 'Chicago', lat: 41.878, lng: -87.630 }, { name: 'Toronto', lat: 43.651, lng: -79.383 },
+  { name: 'Mexico City', lat: 19.433, lng: -99.133 }, { name: 'São Paulo', lat: -23.551, lng: -46.633 },
+  { name: 'Buenos Aires', lat: -34.604, lng: -58.382 }, { name: 'London', lat: 51.507, lng: -0.128 },
+  { name: 'Paris', lat: 48.857, lng: 2.352 }, { name: 'Berlin', lat: 52.520, lng: 13.405 },
+  { name: 'Madrid', lat: 40.417, lng: -3.703 }, { name: 'Rome', lat: 41.903, lng: 12.496 },
+  { name: 'Amsterdam', lat: 52.367, lng: 4.904 }, { name: 'Moscow', lat: 55.756, lng: 37.618 },
+  { name: 'Istanbul', lat: 41.009, lng: 28.978 }, { name: 'Dubai', lat: 25.205, lng: 55.271 },
+  { name: 'Riyadh', lat: 24.713, lng: 46.675 }, { name: 'Cairo', lat: 30.044, lng: 31.236 },
+  { name: 'Lagos', lat: 6.524, lng: 3.379 }, { name: 'Nairobi', lat: -1.286, lng: 36.817 },
+  { name: 'Johannesburg', lat: -26.204, lng: 28.047 }, { name: 'Tokyo', lat: 35.690, lng: 139.692 },
+  { name: 'Beijing', lat: 39.904, lng: 116.408 }, { name: 'Shanghai', lat: 31.230, lng: 121.474 },
+  { name: 'Hong Kong', lat: 22.319, lng: 114.170 }, { name: 'Singapore', lat: 1.352, lng: 103.820 },
+  { name: 'Seoul', lat: 37.567, lng: 126.978 }, { name: 'Bangkok', lat: 13.756, lng: 100.502 },
+  { name: 'Jakarta', lat: -6.208, lng: 106.846 }, { name: 'Manila', lat: 14.600, lng: 120.984 },
+  { name: 'Kuala Lumpur', lat: 3.139, lng: 101.687 }, { name: 'Sydney', lat: -33.869, lng: 151.209 },
+  { name: 'Melbourne', lat: -37.814, lng: 144.963 }, { name: 'Auckland', lat: -36.849, lng: 174.763 },
+];
 
 function init(containerId){
   container = document.getElementById(containerId);
   container.innerHTML = '';
 
   scene = new THREE.Scene();
-  scene.add(new THREE.AmbientLight(0xffffff, 1.4));
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+  dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
   dirLight.position.set(1, 1, 1);
   scene.add(dirLight);
 
@@ -57,7 +93,17 @@ function init(containerId){
     .globeImageUrl('https://unpkg.com/three-globe@2.45.2/example/img/earth-blue-marble.jpg')
     .bumpImageUrl('https://unpkg.com/three-globe@2.45.2/example/img/earth-topology.png')
     .atmosphereColor('#5B8DEF')
-    .atmosphereAltitude(0.2);
+    .atmosphereAltitude(0.2)
+    .labelsData(CITY_LABELS)
+    .labelLat(d => d.lat)
+    .labelLng(d => d.lng)
+    .labelText(d => d.name)
+    .labelColor(() => 'rgba(255,255,255,0.92)')
+    .labelSize(0.6)
+    .labelDotRadius(0.28)
+    .labelResolution(2)
+    .labelAltitude(0.006)
+    .labelsTransitionDuration(0);
   scene.add(globe);
 
   const w = container.clientWidth || 800, h = container.clientHeight || 600;
@@ -65,7 +111,10 @@ function init(containerId){
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(w, h);
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  // Capped below the raw devicePixelRatio - on retina-class screens
+  // rendering at full 2x/3x resolution is the main thing making zoom/rotate
+  // feel laggy, and the visual difference at 1.5x is negligible.
+  renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
   container.appendChild(renderer.domElement);
 
   labelRenderer = new CSS2DRenderer();
@@ -81,14 +130,20 @@ function init(containerId){
   controls.maxDistance = 1000;
   controls.enablePan = false;
   controls.rotateSpeed = 0.6;
-  controls.zoomSpeed = 0.7;
+  controls.zoomSpeed = 1.0;
+  // Damping turns each raw wheel/drag tick into an eased motion applied
+  // over subsequent frames instead of one abrupt jump - without it, zoom
+  // in particular feels laggy/jerky because nothing smooths out the step
+  // between discrete wheel events.
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.12;
   controls.autoRotate = true;
   controls.autoRotateSpeed = 0.5;
   // Once someone actually grabs the globe, stop auto-rotating - continuing
   // to spin out from under an in-progress drag feels broken, not lively.
-  controls.addEventListener('start', () => { controls.autoRotate = false; });
+  controls.addEventListener('start', () => { controls.autoRotate = false; camTween = null; });
 
-  pointOfView(20, 78, 2.4);
+  pointOfView(20, 78, 2.4, { instant: true });
 
   ro = new ResizeObserver(onResize);
   ro.observe(container);
@@ -108,6 +163,12 @@ function onResize(){
 
 function animate(){
   requestAnimationFrame(animate);
+  if (camTween) applyCamTween();
+  // Keep the directional light glued to the camera rather than fixed in
+  // world space - otherwise whichever side of the globe you rotate/zoom to
+  // can swing into its own shadow and look like unreadable dark ocean even
+  // in broad "daylight" texture areas.
+  dirLight.position.copy(camera.position);
   controls.update();
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
@@ -122,24 +183,74 @@ function animate(){
 // multiple of the globe's radius above the surface (~2.4 = full-Earth
 // view, ~0.35 = close/local view).
 var GLOBE_RADIUS = 100;
-function pointOfView(lat, lng, altitude){
-  if (!camera) return;
+var camTween = null;
+
+// Must match three-globe's own internal polar2Cartesian exactly (theta =
+// 90-lng, not lng+180, and a positive x term) - markers placed via
+// htmlElementsData() use that formula, so the camera has to agree with it
+// or "point at lat/lng" and "marker at lat/lng" land in different places.
+function latLngAltToVector3(lat, lng, altitude){
   var distance = GLOBE_RADIUS * (1 + altitude);
   var phi = (90 - lat) * Math.PI / 180;
-  var theta = (lng + 180) * Math.PI / 180;
-  camera.position.set(
-    -distance * Math.sin(phi) * Math.cos(theta),
+  var theta = (90 - lng) * Math.PI / 180;
+  var phiSin = Math.sin(phi);
+  return new THREE.Vector3(
+    distance * phiSin * Math.cos(theta),
     distance * Math.cos(phi),
-    distance * Math.sin(phi) * Math.sin(theta)
+    distance * phiSin * Math.sin(theta)
   );
+}
+
+function easeInOutCubic(t){ return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+function applyCamTween(){
+  var t = (performance.now() - camTween.t0) / camTween.dur;
+  if (t >= 1) {
+    camera.position.copy(camTween.end);
+    camTween = null;
+  } else {
+    camera.position.lerpVectors(camTween.start, camTween.end, easeInOutCubic(t));
+  }
   camera.lookAt(0, 0, 0);
-  if (controls) { controls.target.set(0, 0, 0); controls.update(); }
+  if (controls) controls.target.set(0, 0, 0);
+}
+
+// opts.instant skips the animation (used for the very first view on load,
+// where there's nothing to animate from). Otherwise this eases the camera
+// to the target over ~700ms each animation frame, so clicking a property
+// visibly flies the globe in to that spot instead of an invisible snap.
+function pointOfView(lat, lng, altitude, opts){
+  if (!camera) return;
+  var target = latLngAltToVector3(lat, lng, altitude);
+  if (opts && opts.instant) {
+    camTween = null;
+    camera.position.copy(target);
+    camera.lookAt(0, 0, 0);
+    if (controls) { controls.target.set(0, 0, 0); controls.update(); }
+    return;
+  }
+  camTween = { start: camera.position.clone(), end: target, t0: performance.now(), dur: 700 };
 }
 
 // items: [{lat,lng,html}] - html is a plain HTML string for that point's
 // marker, built by the classic script (reusing its existing icon/badge
 // logic) so visual style stays identical to what the old Leaflet markers
 // looked like.
+// Forwards a wheel event landing on a marker to the WebGL canvas, so
+// OrbitControls still sees it. Markers live in the CSS2DRenderer's overlay
+// div, which sits as a DOM *sibling* of the canvas (not an ancestor) -
+// without this, scrolling while the cursor happens to be over a marker
+// (the common case, since a marker is front-and-center right after you
+// click a property) silently does nothing, which reads as the zoom being
+// broken/laggy rather than just not receiving the event.
+function forwardWheelToCanvas(e){
+  e.preventDefault();
+  renderer.domElement.dispatchEvent(new WheelEvent('wheel', {
+    deltaX: e.deltaX, deltaY: e.deltaY, deltaMode: e.deltaMode,
+    clientX: e.clientX, clientY: e.clientY, bubbles: false, cancelable: true,
+  }));
+}
+
 function setMarkers(items, onClick){
   if (!globe) return;
   globe.htmlElementsData(items)
@@ -150,6 +261,7 @@ function setMarkers(items, onClick){
       el.style.cursor = 'pointer';
       el.style.transform = 'translate(-50%,-50%)';
       el.onclick = (e) => { e.stopPropagation(); if (onClick) onClick(d); };
+      el.addEventListener('wheel', forwardWheelToCanvas, { passive: false });
       return el;
     });
 }
