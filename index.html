@@ -42,6 +42,7 @@ import { CSS2DRenderer } from 'https://unpkg.com/three@0.185.1/examples/jsm/rend
 window.THREE = THREE;
 
 let scene, camera, renderer, labelRenderer, controls, globe, container, ro, dirLight;
+let needsRender = true, paused = false, renderCount = 0;
 
 // Static reference layer so city names are visible no matter where the
 // globe is rotated/zoomed to - the globe texture itself is just satellite
@@ -109,12 +110,14 @@ function init(containerId){
   const w = container.clientWidth || 800, h = container.clientHeight || 600;
   camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 5000);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  // No MSAA and capped well below the raw devicePixelRatio - GPU fill cost
+  // scales with both together, and on retina-class screens (2x-3x) full
+  // antialiased resolution is the single biggest thing making rotate/zoom
+  // feel laggy. A spinning globe hides the slightly softer edges this
+  // trades away far better than a static image would.
+  renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
   renderer.setSize(w, h);
-  // Capped below the raw devicePixelRatio - on retina-class screens
-  // rendering at full 2x/3x resolution is the main thing making zoom/rotate
-  // feel laggy, and the visual difference at 1.5x is negligible.
-  renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
+  renderer.setPixelRatio(Math.min(1, window.devicePixelRatio || 1));
   container.appendChild(renderer.domElement);
 
   labelRenderer = new CSS2DRenderer();
@@ -142,6 +145,13 @@ function init(containerId){
   // Once someone actually grabs the globe, stop auto-rotating - continuing
   // to spin out from under an in-progress drag feels broken, not lively.
   controls.addEventListener('start', () => { controls.autoRotate = false; camTween = null; });
+  // Render-on-demand: OrbitControls fires 'change' on every actual motion
+  // (drag, wheel, damping decay, autoRotate's own per-frame rotation) - so
+  // this flag naturally stays true while anything is moving and goes
+  // quiet the instant it settles, instead of paying for two full
+  // renderer.render() calls 60 times a second no matter what's on screen.
+  needsRender = true;
+  controls.addEventListener('change', () => { needsRender = true; });
 
   pointOfView(20, 78, 2.4, { instant: true });
 
@@ -163,16 +173,25 @@ function onResize(){
 
 function animate(){
   requestAnimationFrame(animate);
-  if (camTween) applyCamTween();
+  // Fully idle while the globe is hidden behind the Pune detail map -
+  // rendering two full frames every tick into an invisible canvas was
+  // pure waste, and on a modest GPU that waste is enough on its own to
+  // make everything else (including the detail map's own pans/zooms)
+  // feel sluggish.
+  if (paused) return;
+  if (camTween) { applyCamTween(); needsRender = true; }
+  controls.update();
+  if (!needsRender) return;
   // Keep the directional light glued to the camera rather than fixed in
   // world space - otherwise whichever side of the globe you rotate/zoom to
   // can swing into its own shadow and look like unreadable dark ocean even
   // in broad "daylight" texture areas.
   dirLight.position.copy(camera.position);
-  controls.update();
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
   checkZoomThresholds();
+  needsRender = false;
+  renderCount++;
 }
 
 // Positions the camera directly with plain trigonometry rather than
@@ -310,12 +329,19 @@ function setMarkers(items, onClick){
 
 function stopAutoRotate(){ if (controls) controls.autoRotate = false; }
 
+// The Pune detail map fully covers (and now hides) the globe - there's no
+// reason to keep rendering two full frames a tick into something nobody
+// can see, and skipping it removes real, measurable jank from whatever
+// else is running (the detail map's own pans/zooms included).
+function pause(){ paused = true; }
+function resume(){ paused = false; needsRender = true; }
+
 window.GlobeAPI = {
-  init, pointOfView, setMarkers, resize: onResize, stopAutoRotate,
+  init, pointOfView, setMarkers, resize: onResize, stopAutoRotate, pause, resume,
   setOnDetailZoom: (fn) => { onDetailZoom = fn; },
   getState: () => {
     var s = camera ? vector3ToLatLngAlt(camera.position) : { lat: 0, lng: 0, altitude: 0 };
-    return { lat: s.lat, lng: s.lng, altitude: s.altitude, labelsVisible: labelsVisible };
+    return { lat: s.lat, lng: s.lng, altitude: s.altitude, labelsVisible: labelsVisible, renderCount: renderCount, paused: paused };
   },
 };
 </script>
@@ -1812,6 +1838,13 @@ function switchView(view){
   if(view==='map') setTimeout(()=>{ window.GlobeAPI&&window.GlobeAPI.resize(); if(detailModeActive&&puneMap) puneMap.invalidateSize(); }, 50);
   if(view==='market') ensureMarketLoaded();
   if(view==='manage') renderManageTable();
+  // No point rendering the globe into a display:none view - pause it the
+  // same way detail mode does, and only resume when actually back on the
+  // Map tab (and not itself still covered by the Pune detail map).
+  if(window.GlobeAPI){
+    if(view==='map'){ if(!detailModeActive) window.GlobeAPI.resume(); }
+    else window.GlobeAPI.pause();
+  }
 }
 
 async function initMap(){
@@ -2166,12 +2199,6 @@ function ensurePuneMap(){
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(puneMap);
   puneMarkerLayer=L.layerGroup().addTo(puneMap);
-  // Zooming back out on the map itself (not just the explicit button)
-  // should also hand control back to the globe - symmetric with how
-  // zooming in on the globe hands control to this map.
-  puneMap.on('zoomend',function(){
-    if(detailModeActive && puneMap.getZoom()<11) exitDetailMode();
-  });
 }
 
 // Same badge/dot marker HTML the globe uses (markerHtml/groupMarkerHtml),
@@ -2216,6 +2243,7 @@ function enterDetailMode(focusInfo){
   // marker can still receive stray events, and on some stacking edge
   // cases paint over the map instead of staying stably pinned to it.
   document.getElementById('map').style.visibility='hidden';
+  window.GlobeAPI.pause();
   setTimeout(function(){
     puneMap.invalidateSize();
     if(focusInfo&&focusInfo.gid&&puneMarkerByGid[focusInfo.gid]) puneMarkerByGid[focusInfo.gid].openPopup();
@@ -2228,6 +2256,7 @@ function exitDetailMode(){
   wrap.classList.remove('visible');
   document.getElementById('globe-back-btn').style.display='none';
   document.getElementById('map').style.visibility='visible';
+  window.GlobeAPI.resume();
   window.GlobeAPI.pointOfView(PUNE_CENTER.lat,PUNE_CENTER.lng,0.9);
   // Leaflet forces pointer-events:auto on its own interactive layers
   // (markers etc.) regardless of an ancestor's pointer-events:none, so the
