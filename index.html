@@ -588,6 +588,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .pu-contacts-label{font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
 .pu-contact-row{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:2px 0}
 .pu-contact-name{color:var(--text);font-weight:600}
+.pu-contact-role{color:var(--info);background:var(--info-bg);font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:8px;margin-left:2px}
 .pu-contact-phone{color:var(--text2)}
 .pu-docs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
 .pu-doc-chip{display:inline-flex;align-items:center;gap:4px;background:var(--info-bg);color:var(--info);font-size:10px;font-weight:600;padding:4px 9px;border-radius:14px;text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -708,8 +709,9 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .doc-item button:hover{background:var(--rented-bg);color:var(--rented)}
 .doc-item button .icon{width:.85em;height:.85em}
 .contact-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-.contact-row{display:flex;align-items:center;gap:6px}
-.contact-row input{flex:1;min-width:0}
+.contact-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.contact-row select.contact-role{flex:1 1 108px;min-width:100px}
+.contact-row input{flex:2 1 90px;min-width:80px}
 .contact-row button{background:transparent;border:none;color:var(--text3);width:26px;height:26px;border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .contact-row button:hover{background:var(--rented-bg);color:var(--rented)}
 .contact-row button .icon{width:14px;height:14px}
@@ -768,7 +770,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .mg-contact-missing{font-size:11px;color:var(--nego);font-weight:600}
 .mg-contact-more{font-size:9.5px;color:var(--info);font-weight:600;margin-top:1px}
 .mg-contact-edit{display:flex;flex-direction:column;gap:5px;min-width:150px}
-.mg-contact-edit input{padding:5px 7px;font-size:11px}
+.mg-contact-edit input,.mg-contact-edit select{padding:5px 7px;font-size:11px}
 .mg-contact-edit-actions{display:flex;gap:6px;margin-top:1px}
 .mg-contact-save{padding:4px 10px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:10.5px;font-weight:600;cursor:pointer}
 .mg-contact-save:hover{background:var(--navy-dark)}
@@ -2020,7 +2022,7 @@ function makePopup(p,idx){
       </div>`}
       ${p.contacts&&p.contacts.length>1?`<div class="pu-contacts">
         <div class="pu-contacts-label">All Contacts</div>
-        ${p.contacts.map(c=>`<div class="pu-contact-row"><span class="pu-contact-name">${escapeHtml(c.name||'—')}</span>${c.phone?`<span class="pu-contact-phone">${escapeHtml(c.phone)}</span>`:''}</div>`).join('')}
+        ${p.contacts.map(c=>`<div class="pu-contact-row"><span class="pu-contact-name">${escapeHtml(c.name||'—')}${c.role?` <span class="pu-contact-role">${escapeHtml(c.role)}</span>`:''}</span>${c.phone?`<span class="pu-contact-phone">${escapeHtml(c.phone)}</span>`:''}</div>`).join('')}
       </div>`:''}
       ${p.documents&&p.documents.length?`<div class="pu-docs">${p.documents.map(d=>`<a class="pu-doc-chip" href="${d.url}" target="_blank"><svg class="icon"><use href="#icon-file-text"/></svg> ${escapeHtml(d.name)}</a>`).join('')}</div>`:''}
       <div class="pu-actions">
@@ -2398,8 +2400,8 @@ function openEdit(origIdx){
   // the first contact so existing data still shows up here, rather than
   // looking like it silently vanished the first time this panel opens.
   editContacts=Array.isArray(p.contacts)&&p.contacts.length
-    ? p.contacts.map(function(c){return {name:c.name||'',phone:c.phone||''};})
-    : ((p.owner||p.phone)?[{name:p.owner||'',phone:p.phone||''}]:[]);
+    ? p.contacts.map(function(c){return {name:c.name||'',phone:c.phone||'',role:c.role||''};})
+    : ((p.owner||p.phone)?[{name:p.owner||'',phone:p.phone||'',role:'Landlord'}]:[]);
   renderEditContacts();
   document.getElementById('edit-overlay').classList.remove('hidden');
   document.getElementById('ep-saving').style.display='none';
@@ -2407,9 +2409,20 @@ function openEdit(origIdx){
 }
 function closeEdit(){document.getElementById('edit-overlay').classList.add('hidden');editIdx=null;editMediaFiles=[];editDocFiles=[];editDocsList=[];editContacts=[];}
 
+// Who a contact actually is matters (a listing can have both a landlord
+// and a property manager on file, with different expectations about what
+// each is authorized to discuss) - not just a name/number that happened
+// to get typed into an "owner" field.
+var CONTACT_ROLES=['Landlord','Property Manager','Others'];
+function contactRoleOptionsHtml(selected){
+  return '<option value="">Role...</option>'+CONTACT_ROLES.map(function(r){
+    return '<option value="'+r+'"'+(r===selected?' selected':'')+'>'+r+'</option>';
+  }).join('');
+}
 function renderEditContacts(){
   var html=editContacts.map(function(c,i){
     return '<div class="contact-row">'+
+      '<select class="fs contact-role" onchange="updateEditContact('+i+',\'role\',this.value)">'+contactRoleOptionsHtml(c.role)+'</select>'+
       '<input type="text" class="fs" placeholder="Name" value="'+escapeHtml(c.name||'')+'" oninput="updateEditContact('+i+',\'name\',this.value)"/>'+
       '<input type="text" class="fs" placeholder="Phone number" value="'+escapeHtml(c.phone||'')+'" oninput="updateEditContact('+i+',\'phone\',this.value)"/>'+
       '<button type="button" onclick="removeEditContact('+i+')" title="Remove contact"><svg class="icon"><use href="#icon-x"/></svg></button>'+
@@ -2419,7 +2432,7 @@ function renderEditContacts(){
 }
 function updateEditContact(i,field,val){ if(editContacts[i]) editContacts[i][field]=val; }
 function addEditContact(){
-  editContacts.push({name:'',phone:''});
+  editContacts.push({name:'',phone:'',role:''});
   renderEditContacts();
   var rows=document.querySelectorAll('#ef-contact-list .contact-row input');
   if(rows.length) rows[rows.length-2].focus();
@@ -2527,9 +2540,10 @@ function escapeHtml(s){
 }
 function contactCellHtml(p){
   var extra=Array.isArray(p.contacts)&&p.contacts.length>1?'<div class="mg-contact-more">+'+(p.contacts.length-1)+' more</div>':'';
+  var primaryRole=Array.isArray(p.contacts)&&p.contacts[0]&&p.contacts[0].role?p.contacts[0].role:'';
   if(p.owner||p.phone){
     return '<div class="mg-contact-view" onclick="event.stopPropagation();startEditContact('+p._dbId+')">'+
-      (p.owner?'<div class="mg-contact-name">'+escapeHtml(p.owner)+'</div>':'')+
+      (p.owner?'<div class="mg-contact-name">'+escapeHtml(p.owner)+(primaryRole?' <span class="pu-contact-role">'+escapeHtml(primaryRole)+'</span>':'')+'</div>':'')+
       (p.phone?'<div class="mg-contact-phone">'+escapeHtml(p.phone)+'</div>':'')+
       extra+
     '</div>';
@@ -2541,9 +2555,11 @@ function startEditContact(dbId){
   if(!p) return;
   const td=document.querySelector('#manage-tbody td.mg-td-contact[data-dbid="'+dbId+'"]');
   if(!td) return;
+  var primaryRole=Array.isArray(p.contacts)&&p.contacts[0]&&p.contacts[0].role?p.contacts[0].role:'';
   td.innerHTML=
     '<div class="mg-contact-edit" onclick="event.stopPropagation()">'+
-      '<input type="text" class="fs" id="mgc-owner-'+dbId+'" placeholder="Owner name" value="'+escapeHtml(p.owner||'')+'" onkeydown="if(event.key===\'Enter\')saveContact('+dbId+');if(event.key===\'Escape\')cancelEditContact('+dbId+')"/>'+
+      '<select class="fs" id="mgc-role-'+dbId+'">'+contactRoleOptionsHtml(primaryRole)+'</select>'+
+      '<input type="text" class="fs" id="mgc-owner-'+dbId+'" placeholder="Contact name" value="'+escapeHtml(p.owner||'')+'" onkeydown="if(event.key===\'Enter\')saveContact('+dbId+');if(event.key===\'Escape\')cancelEditContact('+dbId+')"/>'+
       '<input type="text" class="fs" id="mgc-phone-'+dbId+'" placeholder="Phone number" value="'+escapeHtml(p.phone||'')+'" onkeydown="if(event.key===\'Enter\')saveContact('+dbId+');if(event.key===\'Escape\')cancelEditContact('+dbId+')"/>'+
       '<div class="mg-contact-edit-actions">'+
         '<button class="mg-contact-save" onclick="saveContact('+dbId+')"><svg class="icon"><use href="#icon-check"/></svg> Save</button>'+
@@ -2560,14 +2576,15 @@ function cancelEditContact(dbId){
 async function saveContact(dbId){
   const ownerVal=document.getElementById('mgc-owner-'+dbId).value.trim();
   const phoneVal=document.getElementById('mgc-phone-'+dbId).value.trim();
+  const roleVal=document.getElementById('mgc-role-'+dbId).value;
   const existing=props.find(x=>x._dbId===dbId);
   // This quick-edit only ever touches the primary (first) contact - keep
   // it in sync with the full contacts array from the Edit panel instead
   // of letting the two drift apart, without disturbing any additional
   // contacts already on the property.
   const newContacts=Array.isArray(existing&&existing.contacts)?existing.contacts.slice():[];
-  if(newContacts.length){ newContacts[0]={name:ownerVal,phone:phoneVal}; }
-  else if(ownerVal||phoneVal){ newContacts.push({name:ownerVal,phone:phoneVal}); }
+  if(newContacts.length){ newContacts[0]={name:ownerVal,phone:phoneVal,role:roleVal}; }
+  else if(ownerVal||phoneVal){ newContacts.push({name:ownerVal,phone:phoneVal,role:roleVal}); }
   const result=await patchProperty(dbId,{
     owner:ownerVal, phone:phoneVal, contacts:newContacts,
     edited_by:currentUser.username, edited_at:new Date().toISOString()
@@ -3370,7 +3387,7 @@ async function doSubmit() {
       owner: document.getElementById('nf-owner').value,
       phone: document.getElementById('nf-phone').value,
       contacts: (document.getElementById('nf-owner').value||document.getElementById('nf-phone').value)
-        ? [{name:document.getElementById('nf-owner').value,phone:document.getElementById('nf-phone').value}] : [],
+        ? [{name:document.getElementById('nf-owner').value,phone:document.getElementById('nf-phone').value,role:'Landlord'}] : [],
       photo: photoUrls[0] || '',
       photos: photoUrls,
       video: videoUrl,
