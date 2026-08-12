@@ -490,8 +490,10 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
    globe never has to fully unmount - just gets covered and uncovered. */
 .detail-map-wrap{position:absolute;inset:0;z-index:440;opacity:0;pointer-events:none;display:none;transition:opacity .35s ease}
 .detail-map-wrap.visible{opacity:1;pointer-events:auto}
-#pune-detail-map{width:100%;height:100%}
-:root[data-theme="dark"] #pune-detail-map .leaflet-tile-pane{filter:brightness(.68) contrast(1.15) saturate(.85) invert(1) hue-rotate(180deg)}
+/* Dark Matter tiles are already dark, in every app theme - this map is a
+   continuation of the globe's always-dark space background, not something
+   that flips with the light/dark toggle the way Market Map's tiles do. */
+#pune-detail-map{width:100%;height:100%;background:#000814}
 .globe-back-btn{position:absolute;top:14px;left:14px;z-index:450;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .globe-back-btn:hover{background:var(--navy-light)}
 .globe-back-btn .icon{width:14px;height:14px}
@@ -2158,9 +2160,18 @@ function maybeEnterDetailMode(lat,lng){
 function ensurePuneMap(){
   if(puneMap){ setTimeout(function(){puneMap.invalidateSize();},50); return; }
   puneMap=L.map('pune-detail-map',{center:[PUNE_CENTER.lat,PUNE_CENTER.lng],zoom:12});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  // Dark Matter tiles, not the light ones Market Map uses - this map is
+  // meant to feel like a continuation of the globe's dark space background,
+  // not a jarring flash to a bright basemap every time you zoom in.
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(puneMap);
   puneMarkerLayer=L.layerGroup().addTo(puneMap);
+  // Zooming back out on the map itself (not just the explicit button)
+  // should also hand control back to the globe - symmetric with how
+  // zooming in on the globe hands control to this map.
+  puneMap.on('zoomend',function(){
+    if(detailModeActive && puneMap.getZoom()<11) exitDetailMode();
+  });
 }
 
 // Same badge/dot marker HTML the globe uses (markerHtml/groupMarkerHtml),
@@ -2199,6 +2210,12 @@ function enterDetailMode(focusInfo){
   wrap.style.display='block';
   wrap.classList.add('visible');
   document.getElementById('globe-back-btn').style.display='flex';
+  // Belt-and-suspenders on top of the z-index stacking: fully take the
+  // globe out of hit-testing and paint while its own markers sit frozen at
+  // whatever screen position the camera stopped at - without this, a
+  // marker can still receive stray events, and on some stacking edge
+  // cases paint over the map instead of staying stably pinned to it.
+  document.getElementById('map').style.visibility='hidden';
   setTimeout(function(){
     puneMap.invalidateSize();
     if(focusInfo&&focusInfo.gid&&puneMarkerByGid[focusInfo.gid]) puneMarkerByGid[focusInfo.gid].openPopup();
@@ -2210,6 +2227,7 @@ function exitDetailMode(){
   var wrap=document.getElementById('detail-map-wrap');
   wrap.classList.remove('visible');
   document.getElementById('globe-back-btn').style.display='none';
+  document.getElementById('map').style.visibility='visible';
   window.GlobeAPI.pointOfView(PUNE_CENTER.lat,PUNE_CENTER.lng,0.9);
   // Leaflet forces pointer-events:auto on its own interactive layers
   // (markers etc.) regardless of an ancestor's pointer-events:none, so the
