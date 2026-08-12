@@ -769,7 +769,8 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .mg-contact-phone{font-size:11px;color:var(--text2);margin-top:1px}
 .mg-contact-missing{font-size:11px;color:var(--nego);font-weight:600}
 .mg-contact-more{font-size:9.5px;color:var(--info);font-weight:600;margin-top:1px}
-.mg-contact-edit{display:flex;flex-direction:column;gap:5px;min-width:150px}
+.mg-contact-edit{display:flex;flex-direction:column;gap:5px;min-width:220px}
+.mg-contact-edit .add-contact-btn{margin:2px 0 4px;padding:5px 9px;font-size:10.5px}
 .mg-contact-edit input,.mg-contact-edit select{padding:5px 7px;font-size:11px}
 .mg-contact-edit-actions{display:flex;gap:6px;margin-top:1px}
 .mg-contact-save{padding:4px 10px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:10.5px;font-weight:600;cursor:pointer}
@@ -2572,43 +2573,70 @@ function contactCellHtml(p){
   }
   return '<div class="mg-contact-view mg-contact-missing" onclick="event.stopPropagation();startEditContact('+p._dbId+')">+ Add contact</div>';
 }
+// Quick-edit from the Manage table now edits the FULL contacts list
+// in-place - not just a single primary owner/phone - so this is the only
+// place in the app you ever need to manage contacts from, without having
+// to go open the full Edit Property panel just to add a second one.
+let mgEditContacts=[], mgEditDbId=null;
+
 function startEditContact(dbId){
   const p=props.find(x=>x._dbId===dbId);
   if(!p) return;
   const td=document.querySelector('#manage-tbody td.mg-td-contact[data-dbid="'+dbId+'"]');
   if(!td) return;
-  var primaryRole=Array.isArray(p.contacts)&&p.contacts[0]&&p.contacts[0].role?p.contacts[0].role:'';
+  mgEditDbId=dbId;
+  // A property with nothing yet starts with one blank row ready to fill
+  // in immediately, same as the old single-contact quick-edit did - not
+  // an empty list that makes you click "Add Contact" before you can type
+  // anything.
+  mgEditContacts=Array.isArray(p.contacts)&&p.contacts.length
+    ? p.contacts.map(function(c){return {name:c.name||'',phone:c.phone||'',role:c.role||''};})
+    : ((p.owner||p.phone)?[{name:p.owner||'',phone:p.phone||'',role:'Landlord'}]:[{name:'',phone:'',role:''}]);
+  renderMgContactEdit();
+}
+function renderMgContactEdit(){
+  const dbId=mgEditDbId;
+  const td=document.querySelector('#manage-tbody td.mg-td-contact[data-dbid="'+dbId+'"]');
+  if(!td) return;
+  var rows=mgEditContacts.map(function(c,i){
+    return '<div class="contact-row">'+
+      '<select class="fs contact-role" onchange="updateMgContact('+i+',\'role\',this.value)">'+contactRoleOptionsHtml(c.role)+'</select>'+
+      '<input type="text" class="fs" placeholder="Name" value="'+escapeHtml(c.name||'')+'" oninput="updateMgContact('+i+',\'name\',this.value)"/>'+
+      '<input type="text" class="fs" placeholder="Phone number" value="'+escapeHtml(c.phone||'')+'" oninput="updateMgContact('+i+',\'phone\',this.value)"/>'+
+      '<button type="button" onclick="removeMgContact('+i+')" title="Remove contact"><svg class="icon"><use href="#icon-x"/></svg></button>'+
+    '</div>';
+  }).join('');
   td.innerHTML=
     '<div class="mg-contact-edit" onclick="event.stopPropagation()">'+
-      '<select class="fs" id="mgc-role-'+dbId+'">'+contactRoleOptionsHtml(primaryRole)+'</select>'+
-      '<input type="text" class="fs" id="mgc-owner-'+dbId+'" placeholder="Contact name" value="'+escapeHtml(p.owner||'')+'" onkeydown="if(event.key===\'Enter\')saveContact('+dbId+');if(event.key===\'Escape\')cancelEditContact('+dbId+')"/>'+
-      '<input type="text" class="fs" id="mgc-phone-'+dbId+'" placeholder="Phone number" value="'+escapeHtml(p.phone||'')+'" onkeydown="if(event.key===\'Enter\')saveContact('+dbId+');if(event.key===\'Escape\')cancelEditContact('+dbId+')"/>'+
+      '<div class="contact-list">'+(rows||'<div class="contact-empty">No contacts added yet</div>')+'</div>'+
+      '<button type="button" class="add-contact-btn" onclick="addMgContact()"><svg class="icon"><use href="#icon-plus"/></svg> Add Contact</button>'+
       '<div class="mg-contact-edit-actions">'+
         '<button class="mg-contact-save" onclick="saveContact('+dbId+')"><svg class="icon"><use href="#icon-check"/></svg> Save</button>'+
         '<button class="mg-contact-cancel" onclick="cancelEditContact('+dbId+')">Cancel</button>'+
       '</div>'+
     '</div>';
-  document.getElementById('mgc-owner-'+dbId).focus();
 }
+function updateMgContact(i,field,val){ if(mgEditContacts[i]) mgEditContacts[i][field]=val; }
+function addMgContact(){
+  mgEditContacts.push({name:'',phone:'',role:''});
+  renderMgContactEdit();
+  var td=document.querySelector('#manage-tbody td.mg-td-contact[data-dbid="'+mgEditDbId+'"]');
+  var rows=td?td.querySelectorAll('.contact-row input'):[];
+  if(rows.length) rows[rows.length-2].focus();
+}
+function removeMgContact(i){ mgEditContacts.splice(i,1); renderMgContactEdit(); }
 function cancelEditContact(dbId){
   const p=props.find(x=>x._dbId===dbId);
   const td=document.querySelector('#manage-tbody td.mg-td-contact[data-dbid="'+dbId+'"]');
   if(td&&p) td.innerHTML=contactCellHtml(p);
+  mgEditDbId=null; mgEditContacts=[];
 }
 async function saveContact(dbId){
-  const ownerVal=document.getElementById('mgc-owner-'+dbId).value.trim();
-  const phoneVal=document.getElementById('mgc-phone-'+dbId).value.trim();
-  const roleVal=document.getElementById('mgc-role-'+dbId).value;
-  const existing=props.find(x=>x._dbId===dbId);
-  // This quick-edit only ever touches the primary (first) contact - keep
-  // it in sync with the full contacts array from the Edit panel instead
-  // of letting the two drift apart, without disturbing any additional
-  // contacts already on the property.
-  const newContacts=Array.isArray(existing&&existing.contacts)?existing.contacts.slice():[];
-  if(newContacts.length){ newContacts[0]={name:ownerVal,phone:phoneVal,role:roleVal}; }
-  else if(ownerVal||phoneVal){ newContacts.push({name:ownerVal,phone:phoneVal,role:roleVal}); }
+  const finalContacts=mgEditContacts.filter(function(c){return (c.name||'').trim()||(c.phone||'').trim();});
+  const ownerVal=finalContacts.length?finalContacts[0].name:'';
+  const phoneVal=finalContacts.length?finalContacts[0].phone:'';
   const result=await patchProperty(dbId,{
-    owner:ownerVal, phone:phoneVal, contacts:newContacts,
+    owner:ownerVal, phone:phoneVal, contacts:finalContacts,
     edited_by:currentUser.username, edited_at:new Date().toISOString()
   });
   if(!result.ok){
@@ -2616,11 +2644,12 @@ async function saveContact(dbId){
     return;
   }
   const p=props.find(x=>x._dbId===dbId);
-  if(p){ p.owner=ownerVal; p.phone=phoneVal; p.contacts=newContacts; p.edited_by=currentUser.username; }
+  if(p){ p.owner=ownerVal; p.phone=phoneVal; p.contacts=finalContacts; p.edited_by=currentUser.username; }
   const bp=BASE_PROPS.find(x=>x._dbId===dbId);
-  if(bp){ bp.owner=ownerVal; bp.phone=phoneVal; bp.contacts=newContacts; bp.edited_by=currentUser.username; }
+  if(bp){ bp.owner=ownerVal; bp.phone=phoneVal; bp.contacts=finalContacts; bp.edited_by=currentUser.username; }
   const td=document.querySelector('#manage-tbody td.mg-td-contact[data-dbid="'+dbId+'"]');
   if(td&&p) td.innerHTML=contactCellHtml(p);
+  mgEditDbId=null; mgEditContacts=[];
   // Keep the map view's markers/popups/list in sync too, without a network
   // refetch - props already has the new value, applyFilters() just rebuilds
   // filtered/markers/list from what's already in memory.
