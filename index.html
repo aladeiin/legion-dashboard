@@ -94,7 +94,7 @@ function init(containerId){
     .bumpImageUrl('https://unpkg.com/three-globe@2.45.2/example/img/earth-topology.png')
     .atmosphereColor('#5B8DEF')
     .atmosphereAltitude(0.2)
-    .labelsData(CITY_LABELS)
+    .labelsData([])
     .labelLat(d => d.lat)
     .labelLng(d => d.lng)
     .labelText(d => d.name)
@@ -172,6 +172,7 @@ function animate(){
   controls.update();
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
+  checkZoomThresholds();
 }
 
 // Positions the camera directly with plain trigonometry rather than
@@ -199,6 +200,47 @@ function latLngAltToVector3(lat, lng, altitude){
     distance * Math.cos(phi),
     distance * phiSin * Math.sin(theta)
   );
+}
+
+// Exact inverse of latLngAltToVector3 (verified by round-tripping known
+// coordinates through both directions before wiring this in - the earlier
+// zoom-in bug came from trusting hand-derived spherical trig without that
+// check).
+function vector3ToLatLngAlt(pos){
+  var r = pos.length();
+  var phi = Math.acos(pos.y / r);
+  var theta = Math.atan2(pos.z, pos.x);
+  var lng = 90 - theta * 180 / Math.PI;
+  if (theta < -Math.PI / 2) lng -= 360;
+  return { lat: 90 - phi * 180 / Math.PI, lng: lng, altitude: r / GLOBE_RADIUS - 1 };
+}
+
+// Labels only make sense once you're close enough to read them without
+// the whole globe turning into a wall of overlapping text, and the
+// "detail zoom" callback lets the classic script swap in a real street
+// map once you're close enough that "which city" matters more than "which
+// hemisphere". Both are edge-triggered off the live camera distance -
+// checked every frame (animate()), which covers both scroll-zoom and the
+// programmatic fly-to tween the same way.
+var LABELS_ALT_THRESHOLD = 1.1;
+var DETAIL_ALT_THRESHOLD = 0.55;
+var labelsVisible = false;
+var belowDetailThreshold = false;
+var onDetailZoom = null;
+
+function checkZoomThresholds(){
+  if (!camera || !globe) return;
+  var state = vector3ToLatLngAlt(camera.position);
+
+  var shouldShowLabels = state.altitude < LABELS_ALT_THRESHOLD;
+  if (shouldShowLabels !== labelsVisible) {
+    labelsVisible = shouldShowLabels;
+    globe.labelsData(shouldShowLabels ? CITY_LABELS : []);
+  }
+
+  var isBelow = state.altitude < DETAIL_ALT_THRESHOLD;
+  if (isBelow && !belowDetailThreshold && onDetailZoom) onDetailZoom(state.lat, state.lng);
+  belowDetailThreshold = isBelow;
 }
 
 function easeInOutCubic(t){ return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
@@ -268,7 +310,14 @@ function setMarkers(items, onClick){
 
 function stopAutoRotate(){ if (controls) controls.autoRotate = false; }
 
-window.GlobeAPI = { init, pointOfView, setMarkers, resize: onResize, stopAutoRotate };
+window.GlobeAPI = {
+  init, pointOfView, setMarkers, resize: onResize, stopAutoRotate,
+  setOnDetailZoom: (fn) => { onDetailZoom = fn; },
+  getState: () => {
+    var s = camera ? vector3ToLatLngAlt(camera.position) : { lat: 0, lng: 0, altitude: 0 };
+    return { lat: s.lat, lng: s.lng, altitude: s.altitude, labelsVisible: labelsVisible };
+  },
+};
 </script>
 <script defer src="https://unpkg.com/three-globe@2.45.2/dist/three-globe.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -436,6 +485,16 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .globe-popup-wrap{position:absolute;bottom:20px;left:20px;z-index:460;width:280px;max-width:calc(100% - 40px);max-height:calc(100% - 40px);overflow-y:auto;background:var(--white);border:1.5px solid var(--border);border-top:3px solid var(--navy);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.4)}
 .globe-popup-close{position:absolute;top:8px;right:8px;z-index:2;background:rgba(0,0,0,.4);border:none;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .globe-popup-close:hover{background:rgba(0,0,0,.6)}
+/* Detail-map crossfade: sits above the globe canvas, transparent/inert
+   until a close-enough zoom (or a property click) switches it in, so the
+   globe never has to fully unmount - just gets covered and uncovered. */
+.detail-map-wrap{position:absolute;inset:0;z-index:440;opacity:0;pointer-events:none;display:none;transition:opacity .35s ease}
+.detail-map-wrap.visible{opacity:1;pointer-events:auto}
+#pune-detail-map{width:100%;height:100%}
+:root[data-theme="dark"] #pune-detail-map .leaflet-tile-pane{filter:brightness(.68) contrast(1.15) saturate(.85) invert(1) hue-rotate(180deg)}
+.globe-back-btn{position:absolute;top:14px;left:14px;z-index:450;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.globe-back-btn:hover{background:var(--navy-light)}
+.globe-back-btn .icon{width:14px;height:14px}
 
 /* ── POPUP ── */
 .custom-popup .leaflet-popup-content-wrapper{background:var(--white);border:1.5px solid var(--border);border-top:3px solid var(--navy);border-radius:12px;box-shadow:0 8px 28px rgba(15,23,42,.18);padding:0;min-width:240px;max-width:280px;overflow:hidden}
@@ -716,6 +775,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
   <symbol id="icon-map-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
   <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></symbol>
   <symbol id="icon-map" viewBox="0 0 24 24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></symbol>
+  <symbol id="icon-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a13.5 13.5 0 0 1 0 18a13.5 13.5 0 0 1 0-18z"/></symbol>
   <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
   <symbol id="icon-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="9" y1="8" x2="9" y2="8.01"/><line x1="15" y1="8" x2="15" y2="8.01"/><line x1="9" y1="13" x2="9" y2="13.01"/><line x1="15" y1="13" x2="15" y2="13.01"/><path d="M9 21v-4h6v4"/></symbol>
   <symbol id="icon-clipboard-list" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="3" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/><line x1="8" y1="19" x2="13" y2="19"/></symbol>
@@ -966,6 +1026,12 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <button class="globe-popup-close" onclick="closeGlobePopup()"><svg class="icon"><use href="#icon-x"/></svg></button>
         <div id="globe-popup-content"></div>
       </div>
+      <div class="detail-map-wrap" id="detail-map-wrap">
+        <div id="pune-detail-map"></div>
+      </div>
+      <button class="globe-back-btn" id="globe-back-btn" onclick="exitDetailMode()" style="display:none">
+        <svg class="icon"><use href="#icon-globe"/></svg> Globe View
+      </button>
     </div>
     <div class="list-backdrop" id="list-backdrop" onclick="toggleListPanel(false)"></div>
     <div class="list-panel" id="list-panel">
@@ -1303,6 +1369,13 @@ const DEFAULT_USERS=[
 
 let USERS=[], EDITS={}, currentUser=null, props=[], filtered=[];
 let editIdx=null, activeListIdx=null, fiMarkerIndex={};
+// Pune detail map - a real Leaflet street map layered over the globe,
+// swapped in once you're zoomed in close (the globe's own surface is just
+// a static satellite texture with no street/micro-market detail). Only
+// Pune has this for now, since that's where the actual portfolio is.
+let puneMap, puneMarkerLayer, puneMarkerByGid={}, detailModeActive=false, pendingDetailFocus=null;
+const PUNE_CENTER={lat:18.52,lng:73.855};
+const DETAIL_RADIUS_DEG=3.5;
 let aiFiles=[], mediaFiles=[], editMediaFiles=[], editDocFiles=[], editDocsList=[], bulkFile=null;
 
 // Team accounts live in Supabase (table "team_users") so a member added by
@@ -1734,7 +1807,7 @@ function switchView(view){
   document.getElementById('nav-activity').classList.toggle('active', view==='activity');
   document.getElementById('nav-manage').classList.toggle('active', view==='manage');
   if(view==='activity') renderActivity();
-  if(view==='map') setTimeout(()=>window.GlobeAPI&&window.GlobeAPI.resize(), 50);
+  if(view==='map') setTimeout(()=>{ window.GlobeAPI&&window.GlobeAPI.resize(); if(detailModeActive&&puneMap) puneMap.invalidateSize(); }, 50);
   if(view==='market') ensureMarketLoaded();
   if(view==='manage') renderManageTable();
 }
@@ -1748,6 +1821,7 @@ async function initMap(){
   for(var tries=0; !window.GlobeAPI && tries<40; tries++){ await new Promise(function(r){setTimeout(r,50);}); }
   if(!window.GlobeAPI){ showToast('3D map failed to load - try refreshing the page','error'); return; }
   window.GlobeAPI.init('map');
+  window.GlobeAPI.setOnDetailZoom(maybeEnterDetailMode);
   applyFilters();
 }
 function statusColor(s){
@@ -2034,9 +2108,16 @@ function renderMarkers(){
     return {lat:group.lat,lng:group.lng,html:groupMarkerHtml(group),_group:group,_gid:gid};
   });
   window.GlobeAPI.setMarkers(points,function(d){
+    // Clicking a pointer directly on the globe gets the same "fly all the
+    // way in" treatment as clicking its list card - a pointer tap is a
+    // request to go look at that property, not just peek at its popup.
+    pendingDetailFocus={lat:d._group.lat,lng:d._group.lng,gid:d._gid};
+    window.GlobeAPI.pointOfView(d._group.lat,d._group.lng,0.4);
+    window.GlobeAPI.stopAutoRotate();
     showGlobePopup(d._group,d._gid,0);
     highlightItem(d._group.fis[0]);
   });
+  if(detailModeActive) renderPuneMarkers();
 }
 
 // The globe has no Leaflet-style popup system of its own - property detail
@@ -2055,6 +2136,88 @@ function showGlobePopup(group,gid,startIdx){
 }
 function closeGlobePopup(){
   document.getElementById('globe-popup-wrap').style.display='none';
+}
+
+function distDeg(lat1,lng1,lat2,lng2){
+  return Math.sqrt((lat1-lat2)*(lat1-lat2)+(lng1-lng2)*(lng1-lng2));
+}
+
+// Fired by the globe engine the moment the camera crosses its close-zoom
+// threshold (from a scroll-zoom or a fly-to tween finishing, treated the
+// same way). Only swaps in the real map if the zoom actually landed near
+// Pune - zooming in on some other empty patch of globe just stays a globe
+// close-up, since there's no street data to show there yet.
+function maybeEnterDetailMode(lat,lng){
+  if(detailModeActive) return;
+  var target=pendingDetailFocus||{lat:lat,lng:lng};
+  if(distDeg(target.lat,target.lng,PUNE_CENTER.lat,PUNE_CENTER.lng)>DETAIL_RADIUS_DEG) return;
+  enterDetailMode(pendingDetailFocus);
+  pendingDetailFocus=null;
+}
+
+function ensurePuneMap(){
+  if(puneMap){ setTimeout(function(){puneMap.invalidateSize();},50); return; }
+  puneMap=L.map('pune-detail-map',{center:[PUNE_CENTER.lat,PUNE_CENTER.lng],zoom:12});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(puneMap);
+  puneMarkerLayer=L.layerGroup().addTo(puneMap);
+}
+
+// Same badge/dot marker HTML the globe uses (markerHtml/groupMarkerHtml),
+// just mounted as real Leaflet divIcons instead of CSS2D elements, and
+// with native Leaflet popups (buildGroupCarouselHtml/makePopup - the exact
+// same popup content as everywhere else in the app) instead of the
+// globe's floating popup card.
+function renderPuneMarkers(){
+  if(!puneMarkerLayer) return;
+  puneMarkerLayer.clearLayers();
+  puneMarkerByGid={};
+  var groups=groupByLocation(filtered);
+  groups.forEach(function(group,gi){
+    // Same 'g'+index scheme renderMarkers() uses for the globe - both call
+    // groupByLocation(filtered) on the same array, so the same gid here
+    // refers to the same group there, and enterDetailMode() can look a
+    // clicked property's marker straight up by the gid it was given.
+    var gid='g'+gi;
+    var html=group.items.length>1?groupMarkerHtml(group):markerHtml(group.items[0]);
+    var icon=L.divIcon({html:html,className:'',iconSize:[24,24],iconAnchor:[12,12]});
+    var mk=L.marker([group.lat,group.lng],{icon:icon}).addTo(puneMarkerLayer);
+    var popupHtml=group.items.length===1?makePopup(group.items[0],group.items[0]._origIdx):buildGroupCarouselHtml(gid,group,0);
+    mk.bindPopup(popupHtml,{className:'custom-popup',maxWidth:280});
+    puneMarkerByGid[gid]=mk;
+  });
+}
+
+function enterDetailMode(focusInfo){
+  detailModeActive=true;
+  closeGlobePopup();
+  ensurePuneMap();
+  renderPuneMarkers();
+  var center=focusInfo?[focusInfo.lat,focusInfo.lng]:[PUNE_CENTER.lat,PUNE_CENTER.lng];
+  puneMap.setView(center,14);
+  var wrap=document.getElementById('detail-map-wrap');
+  wrap.style.display='block';
+  wrap.classList.add('visible');
+  document.getElementById('globe-back-btn').style.display='flex';
+  setTimeout(function(){
+    puneMap.invalidateSize();
+    if(focusInfo&&focusInfo.gid&&puneMarkerByGid[focusInfo.gid]) puneMarkerByGid[focusInfo.gid].openPopup();
+  },80);
+}
+
+function exitDetailMode(){
+  detailModeActive=false;
+  var wrap=document.getElementById('detail-map-wrap');
+  wrap.classList.remove('visible');
+  document.getElementById('globe-back-btn').style.display='none';
+  window.GlobeAPI.pointOfView(PUNE_CENTER.lat,PUNE_CENTER.lng,0.9);
+  // Leaflet forces pointer-events:auto on its own interactive layers
+  // (markers etc.) regardless of an ancestor's pointer-events:none, so the
+  // wrapper's opacity/pointer-events alone don't fully neutralize it once
+  // faded out - fully remove it from layout/hit-testing after the fade
+  // transition finishes, guarded so a quick re-entry mid-fade doesn't get
+  // yanked back to display:none under it.
+  setTimeout(function(){ if(!detailModeActive) wrap.style.display='none'; },400);
 }
 
 function renderList(){
@@ -2096,9 +2259,14 @@ function updateStats(){
 
 function focusProp(fi){
   const p=filtered[fi];
-  window.GlobeAPI.pointOfView(p.lat,p.lng,0.7);
-  window.GlobeAPI.stopAutoRotate();
   const info=fiMarkerIndex[fi];
+  // Below DETAIL_ALT_THRESHOLD in the globe engine, so this fly-in crosses
+  // straight into detail mode once it lands (see maybeEnterDetailMode) -
+  // "click a property" and "zoom all the way into its city" are the same
+  // gesture now, not two separate steps.
+  pendingDetailFocus={lat:p.lat,lng:p.lng,gid:info&&info.gid};
+  window.GlobeAPI.pointOfView(p.lat,p.lng,0.4);
+  window.GlobeAPI.stopAutoRotate();
   if(info){
     showGlobePopup(info.group,info.gid,info.idxInGroup);
   }
