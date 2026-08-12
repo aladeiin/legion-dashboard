@@ -91,8 +91,14 @@ function init(containerId){
   scene.add(dirLight);
 
   globe = new window.ThreeGlobe()
-    .globeImageUrl('https://unpkg.com/three-globe@2.45.2/example/img/earth-blue-marble.jpg')
-    .bumpImageUrl('https://unpkg.com/three-globe@2.45.2/example/img/earth-topology.png')
+    // earth-day.jpg (1600x800) instead of earth-blue-marble.jpg (4096x2048,
+    // ~6x more pixels for a difference that isn't visible at the sizes
+    // this globe actually renders at) - the full-res texture's decode +
+    // GPU upload was a multi-second block on first login. No bump map
+    // either: it's an extra large texture plus a real per-pixel shading
+    // cost on every single rendered frame for the entire auto-rotate
+    // window, for a relief effect that's barely perceptible at this scale.
+    .globeImageUrl('https://unpkg.com/three-globe@2.45.2/example/img/earth-day.jpg')
     .atmosphereColor('#5B8DEF')
     .atmosphereAltitude(0.2)
     .labelsData([])
@@ -142,9 +148,16 @@ function init(containerId){
   controls.dampingFactor = 0.12;
   controls.autoRotate = true;
   controls.autoRotateSpeed = 0.5;
+  // Auto-rotate is a continuous 'change' source (render-on-demand can
+  // never go quiet while it's on), so on the landing tab it keeps the
+  // render loop running indefinitely if nobody ever touches the globe -
+  // real, ongoing CPU/GPU cost for as long as that tab sits open. Give it
+  // a fixed window to make its first impression, then let it settle into
+  // a static (and properly idle) view on its own.
+  var autoRotateTimeout = setTimeout(() => { controls.autoRotate = false; }, 20000);
   // Once someone actually grabs the globe, stop auto-rotating - continuing
   // to spin out from under an in-progress drag feels broken, not lively.
-  controls.addEventListener('start', () => { controls.autoRotate = false; camTween = null; });
+  controls.addEventListener('start', () => { controls.autoRotate = false; camTween = null; clearTimeout(autoRotateTimeout); });
   // Render-on-demand: OrbitControls fires 'change' on every actual motion
   // (drag, wheel, damping decay, autoRotate's own per-frame rotation) - so
   // this flag naturally stays true while anything is moving and goes
@@ -346,7 +359,7 @@ window.GlobeAPI = {
   setOnDetailZoom: (fn) => { onDetailZoom = fn; },
   getState: () => {
     var s = camera ? vector3ToLatLngAlt(camera.position) : { lat: 0, lng: 0, altitude: 0 };
-    return { lat: s.lat, lng: s.lng, altitude: s.altitude, labelsVisible: labelsVisible, renderCount: renderCount, paused: paused };
+    return { lat: s.lat, lng: s.lng, altitude: s.altitude, labelsVisible: labelsVisible, renderCount: renderCount, paused: paused, autoRotate: controls ? controls.autoRotate : false };
   },
 };
 </script>
