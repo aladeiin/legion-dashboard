@@ -1258,11 +1258,9 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         </div>
         </div>
         <div class="form-card">
-          <div class="form-section">Owner and Contact</div>
-          <div class="form-grid">
-            <div class="field"><label>Owner Name </label><input type="text" id="nf-owner" placeholder="e.g. Rahul Deshmukh"/></div>
-            <div class="field"><label>Contact Number </label><input type="text" id="nf-phone" placeholder="e.g. +91-98765 43210"/></div>
-          </div>
+          <div class="form-section">Contacts</div>
+          <div class="contact-list" id="nf-contact-list"></div>
+          <button type="button" class="add-contact-btn" onclick="addNewContact()"><svg class="icon"><use href="#icon-plus"/></svg> Add Contact</button>
         </div>
         <div class="form-card">
           <div class="form-section">Photos and Videos (optional)</div>
@@ -1448,7 +1446,7 @@ let editIdx=null, activeListIdx=null, fiMarkerIndex={};
 let puneMap, puneMarkerLayer, puneMarkerByGid={}, detailModeActive=false, pendingDetailFocus=null;
 const PUNE_CENTER={lat:18.52,lng:73.855};
 const DETAIL_RADIUS_DEG=3.5;
-let aiFiles=[], mediaFiles=[], editMediaFiles=[], editDocFiles=[], editDocsList=[], editContacts=[], bulkFile=null;
+let aiFiles=[], mediaFiles=[], editMediaFiles=[], editDocFiles=[], editDocsList=[], editContacts=[], newContacts=[], bulkFile=null;
 
 // Team accounts live in Supabase (table "team_users") so a member added by
 // one admin works for that person on any device. Falls back to a
@@ -2438,6 +2436,30 @@ function addEditContact(){
   if(rows.length) rows[rows.length-2].focus();
 }
 function removeEditContact(i){ editContacts.splice(i,1); renderEditContacts(); }
+
+// Same contacts UI as the Edit Property panel, for the Add Property form -
+// a brand-new listing needs the same "who is this number" choice as an
+// existing one, not just a single implied-owner field.
+function renderNewContacts(){
+  var html=newContacts.map(function(c,i){
+    return '<div class="contact-row">'+
+      '<select class="fs contact-role" onchange="updateNewContact('+i+',\'role\',this.value)">'+contactRoleOptionsHtml(c.role)+'</select>'+
+      '<input type="text" class="fs" placeholder="Name" value="'+escapeHtml(c.name||'')+'" oninput="updateNewContact('+i+',\'name\',this.value)"/>'+
+      '<input type="text" class="fs" placeholder="Phone number" value="'+escapeHtml(c.phone||'')+'" oninput="updateNewContact('+i+',\'phone\',this.value)"/>'+
+      '<button type="button" onclick="removeNewContact('+i+')" title="Remove contact"><svg class="icon"><use href="#icon-x"/></svg></button>'+
+    '</div>';
+  }).join('');
+  document.getElementById('nf-contact-list').innerHTML=html||'<div class="contact-empty">No contacts added yet</div>';
+}
+function updateNewContact(i,field,val){ if(newContacts[i]) newContacts[i][field]=val; }
+function addNewContact(){
+  newContacts.push({name:'',phone:'',role:''});
+  renderNewContacts();
+  var rows=document.querySelectorAll('#nf-contact-list .contact-row input');
+  if(rows.length) rows[rows.length-2].focus();
+}
+function removeNewContact(i){ newContacts.splice(i,1); renderNewContacts(); }
+renderNewContacts();
 function onEditMedia(files) {
   for (var i = 0; i < files.length; i++) {
     var exists = false;
@@ -3221,8 +3243,8 @@ async function doExtract() {
     fill('nf-name', d.name); fill('nf-market', d.market); fill('nf-floor', d.floor);
     fill('nf-area', d.area); fill('nf-carpet', d.carpet); fill('nf-rate', d.rate);
     fill('nf-cam', d.cam); fill('nf-deposit', d.deposit); fill('nf-lockin', d.lockin);
-    fill('nf-tenure', d.tenure); fill('nf-escal', d.escal); fill('nf-owner', d.owner);
-    fill('nf-phone', d.phone);
+    fill('nf-tenure', d.tenure); fill('nf-escal', d.escal);
+    if (d.owner || d.phone) { newContacts=[{name:d.owner||'',phone:d.phone||'',role:'Landlord'}]; renderNewContacts(); }
     fill('nf-salerate', d.salerate);
     fill('nf-operator', d.operator); fill('nf-seats', d.seats);
     fill('nf-priceperseat', d.price_per_seat); fill('nf-mincommitment', d.min_commitment);
@@ -3363,6 +3385,7 @@ async function doSubmit() {
     var spaceType = document.getElementById('nf-spacetype').value;
     document.getElementById('prog-title').textContent = 'Locating on map...';
     var coords = await geocodeMarket(marketVal, 'Pune');
+    var finalNewContacts = newContacts.filter(function(c){ return (c.name||'').trim() || (c.phone||'').trim(); });
     var insertBody = {
       code: propCode,
       name: propName,
@@ -3384,10 +3407,9 @@ async function doSubmit() {
       price_per_seat: document.getElementById('nf-priceperseat').value,
       min_commitment: document.getElementById('nf-mincommitment').value,
       logo_url: document.getElementById('nf-logourl').value,
-      owner: document.getElementById('nf-owner').value,
-      phone: document.getElementById('nf-phone').value,
-      contacts: (document.getElementById('nf-owner').value||document.getElementById('nf-phone').value)
-        ? [{name:document.getElementById('nf-owner').value,phone:document.getElementById('nf-phone').value,role:'Landlord'}] : [],
+      owner: finalNewContacts.length?finalNewContacts[0].name:'',
+      phone: finalNewContacts.length?finalNewContacts[0].phone:'',
+      contacts: finalNewContacts,
       photo: photoUrls[0] || '',
       photos: photoUrls,
       video: videoUrl,
@@ -3430,6 +3452,7 @@ function doClear() {
   document.getElementById('nf-plantype').value = '';
   onSpaceTypeChange('nf');
   mediaFiles = []; renderMedia();
+  newContacts = []; renderNewContacts();
 }
 
 function doReset() {
