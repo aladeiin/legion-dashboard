@@ -784,6 +784,31 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .manage-actionbar #manage-selected-count{font-size:12px;font-weight:600;color:var(--navy)}
 .manage-delete-btn{padding:7px 16px;background:var(--rented);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
 .manage-delete-btn:hover{background:#7a1c2a}
+.manage-actionbar .cbtn-primary{width:auto;background:var(--navy);color:#fff;border-color:var(--navy);padding:7px 16px;font-weight:600;white-space:nowrap}
+.manage-actionbar .cbtn-primary:hover{background:var(--navy-dark);color:#fff}
+.manage-actionbar .cbtn{width:auto;white-space:nowrap}
+.compare-topbar{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.compare-topbar .compare-back{width:auto;white-space:nowrap;padding:7px 14px}
+.compare-title{font-size:18px;font-weight:700;color:var(--text)}
+.compare-banner{background:var(--nego-bg);color:var(--nego);border:1.5px solid var(--gold);border-radius:8px;padding:10px 14px;font-size:12px;line-height:1.5;margin-bottom:16px}
+.compare-cards{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:20px}
+.compare-card{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:12px;width:220px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px}
+.compare-card-head{display:flex;align-items:center;justify-content:space-between}
+.compare-option-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--navy)}
+.compare-card-move{display:flex;gap:4px}
+.compare-card-move button{background:transparent;border:1px solid var(--border);border-radius:5px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;color:var(--text3);cursor:pointer;font-size:12px}
+.compare-card-move button:hover:not(:disabled){border-color:var(--border2);color:var(--text2)}
+.compare-card-move button:disabled{opacity:.35;cursor:default}
+.compare-card-move button .icon{width:12px;height:12px}
+.compare-thumb{width:100%;height:110px;object-fit:cover;border-radius:8px;background:var(--bg2)}
+.compare-thumb-empty{display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px}
+.compare-card-name{font-size:13px;font-weight:700;color:var(--text)}
+.compare-card-sub{font-size:11px;color:var(--text3)}
+.compare-card-summary{font-size:11px;color:var(--text2);line-height:1.4;min-height:28px}
+.compare-card-startdate{margin-top:2px}
+.compare-card-startdate label{display:block;font-size:10px;font-weight:600;color:var(--text2);margin-bottom:3px}
+.compare-card-startdate input{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:6px;font-size:11px;padding:6px 8px;color:var(--text);font-family:inherit}
+.compare-actions{display:flex;justify-content:flex-end}
 .manage-table-wrap{background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:auto;max-height:calc(100vh - 220px)}
 .manage-table{width:100%;border-collapse:collapse;font-size:12px}
 .manage-table thead th{position:sticky;top:0;background:var(--bg2);color:var(--text2);text-align:left;padding:9px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid var(--border);z-index:2}
@@ -952,6 +977,10 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <div class="ep-field"><label>Status</label>
           <select id="ef-status"><option value="Available">Available</option><option value="Rented Out">Rented Out</option><option value="Under Negotiation">Under Negotiation</option></select>
         </div>
+        <div class="ep-field"><label>Floor</label><input type="text" id="ef-floor" placeholder="e.g. 4th Floor"/></div>
+        <div class="ep-field"><label>Building Grade</label>
+          <select id="ef-grade"><option value="">Select...</option><option value="Grade A">Grade A</option><option value="Grade B+">Grade B+</option><option value="Grade B">Grade B</option><option value="Grade C">Grade C</option><option value="Commercial">Commercial</option></select>
+        </div>
       </div>
       <div id="ef-conventional-fields">
       <div class="ep-section">Availability & Pricing</div>
@@ -960,6 +989,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           <select id="ef-furnish"><option value="Bare Shell">Bare Shell</option><option value="Furnished">Furnished</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Plug & Play">Plug & Play</option></select>
         </div>
         <div class="ep-field"><label>Available Area (SqFt)</label><input type="text" id="ef-area"/></div>
+        <div class="ep-field"><label>Carpet Area (SqFt)</label><input type="text" id="ef-carpet"/></div>
         <div class="ep-field"><label>Lease Rate (PSF ₹)</label><input type="text" id="ef-rate"/></div>
         <div class="ep-field"><label>CAM (PSF ₹)</label><input type="text" id="ef-cam"/></div>
         <div class="ep-field"><label>Security Deposit (months)</label><input type="text" id="ef-deposit"/></div>
@@ -967,6 +997,8 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <div class="ep-field"><label>Lease Tenure (years)</label><input type="text" id="ef-tenure"/></div>
         <div class="ep-field"><label>Escalation (%)</label><input type="text" id="ef-escal"/></div>
         <div class="ep-field"><label>Parking Ratio</label><input type="text" id="ef-parking"/></div>
+        <div class="ep-field"><label>Fit Out / Rent Free Period</label><input type="text" id="ef-fitout" placeholder="e.g. 45 Days"/></div>
+        <div class="ep-field"><label>Registration & Stamp Duty</label><input type="text" id="ef-regnote" placeholder="e.g. Borne equally between both parties"/></div>
       </div>
       </div>
       <div id="ef-managed-fields" style="display:none">
@@ -977,11 +1009,21 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           <select id="ef-plantype"><option value="">Select...</option><option value="Hot Desk">Hot Desk</option><option value="Dedicated Desk">Dedicated Desk</option><option value="Private Cabin">Private Cabin</option><option value="Managed Floor">Managed Floor</option></select>
         </div>
         <div class="ep-field"><label>Seats</label><input type="text" id="ef-seats"/></div>
+        <div class="ep-field"><label>Chargeable Seats</label><input type="text" id="ef-chargeableseats" placeholder="e.g. 30 Seats"/></div>
         <div class="ep-field"><label>Price per Seat (₹/month)</label><input type="text" id="ef-priceperseat"/></div>
         <div class="ep-field"><label>Minimum Commitment (months)</label><input type="text" id="ef-mincommitment"/></div>
         <div class="ep-field"><label>Logo URL</label><input type="text" id="ef-logourl" placeholder="https://..."/></div>
+        <div class="ep-field"><label>Any Additional One-Time Charges</label><input type="text" id="ef-onetimecharges" placeholder="e.g. To be discussed during site visit"/></div>
       </div>
       <div class="field-hint" style="margin:-6px 0 4px 2px">Logo is used for this operator's map pin - leave blank for an auto-generated initials badge.</div>
+      <div class="ep-grid full">
+        <div class="ep-field"><label>Inclusions in Per-Seat Rate</label><textarea id="ef-inclusions" placeholder="e.g. High-speed Internet, Electricity, Housekeeping..."></textarea></div>
+      </div>
+      </div>
+      <div class="ep-section">Lease Terms</div>
+      <div class="ep-grid">
+        <div class="ep-field"><label>Notice Period (Post Lock-in)</label><input type="text" id="ef-noticeperiod" placeholder="e.g. 3 Months"/></div>
+        <div class="ep-field"><label>GST</label><input type="text" id="ef-gstnote" placeholder="e.g. Additional"/></div>
       </div>
       <div class="ep-section">Amenities</div>
       <div class="ep-grid">
@@ -1253,6 +1295,9 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
               <select id="nf-furnish"><option value="">Select...</option><option value="Bare Shell">Bare Shell</option><option value="Warm Shell">Warm Shell</option><option value="Semi-Furnished">Semi-Furnished</option><option value="Furnished">Furnished</option><option value="Plug and Play">Plug and Play</option></select>
             </div>
             <div class="field"><label>Floor</label><input type="text" id="nf-floor" placeholder="e.g. 4th Floor"/></div>
+            <div class="field"><label>Building Grade</label>
+              <select id="nf-grade"><option value="">Select...</option><option value="Grade A">Grade A</option><option value="Grade B+">Grade B+</option><option value="Grade B">Grade B</option><option value="Grade C">Grade C</option><option value="Commercial">Commercial</option></select>
+            </div>
           </div>
         </div>
         <div id="nf-conventional-fields">
@@ -1273,6 +1318,8 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
             <div class="field"><label>Lock-In (years) </label><input type="text" id="nf-lockin" placeholder="e.g. 3"/></div>
             <div class="field"><label>Lease Tenure (years) </label><input type="text" id="nf-tenure" placeholder="e.g. 5"/></div>
             <div class="field"><label>Escalation </label><input type="text" id="nf-escal" placeholder="e.g. 5% per year"/></div>
+            <div class="field"><label>Fit Out / Rent Free Period</label><input type="text" id="nf-fitout" placeholder="e.g. 45 Days"/></div>
+            <div class="field"><label>Registration & Stamp Duty</label><input type="text" id="nf-regnote" placeholder="e.g. Borne equally between both parties"/></div>
           </div>
         </div>
         </div>
@@ -1285,11 +1332,23 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
               <select id="nf-plantype"><option value="">Select...</option><option value="Hot Desk">Hot Desk</option><option value="Dedicated Desk">Dedicated Desk</option><option value="Private Cabin">Private Cabin</option><option value="Managed Floor">Managed Floor</option></select>
             </div>
             <div class="field"><label>Seats </label><input type="text" id="nf-seats" placeholder="e.g. 25"/></div>
+            <div class="field"><label>Chargeable Seats</label><input type="text" id="nf-chargeableseats" placeholder="e.g. 30 Seats"/></div>
             <div class="field"><label>Price per Seat (₹/month) </label><input type="text" id="nf-priceperseat" placeholder="e.g. 8000"/></div>
             <div class="field"><label>Minimum Commitment (months)</label><input type="text" id="nf-mincommitment" placeholder="e.g. 12"/></div>
             <div class="field"><label>Logo URL (optional)</label><input type="text" id="nf-logourl" placeholder="https://..."/><span class="field-hint">Used for this operator's map pin - leave blank for an auto-generated badge</span></div>
+            <div class="field"><label>Any Additional One-Time Charges</label><input type="text" id="nf-onetimecharges" placeholder="e.g. To be discussed during site visit"/></div>
+          </div>
+          <div class="form-grid full">
+            <div class="field"><label>Inclusions in Per-Seat Rate</label><textarea id="nf-inclusions" rows="3" placeholder="e.g. High-speed Internet, Electricity, Housekeeping..." style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;font-size:13px;padding:9px 11px;color:var(--text);font-family:inherit;resize:vertical"></textarea></div>
           </div>
         </div>
+        </div>
+        <div class="form-card">
+          <div class="form-section">Lease Terms</div>
+          <div class="form-grid">
+            <div class="field"><label>Notice Period (Post Lock-in)</label><input type="text" id="nf-noticeperiod" placeholder="e.g. 3 Months"/></div>
+            <div class="field"><label>GST</label><input type="text" id="nf-gstnote" placeholder="e.g. Additional" value="Additional"/></div>
+          </div>
         </div>
         <div class="form-card">
           <div class="form-section">Contacts</div>
@@ -1379,6 +1438,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <span id="manage-selected-count">0 selected</span>
         <span class="spacer"></span>
         <button class="cbtn" onclick="clearManageSelection()">Clear Selection</button>
+        <button class="cbtn cbtn-primary" onclick="openCompareBuilder()"><svg class="icon"><use href="#icon-file-text"/></svg> Generate Comparison Sheet</button>
         <button class="manage-delete-btn" onclick="bulkDeleteSelected()"><svg class="icon"><use href="#icon-trash"/></svg> Delete Selected</button>
       </div>
       <div class="manage-table-wrap">
@@ -1392,6 +1452,22 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           <tbody id="manage-tbody"></tbody>
         </table>
         <div id="manage-empty" style="display:none;text-align:center;padding:30px;color:var(--text3);font-size:12px">No properties match your filters</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARISON SHEET BUILDER (client-facing Excel export) -->
+  <div class="view-panel" id="view-compare" style="display:none">
+    <div class="view-container" style="max-width:1100px">
+      <div class="compare-topbar">
+        <button class="cbtn compare-back" onclick="switchView('manage')">&larr; Back to Manage</button>
+        <div class="compare-title">Comparison Sheet</div>
+      </div>
+      <div id="compare-mix-banner" class="compare-banner" style="display:none"></div>
+      <div id="compare-empty" style="display:none;text-align:center;padding:40px;color:var(--text3);font-size:13px">No properties selected. Go back to Manage and check the properties you want to include.</div>
+      <div class="compare-cards" id="compare-cards"></div>
+      <div class="compare-actions">
+        <button class="submit-btn" id="compare-generate-btn" onclick="generateComparisonSheet()"><svg class="icon"><use href="#icon-file-text"/></svg> Generate Excel</button>
       </div>
     </div>
   </div>
@@ -1441,6 +1517,10 @@ async function loadPropsFromSupabase() {
       space_type: r.space_type || 'Conventional', operator: r.operator,
       seats: r.seats, price_per_seat: r.price_per_seat, plan_type: r.plan_type,
       min_commitment: r.min_commitment, logo_url: r.logo_url,
+      floor: r.floor, building_grade: r.building_grade, carpet: r.carpet,
+      chargeable_seats: r.chargeable_seats, inclusions: r.inclusions,
+      one_time_charges: r.one_time_charges, fit_out_period: r.fit_out_period,
+      notice_period: r.notice_period, gst_note: r.gst_note, registration_note: r.registration_note,
       _dbId: r.id
     }));
     MARKETS = [...new Set(BASE_PROPS.map(p => p.market).filter(Boolean))].sort();
@@ -1900,11 +1980,13 @@ async function doLogout(){
 function switchView(view){
   if(view==='add' && !(currentUser&&(currentUser.role==='admin'||currentUser.role==='editor'))) view='map';
   if(view==='manage' && !(currentUser&&currentUser.role==='admin')) view='map';
+  if(view==='compare' && !(currentUser&&currentUser.role==='admin')) view='map';
   document.getElementById('view-map').style.display = view==='map' ? 'flex' : 'none';
   document.getElementById('view-add').style.display = view==='add' ? 'block' : 'none';
   document.getElementById('view-market').style.display = view==='market' ? 'flex' : 'none';
   document.getElementById('view-activity').style.display = view==='activity' ? 'block' : 'none';
   document.getElementById('view-manage').style.display = view==='manage' ? 'block' : 'none';
+  document.getElementById('view-compare').style.display = view==='compare' ? 'block' : 'none';
   document.getElementById('nav-map').classList.toggle('active', view==='map');
   document.getElementById('nav-add').classList.toggle('active', view==='add');
   document.getElementById('nav-market').classList.toggle('active', view==='market');
@@ -1914,6 +1996,7 @@ function switchView(view){
   if(view==='map') setTimeout(()=>{ window.GlobeAPI&&window.GlobeAPI.resize(); if(detailModeActive&&puneMap) puneMap.invalidateSize(); }, 50);
   if(view==='market') ensureMarketLoaded();
   if(view==='manage') renderManageTable();
+  if(view==='compare') renderCompareBuilder();
   // No point rendering the globe into a display:none view - pause it the
   // same way detail mode does, and only resume when actually back on the
   // Map tab (and not itself still covered by the Pune detail map).
@@ -2419,7 +2502,11 @@ function openEdit(origIdx){
     'ef-floorplan':p.floorplan,'ef-maps':p.maps,'ef-notes':p.notes,
     'ef-lat':p.lat,'ef-lng':p.lng,
     'ef-operator':p.operator,'ef-plantype':p.plan_type,'ef-seats':p.seats,
-    'ef-priceperseat':p.price_per_seat,'ef-mincommitment':p.min_commitment,'ef-logourl':p.logo_url};
+    'ef-priceperseat':p.price_per_seat,'ef-mincommitment':p.min_commitment,'ef-logourl':p.logo_url,
+    'ef-floor':p.floor,'ef-grade':p.building_grade,'ef-carpet':p.carpet,
+    'ef-fitout':p.fit_out_period,'ef-regnote':p.registration_note,
+    'ef-chargeableseats':p.chargeable_seats,'ef-inclusions':p.inclusions,
+    'ef-onetimecharges':p.one_time_charges,'ef-noticeperiod':p.notice_period,'ef-gstnote':p.gst_note};
   Object.entries(fields).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val||'';});
   document.getElementById('ef-spacetype').value=p.space_type==='Managed'?'Managed':'Conventional';
   onSpaceTypeChange('ef');
@@ -2809,6 +2896,272 @@ async function bulkDeleteSelected(){
   }
 }
 
+// ── Client comparison sheet builder ───────────────────────────────────
+// Which properties are going into the sheet, and in what order, is a
+// manual choice (not an auto-filtered search) - the broker already knows
+// which shortlisted options they want to send. Start Date is likewise
+// deal-specific (negotiated per client, not a fixed property attribute),
+// so it's typed in here rather than pulled from the property record.
+var compareProps=[]; // snapshots of props[], in the order they'll appear as Option 1, 2, 3...
+var compareStartDates={}; // _dbId -> typed Start Date string
+
+function openCompareBuilder(){
+  if(!manageSelected.size){ showToast('Select at least one property first','error'); return; }
+  var ids=Array.from(manageSelected);
+  compareProps=ids.map(function(id){ return props.find(function(p){return p._dbId===id;}); }).filter(Boolean);
+  compareProps.forEach(function(p){ if(!(p._dbId in compareStartDates)) compareStartDates[p._dbId]=''; });
+  switchView('compare');
+}
+
+function removeCompareProp(dbId){
+  compareProps=compareProps.filter(function(p){return p._dbId!==dbId;});
+  manageSelected.delete(dbId);
+  renderCompareBuilder();
+}
+function moveCompareProp(dbId,dir){
+  var i=compareProps.findIndex(function(p){return p._dbId===dbId;});
+  var j=i+dir;
+  if(i<0||j<0||j>=compareProps.length) return;
+  var tmp=compareProps[i]; compareProps[i]=compareProps[j]; compareProps[j]=tmp;
+  renderCompareBuilder();
+}
+function updateCompareStartDate(dbId,val){ compareStartDates[dbId]=val; }
+
+function compareCardHtml(p,idx){
+  var isManaged=p.space_type==='Managed';
+  var thumb=p.photo?'<img src="'+escapeHtml(p.photo)+'" class="compare-thumb"/>':'<div class="compare-thumb compare-thumb-empty">No Photo</div>';
+  var summary=isManaged
+    ? [p.operator,p.seats?p.seats+' seats':'',p.price_per_seat?'₹'+p.price_per_seat+'/seat':''].filter(Boolean).join(' · ')
+    : [p.area?p.area+' sqft':'',p.rate?'₹'+p.rate+' PSF':''].filter(Boolean).join(' · ');
+  return '<div class="compare-card">'+
+    '<div class="compare-card-head">'+
+      '<span class="compare-option-label">Option '+(idx+1)+'</span>'+
+      '<div class="compare-card-move">'+
+        '<button type="button" onclick="moveCompareProp('+p._dbId+',-1)" title="Move left" '+(idx===0?'disabled':'')+'>&larr;</button>'+
+        '<button type="button" onclick="moveCompareProp('+p._dbId+',1)" title="Move right" '+(idx===compareProps.length-1?'disabled':'')+'>&rarr;</button>'+
+        '<button type="button" onclick="removeCompareProp('+p._dbId+')" title="Remove"><svg class="icon"><use href="#icon-x"/></svg></button>'+
+      '</div>'+
+    '</div>'+
+    thumb+
+    '<div class="compare-card-name">'+escapeHtml(p.name||'')+'</div>'+
+    '<div class="compare-card-sub">'+escapeHtml(p.market||'')+' · '+(isManaged?'Managed':'Conventional')+'</div>'+
+    '<div class="compare-card-summary">'+escapeHtml(summary)+'</div>'+
+    '<div class="compare-card-startdate">'+
+      '<label>Start Date</label>'+
+      '<input type="text" placeholder="e.g. Immediately, or 60 days from confirmation" value="'+escapeHtml(compareStartDates[p._dbId]||'')+'" oninput="updateCompareStartDate('+p._dbId+',this.value)"/>'+
+    '</div>'+
+  '</div>';
+}
+
+function renderCompareBuilder(){
+  var wrap=document.getElementById('compare-cards');
+  var empty=document.getElementById('compare-empty');
+  var banner=document.getElementById('compare-mix-banner');
+  var genBtn=document.getElementById('compare-generate-btn');
+  if(!compareProps.length){
+    wrap.innerHTML='';
+    empty.style.display='block';
+    banner.style.display='none';
+    genBtn.disabled=true;
+    return;
+  }
+  empty.style.display='none';
+  genBtn.disabled=false;
+  wrap.innerHTML=compareProps.map(function(p,idx){ return compareCardHtml(p,idx); }).join('');
+  var hasManaged=compareProps.some(function(p){return p.space_type==='Managed';});
+  var hasConventional=compareProps.some(function(p){return p.space_type!=='Managed';});
+  if(hasManaged&&hasConventional){
+    banner.style.display='block';
+    banner.textContent='This selection mixes Managed and Conventional properties - since they use different comparison layouts, this will generate two separate sheets in one workbook (one per type) instead of one mixed table.';
+  } else {
+    banner.style.display='none';
+  }
+}
+
+// ── Comparison sheet generation ───────────────────────────────────────
+// SheetJS (already used for bulk import) can't write embedded images -
+// that's a paid-tier feature there. ExcelJS can, and is loaded lazily
+// here (not in <head>) since it's only needed by this one feature and
+// there's no reason to pay its load cost on every page view.
+var _exceljsLoadPromise=null;
+function loadExcelJS(){
+  if(window.ExcelJS) return Promise.resolve();
+  if(_exceljsLoadPromise) return _exceljsLoadPromise;
+  _exceljsLoadPromise=new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js';
+    s.onload=function(){ resolve(); };
+    s.onerror=function(){ _exceljsLoadPromise=null; reject(new Error('Failed to load the Excel export library')); };
+    document.head.appendChild(s);
+  });
+  return _exceljsLoadPromise;
+}
+
+function cmpMonths(v){ v=(v||'').toString().trim(); if(!v) return ''; return /^\d+(\.\d+)?$/.test(v) ? v+' Months' : v; }
+function cmpYears(v){ v=(v||'').toString().trim(); if(!v) return ''; return /^\d+(\.\d+)?$/.test(v) ? v+' Years' : v; }
+function cmpNum(v){ var n=parseFloat((v||'').toString().replace(/,/g,'')); return isNaN(n)?null:n; }
+function cmpINR(n){ return n==null?'':'INR '+Math.round(n).toLocaleString('en-IN'); }
+
+function cmpArea(p){
+  var lines=[];
+  if(p.area) lines.push('Built-up - '+p.area+' sq ft');
+  if(p.carpet) lines.push('Carpet - '+p.carpet+' sq ft');
+  return lines.join('\n');
+}
+function cmpRent(p){
+  var rate=cmpNum(p.rate), cam=cmpNum(p.cam), area=cmpNum(p.area);
+  if(rate==null) return '';
+  var lines=[cmpINR(rate)+' per sq.ft.'+(cam!=null?' + CAM - '+cmpINR(cam)+' per sq.ft.':'')];
+  if(area!=null){
+    var monthly='Rent per month - '+cmpINR(rate*area)+(cam!=null?' + Maintenance - '+cmpINR(cam*area):'');
+    lines.push('',monthly);
+  }
+  return lines.join('\n');
+}
+function cmpSeatRate(p){
+  var n=cmpNum(p.price_per_seat);
+  return n==null ? (p.price_per_seat||'') : cmpINR(n)+'/- per seat per month';
+}
+
+// Row order/labels mirror the real client-facing templates this feature
+// replaces (Conventional and Managed each have their own established
+// layout brokers already recognize) - get(p) returning '' just leaves
+// that cell blank for the broker to fill in Excel, rather than omitting
+// the row and changing the template shape the client expects.
+var CONVENTIONAL_ROWS=[
+  {label:'Project Name',get:function(p){return p.name||'';}},
+  {label:'Type of Building / Office',get:function(p){return p.building_grade||'';}},
+  {label:'Office Floor',get:function(p){return p.floor||'';}},
+  {label:'__PHOTO__'},
+  {label:'Area / Address',get:function(p){return p.market||'';}},
+  {label:'Area (Built up & Carpet Area)',get:cmpArea},
+  {label:'Rent (per sq.ft. + CAM)',get:cmpRent},
+  {label:'Available Start Date',get:function(p,sd){return sd||'';}},
+  {label:'No. of Parking Inclusive',get:function(p){return p.parking||'';}},
+  {label:'Additional Car / 2-Wheeler Parking Charges',get:function(){return '';}},
+  {label:'Lease Term',get:function(p){return cmpYears(p.tenure);}},
+  {label:'Lock-In Period',get:function(p){return cmpYears(p.lockin);}},
+  {label:'Status of Property',get:function(p){return p.furnish||'';}},
+  {label:'Fit Out / Rent Free Period',get:function(p){return p.fit_out_period||'';}},
+  {label:'Security Deposit (Interest Free)',get:function(p){return cmpMonths(p.deposit);}},
+  {label:'Escalation (Annually)',get:function(p){return p.escal||'';}},
+  {label:'Notice Period (Post Lock-in)',get:function(p){return p.notice_period||'';}},
+  {label:'GST',get:function(p){return p.gst_note||'';}},
+  {label:'Registration Charges & Stamp Duty',get:function(p){return p.registration_note||'';}},
+  {label:'Notes',get:function(p){return p.notes||'';}},
+];
+var MANAGED_ROWS=[
+  {label:'Managed Workspace Company Name',get:function(p){return p.operator||'';}},
+  {label:'Building Project Name',get:function(p){return p.name||'';}},
+  {label:'__PHOTO__'},
+  {label:'Floor of the Office',get:function(p){return p.floor||'';}},
+  {label:'Area / Address',get:function(p){return p.market||'';}},
+  {label:'No. of Seats',get:function(p){return p.seats||'';}},
+  {label:'Chargeable Seats',get:function(p){return p.chargeable_seats||'';}},
+  {label:'Rate per Chargeable Seat',get:cmpSeatRate},
+  {label:'Inclusions in the Above Per-Seat Rate',get:function(p){return p.inclusions||'';}},
+  {label:'Any Additional One-Time Charges',get:function(p){return p.one_time_charges||'';}},
+  {label:'Start Date',get:function(p,sd){return sd||'';}},
+  {label:'No. of Parking Inclusive',get:function(p){return p.parking||'';}},
+  {label:'Additional Car / 2-Wheeler Parking Charges',get:function(){return '';}},
+  {label:'Lease Term',get:function(p){return cmpYears(p.tenure);}},
+  {label:'Lock-In Period',get:function(p){return cmpYears(p.lockin);}},
+  {label:'Security Deposit (Interest Free)',get:function(p){return cmpMonths(p.deposit);}},
+  {label:'Escalation (Annually)',get:function(p){return p.escal||'';}},
+  {label:'Notice Period (Post Lock-in)',get:function(p){return p.notice_period||'';}},
+  {label:'GST',get:function(p){return p.gst_note||'';}},
+  {label:'Notes',get:function(p){return p.notes||'';}},
+];
+
+async function cmpFetchImageBase64(url){
+  try{
+    var res=await fetch(url);
+    if(!res.ok) return null;
+    var blob=await res.blob();
+    var ext=(blob.type==='image/png')?'png':(blob.type==='image/gif'?'gif':'jpeg');
+    var base64=await new Promise(function(resolve,reject){
+      var reader=new FileReader();
+      reader.onload=function(){ resolve(reader.result.split(',')[1]); };
+      reader.onerror=reject;
+      reader.readAsDataURL(blob);
+    });
+    return {base64:base64,extension:ext};
+  }catch(e){ return null; }
+}
+
+async function buildComparisonSheet(workbook,sheetName,propsList,rowDefs,startDates){
+  var ws=workbook.addWorksheet(sheetName);
+  ws.getColumn(1).width=34;
+  for(var c=0;c<propsList.length;c++) ws.getColumn(c+2).width=30;
+
+  var headerRow=ws.getRow(1);
+  headerRow.getCell(1).value='Options';
+  propsList.forEach(function(p,idx){ headerRow.getCell(idx+2).value='Option '+(idx+1); });
+  headerRow.eachCell(function(cell){ cell.font={bold:true}; cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1B3A6B'}}; cell.font={bold:true,color:{argb:'FFFFFFFF'}}; });
+
+  var photoImageIds=[];
+  for(var ri=0;ri<rowDefs.length;ri++){
+    var def=rowDefs[ri];
+    var excelRow=ri+2;
+    var row=ws.getRow(excelRow);
+    if(def.label==='__PHOTO__'){
+      row.height=90;
+      row.getCell(1).value='Photo';
+      row.getCell(1).font={bold:true};
+      for(var pi=0;pi<propsList.length;pi++){
+        var photoUrl=propsList[pi].photo;
+        if(!photoUrl) continue;
+        var img=await cmpFetchImageBase64(photoUrl);
+        if(!img) continue;
+        var imageId=workbook.addImage({base64:img.base64,extension:img.extension});
+        ws.addImage(imageId,{tl:{col:pi+1,row:excelRow-1},ext:{width:150,height:110}});
+      }
+      continue;
+    }
+    row.getCell(1).value=def.label;
+    row.getCell(1).font={bold:true};
+    propsList.forEach(function(p,idx){
+      row.getCell(idx+2).value=def.get(p,startDates[p._dbId]);
+    });
+    row.eachCell(function(cell){ cell.alignment={wrapText:true,vertical:'top'}; });
+  }
+  ws.views=[{state:'frozen',ySplit:1,xSplit:1}];
+}
+
+async function generateComparisonSheet(){
+  if(!compareProps.length) return;
+  var genBtn=document.getElementById('compare-generate-btn');
+  var origLabel=genBtn.innerHTML;
+  genBtn.disabled=true;
+  genBtn.textContent='Generating...';
+  try{
+    await loadExcelJS();
+    var workbook=new window.ExcelJS.Workbook();
+    var managedProps=compareProps.filter(function(p){return p.space_type==='Managed';});
+    var conventionalProps=compareProps.filter(function(p){return p.space_type!=='Managed';});
+    if(conventionalProps.length) await buildComparisonSheet(workbook,'Conventional Spaces',conventionalProps,CONVENTIONAL_ROWS,compareStartDates);
+    if(managedProps.length) await buildComparisonSheet(workbook,'Managed Spaces',managedProps,MANAGED_ROWS,compareStartDates);
+
+    var buffer=await workbook.xlsx.writeBuffer();
+    var blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='Comparison Sheet '+new Date().toISOString().slice(0,10)+'.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+    showToast('Comparison sheet downloaded','success');
+  }catch(e){
+    console.error('Comparison sheet generation failed:',e);
+    showToast('Failed to generate comparison sheet: '+e.message,'error');
+  }finally{
+    genBtn.disabled=false;
+    genBtn.innerHTML=origLabel;
+  }
+}
+
 async function saveEdit(){
   if(editIdx===null) return;
   const epSaving=document.getElementById('ep-saving');
@@ -2865,7 +3218,10 @@ async function saveEdit(){
     status:document.getElementById('ef-status').value,
     space_type:document.getElementById('ef-spacetype').value,
     furnish:document.getElementById('ef-furnish').value,
+    floor:document.getElementById('ef-floor').value,
+    building_grade:document.getElementById('ef-grade').value,
     area:document.getElementById('ef-area').value,
+    carpet:document.getElementById('ef-carpet').value,
     rate:document.getElementById('ef-rate').value,
     cam:document.getElementById('ef-cam').value,
     deposit:document.getElementById('ef-deposit').value,
@@ -2875,12 +3231,19 @@ async function saveEdit(){
     parking:document.getElementById('ef-parking').value,
     power:document.getElementById('ef-power').value,
     ac:document.getElementById('ef-ac').value,
+    fit_out_period:document.getElementById('ef-fitout').value,
+    registration_note:document.getElementById('ef-regnote').value,
     operator:document.getElementById('ef-operator').value,
     plan_type:document.getElementById('ef-plantype').value,
     seats:document.getElementById('ef-seats').value,
+    chargeable_seats:document.getElementById('ef-chargeableseats').value,
     price_per_seat:document.getElementById('ef-priceperseat').value,
     min_commitment:document.getElementById('ef-mincommitment').value,
     logo_url:document.getElementById('ef-logourl').value,
+    inclusions:document.getElementById('ef-inclusions').value,
+    one_time_charges:document.getElementById('ef-onetimecharges').value,
+    notice_period:document.getElementById('ef-noticeperiod').value,
+    gst_note:document.getElementById('ef-gstnote').value,
     photo:document.getElementById('ef-photo').value,
     video:document.getElementById('ef-video').value,
     floorplan:document.getElementById('ef-floorplan').value,
@@ -3456,19 +3819,29 @@ async function doSubmit() {
       status: document.getElementById('nf-status').value,
       furnish: document.getElementById('nf-furnish').value,
       space_type: spaceType,
+      floor: document.getElementById('nf-floor').value,
+      building_grade: document.getElementById('nf-grade').value,
       area: document.getElementById('nf-area').value,
+      carpet: document.getElementById('nf-carpet').value,
       rate: document.getElementById('nf-rate').value,
       cam: document.getElementById('nf-cam').value,
       deposit: document.getElementById('nf-deposit').value,
       lockin: document.getElementById('nf-lockin').value,
       tenure: document.getElementById('nf-tenure').value,
       escal: document.getElementById('nf-escal').value,
+      fit_out_period: document.getElementById('nf-fitout').value,
+      registration_note: document.getElementById('nf-regnote').value,
       operator: document.getElementById('nf-operator').value,
       plan_type: document.getElementById('nf-plantype').value,
       seats: document.getElementById('nf-seats').value,
+      chargeable_seats: document.getElementById('nf-chargeableseats').value,
       price_per_seat: document.getElementById('nf-priceperseat').value,
       min_commitment: document.getElementById('nf-mincommitment').value,
       logo_url: document.getElementById('nf-logourl').value,
+      inclusions: document.getElementById('nf-inclusions').value,
+      one_time_charges: document.getElementById('nf-onetimecharges').value,
+      notice_period: document.getElementById('nf-noticeperiod').value,
+      gst_note: document.getElementById('nf-gstnote').value,
       owner: finalNewContacts.length?finalNewContacts[0].name:'',
       phone: finalNewContacts.length?finalNewContacts[0].phone:'',
       contacts: finalNewContacts,
@@ -3505,13 +3878,15 @@ async function doSubmit() {
 }
 
 function doClear() {
-  var inputs = document.querySelectorAll('#form-section input');
+  var inputs = document.querySelectorAll('#form-section input, #form-section textarea');
   for (var i = 0; i < inputs.length; i++) { inputs[i].value = ''; inputs[i].classList.remove('ai-filled'); inputs[i].style.borderColor = ''; }
   document.getElementById('nf-status').value = 'Available';
   document.getElementById('nf-salerate').value = '';
   document.getElementById('nf-furnish').value = '';
   document.getElementById('nf-spacetype').value = 'Conventional';
   document.getElementById('nf-plantype').value = '';
+  document.getElementById('nf-grade').value = '';
+  document.getElementById('nf-gstnote').value = 'Additional';
   onSpaceTypeChange('nf');
   mediaFiles = []; renderMedia();
   newContacts = []; renderNewContacts();
@@ -3772,7 +4147,7 @@ async function doBulkImport() {
         ? 'Extracting listings with AI (batch ' + (ci + 1) + ' of ' + chunks.length + ')...'
         : 'Extracting listings with AI...';
 
-      var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. Each data line is prefixed with "[ROW N]" giving its true spreadsheet row number - use this to fill source_row. ' + spaceTypeInstruction + ' NAMING: for a MANAGED OFFICE listing, the "name" field must be the coworking/managed-office OPERATOR\'s brand name (e.g. "Awfis", "EFC", "Bigbox", "IndiQube", "WeWork") - NOT the building name; if the sheet gives both, put the building name in notes instead. For CONVENTIONAL listings, name should be the building/property name as usual. Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","notes":"","source_row":"","source_option":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead. source_row = the [ROW N] number this listing\'s data primarily came from (for row-per-property sheets, or the label-column row a wide-format sheet reads down from). source_option = if the sheet is in wide "options as columns" format (column A = attribute labels, each other column is one listing, e.g. headed "Option 1", "Option 2"...), the number of the option/column this listing came from (1 for the first data column, 2 for the second, etc) - leave blank for row-per-property sheets.\n\nSpreadsheet content:\n' + chunks[ci];
+      var prompt = 'You are a commercial real estate data extractor. The following is raw spreadsheet content (may be in wide "options as columns" format or row-per-property format) containing MULTIPLE property listings for a Pune/Hyderabad CRE company. Each data line is prefixed with "[ROW N]" giving its true spreadsheet row number - use this to fill source_row. ' + spaceTypeInstruction + ' NAMING: for a MANAGED OFFICE listing, the "name" field must be the coworking/managed-office OPERATOR\'s brand name (e.g. "Awfis", "EFC", "Bigbox", "IndiQube", "WeWork") - NOT the building name; if the sheet gives both, put the building name in notes instead. For CONVENTIONAL listings, name should be the building/property name as usual. Extract EVERY property listing you find as a JSON ARRAY. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY a raw JSON array, no markdown, no backticks, no explanation. Each item must use this exact structure: {"name":"","market":"","city":"Pune","status":"Available","space_type":"Conventional","furnish":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","chargeable_seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","building_grade":"","inclusions":"","one_time_charges":"","fit_out_period":"","notice_period":"","gst_note":"","registration_note":"","notes":"","source_row":"","source_option":""}. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/chargeable_seats/price_per_seat/min_commitment/inclusions/one_time_charges instead. chargeable_seats and inclusions are Managed-space-only concepts (e.g. "30 Seats", or the bullet list of what is included in the per-seat rate) - leave blank for Conventional listings. fit_out_period and registration_note are Conventional-only (fit-out/rent-free period, and who bears registration & stamp duty) - leave blank for Managed listings. notice_period and gst_note apply to both. source_row = the [ROW N] number this listing\'s data primarily came from (for row-per-property sheets, or the label-column row a wide-format sheet reads down from). source_option = if the sheet is in wide "options as columns" format (column A = attribute labels, each other column is one listing, e.g. headed "Option 1", "Option 2"...), the number of the option/column this listing came from (1 for the first data column, 2 for the second, etc) - leave blank for row-per-property sheets.\n\nSpreadsheet content:\n' + chunks[ci];
 
       var res = await fetch(EXTRACT_API, {
         method: 'POST',
@@ -3862,12 +4237,17 @@ async function doBulkImport() {
           market: item.market || '', city: item.city || 'Pune',
           status: item.status || 'Available', furnish: item.furnish || '', area: item.area || '',
           space_type: item.space_type === 'Managed' ? 'Managed' : 'Conventional',
+          floor: item.floor || '', carpet: item.carpet || '',
           rate: item.rate || '', cam: item.cam || '', deposit: item.deposit || '',
           lockin: item.lockin || '', tenure: item.tenure || '', escal: item.escal || '',
           operator: item.operator || '', plan_type: item.plan_type || '',
-          seats: item.seats || '', price_per_seat: item.price_per_seat || '',
+          seats: item.seats || '', chargeable_seats: item.chargeable_seats || '',
+          price_per_seat: item.price_per_seat || '',
           min_commitment: item.min_commitment || '',
           owner: item.owner || '', phone: item.phone || '', building_grade: item.building_grade || '',
+          inclusions: item.inclusions || '', one_time_charges: item.one_time_charges || '',
+          fit_out_period: item.fit_out_period || '', notice_period: item.notice_period || '',
+          gst_note: item.gst_note || '', registration_note: item.registration_note || '',
           notes: (item.notes || '') + (item.salerate ? ' | Sale rate: Rs' + item.salerate + ' PSF' : '')
         };
 
