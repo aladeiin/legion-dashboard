@@ -3089,25 +3089,50 @@ async function cmpFetchImageBase64(url){
   }catch(e){ return null; }
 }
 
+// Matches the real client templates this replaces: dark navy (#0E2841,
+// lifted directly from their theme) fills the whole label column on
+// every row plus the header row, with white bold text - verified against
+// the uploaded reference files' actual cell styles, not guessed.
+var CMP_NAVY='FF0E2841';
+var CMP_LOGO_URL='https://static.wixstatic.com/media/2ffd6f_ad3fcde821074fde9c0ba30e616e854d~mv2.png/v1/fill/w_171,h_60,al_c,lg_1,q_85,enc_avif,quality_auto/LEGION%20LOGO%20HI%20RES.png';
+var _cmpLogoImg=null;
+async function cmpGetLogoImage(){
+  if(_cmpLogoImg===null) _cmpLogoImg=await cmpFetchImageBase64(CMP_LOGO_URL);
+  return _cmpLogoImg;
+}
+function cmpNavyLabelCell(cell){
+  cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:CMP_NAVY}};
+  cell.font={bold:true,color:{argb:'FFFFFFFF'}};
+}
+
 async function buildComparisonSheet(workbook,sheetName,propsList,rowDefs,startDates){
   var ws=workbook.addWorksheet(sheetName);
   ws.getColumn(1).width=34;
   for(var c=0;c<propsList.length;c++) ws.getColumn(c+2).width=30;
 
-  var headerRow=ws.getRow(1);
+  // Row 1 is reserved for the Legion Realty logo, top-left - kept as a
+  // dedicated header row rather than overlaid on "Options" so the floating
+  // image never visually collides with cell text.
+  ws.getRow(1).height=40;
+  var logo=await cmpGetLogoImage();
+  if(logo){
+    var logoImageId=workbook.addImage({base64:logo.base64,extension:logo.extension});
+    ws.addImage(logoImageId,{tl:{col:0,row:0},ext:{width:120,height:42}});
+  }
+
+  var headerRow=ws.getRow(2);
   headerRow.getCell(1).value='Options';
   propsList.forEach(function(p,idx){ headerRow.getCell(idx+2).value='Option '+(idx+1); });
-  headerRow.eachCell(function(cell){ cell.font={bold:true}; cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1B3A6B'}}; cell.font={bold:true,color:{argb:'FFFFFFFF'}}; });
+  headerRow.eachCell(function(cell){ cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:CMP_NAVY}}; cell.font={bold:true,color:{argb:'FFFFFFFF'}}; });
 
-  var photoImageIds=[];
   for(var ri=0;ri<rowDefs.length;ri++){
     var def=rowDefs[ri];
-    var excelRow=ri+2;
+    var excelRow=ri+3;
     var row=ws.getRow(excelRow);
     if(def.label==='__PHOTO__'){
       row.height=90;
       row.getCell(1).value='Photo';
-      row.getCell(1).font={bold:true};
+      cmpNavyLabelCell(row.getCell(1));
       for(var pi=0;pi<propsList.length;pi++){
         var photoUrl=propsList[pi].photo;
         if(!photoUrl) continue;
@@ -3119,13 +3144,13 @@ async function buildComparisonSheet(workbook,sheetName,propsList,rowDefs,startDa
       continue;
     }
     row.getCell(1).value=def.label;
-    row.getCell(1).font={bold:true};
+    cmpNavyLabelCell(row.getCell(1));
     propsList.forEach(function(p,idx){
       row.getCell(idx+2).value=def.get(p,startDates[p._dbId]);
     });
     row.eachCell(function(cell){ cell.alignment={wrapText:true,vertical:'top'}; });
   }
-  ws.views=[{state:'frozen',ySplit:1,xSplit:1}];
+  ws.views=[{state:'frozen',ySplit:2,xSplit:1}];
 }
 
 async function generateComparisonSheet(){
