@@ -42,7 +42,7 @@ import { CSS2DRenderer } from 'https://unpkg.com/three@0.185.1/examples/jsm/rend
 window.THREE = THREE;
 
 let scene, camera, renderer, labelRenderer, controls, globe, container, ro, dirLight;
-let needsRender = true, paused = false, renderCount = 0;
+let needsRender = true, paused = false, renderCount = 0, interacting = false;
 
 // Static reference layer so city names are visible no matter where the
 // globe is rotated/zoomed to - the globe texture itself is just satellite
@@ -157,7 +157,27 @@ function init(containerId){
   var autoRotateTimeout = setTimeout(() => { controls.autoRotate = false; }, 20000);
   // Once someone actually grabs the globe, stop auto-rotating - continuing
   // to spin out from under an in-progress drag feels broken, not lively.
-  controls.addEventListener('start', () => { controls.autoRotate = false; camTween = null; clearTimeout(autoRotateTimeout); });
+  controls.addEventListener('start', () => {
+    controls.autoRotate = false; camTween = null; clearTimeout(autoRotateTimeout);
+    // CSS2DRenderer repositions every property-marker DOM element on every
+    // single render (it unconditionally rewrites each one's style.display,
+    // style.transform and style.zIndex, plus re-sorts the whole list for
+    // z-order) - with a realistic-size portfolio that's real per-frame
+    // main-thread cost, measured (via a synthetic in-page drag, bypassing
+    // automation overhead) at 50-100ms+ frames during continuous dragging,
+    // versus <1ms for the WebGL globe render alone. Hiding the marker layer
+    // for the duration of an actual drag/rotate skips that cost entirely -
+    // the globe itself still rotates smoothly, markers just reappear once
+    // you let go instead of being repositioned 60 times a second while
+    // moving.
+    interacting = true;
+    labelRenderer.domElement.style.display = 'none';
+  });
+  controls.addEventListener('end', () => {
+    interacting = false;
+    labelRenderer.domElement.style.display = '';
+    needsRender = true;
+  });
   // Render-on-demand: OrbitControls fires 'change' on every actual motion
   // (drag, wheel, damping decay, autoRotate's own per-frame rotation) - so
   // this flag naturally stays true while anything is moving and goes
@@ -206,7 +226,7 @@ function animate(){
   // in broad "daylight" texture areas.
   dirLight.position.copy(camera.position);
   renderer.render(scene, camera);
-  labelRenderer.render(scene, camera);
+  if (!interacting) labelRenderer.render(scene, camera);
   checkZoomThresholds();
   needsRender = false;
   renderCount++;
@@ -359,7 +379,7 @@ window.GlobeAPI = {
   setOnDetailZoom: (fn) => { onDetailZoom = fn; },
   getState: () => {
     var s = camera ? vector3ToLatLngAlt(camera.position) : { lat: 0, lng: 0, altitude: 0 };
-    return { lat: s.lat, lng: s.lng, altitude: s.altitude, labelsVisible: labelsVisible, renderCount: renderCount, paused: paused, autoRotate: controls ? controls.autoRotate : false };
+    return { lat: s.lat, lng: s.lng, altitude: s.altitude, labelsVisible: labelsVisible, renderCount: renderCount, paused: paused, autoRotate: controls ? controls.autoRotate : false, interacting: interacting };
   },
 };
 </script>
