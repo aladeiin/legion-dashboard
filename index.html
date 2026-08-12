@@ -18,6 +18,147 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.185.1/build/three.module.js" } }
+</script>
+<script type="module">
+// 3D globe engine for the primary Map view. Kept in its own module script
+// (Three.js is ESM-only in modern releases - there's no classic global
+// build to drop in as a plain <script> anymore) and exposed on
+// window.GlobeAPI so the rest of the app - one big classic script - can
+// drive it without itself becoming a module. Module scripts are deferred
+// regardless of position, so this finishes loading well before anything
+// actually calls into it (GlobeAPI.init() only runs after login).
+//
+// three-globe itself is loaded separately below as its prebuilt UMD
+// bundle (window.ThreeGlobe), not imported here as ESM - the raw .mjs
+// has its own transitive bare-specifier dependencies (kapsule, d3-*,
+// tween.js...) that would need a much larger import map to resolve,
+// while the UMD build already has all of that bundled in and only needs
+// a global `THREE` to exist first.
+import * as THREE from 'three';
+import { OrbitControls } from 'https://unpkg.com/three@0.185.1/examples/jsm/controls/OrbitControls.js';
+import { CSS2DRenderer } from 'https://unpkg.com/three@0.185.1/examples/jsm/renderers/CSS2DRenderer.js';
+window.THREE = THREE;
+
+let scene, camera, renderer, labelRenderer, controls, globe, container, ro;
+
+function init(containerId){
+  container = document.getElementById(containerId);
+  container.innerHTML = '';
+
+  scene = new THREE.Scene();
+  scene.add(new THREE.AmbientLight(0xffffff, 1.4));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  dirLight.position.set(1, 1, 1);
+  scene.add(dirLight);
+
+  globe = new window.ThreeGlobe()
+    .globeImageUrl('https://unpkg.com/three-globe@2.45.2/example/img/earth-blue-marble.jpg')
+    .bumpImageUrl('https://unpkg.com/three-globe@2.45.2/example/img/earth-topology.png')
+    .atmosphereColor('#5B8DEF')
+    .atmosphereAltitude(0.2);
+  scene.add(globe);
+
+  const w = container.clientWidth || 800, h = container.clientHeight || 600;
+  camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 5000);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  container.appendChild(renderer.domElement);
+
+  labelRenderer = new CSS2DRenderer();
+  labelRenderer.setSize(w, h);
+  labelRenderer.domElement.style.position = 'absolute';
+  labelRenderer.domElement.style.top = '0';
+  labelRenderer.domElement.style.left = '0';
+  labelRenderer.domElement.style.pointerEvents = 'none';
+  container.appendChild(labelRenderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.minDistance = 130;
+  controls.maxDistance = 1000;
+  controls.enablePan = false;
+  controls.rotateSpeed = 0.6;
+  controls.zoomSpeed = 0.7;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.5;
+  // Once someone actually grabs the globe, stop auto-rotating - continuing
+  // to spin out from under an in-progress drag feels broken, not lively.
+  controls.addEventListener('start', () => { controls.autoRotate = false; });
+
+  pointOfView(20, 78, 2.4);
+
+  ro = new ResizeObserver(onResize);
+  ro.observe(container);
+
+  animate();
+}
+
+function onResize(){
+  if (!container || !camera || !renderer) return;
+  const w = container.clientWidth, h = container.clientHeight;
+  if (!w || !h) return;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  labelRenderer.setSize(w, h);
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+
+// Positions the camera directly with plain trigonometry rather than
+// three-globe's own setPointOfView() helper, which throws internally
+// ("a.clone is not a function") with this THREE.js version combination -
+// not worth chasing a third-party internals bug when the camera math
+// itself is simple and well-known (this is the same lat/lng-to-sphere
+// conversion three-globe uses internally). altitude is expressed as a
+// multiple of the globe's radius above the surface (~2.4 = full-Earth
+// view, ~0.35 = close/local view).
+var GLOBE_RADIUS = 100;
+function pointOfView(lat, lng, altitude){
+  if (!camera) return;
+  var distance = GLOBE_RADIUS * (1 + altitude);
+  var phi = (90 - lat) * Math.PI / 180;
+  var theta = (lng + 180) * Math.PI / 180;
+  camera.position.set(
+    -distance * Math.sin(phi) * Math.cos(theta),
+    distance * Math.cos(phi),
+    distance * Math.sin(phi) * Math.sin(theta)
+  );
+  camera.lookAt(0, 0, 0);
+  if (controls) { controls.target.set(0, 0, 0); controls.update(); }
+}
+
+// items: [{lat,lng,html}] - html is a plain HTML string for that point's
+// marker, built by the classic script (reusing its existing icon/badge
+// logic) so visual style stays identical to what the old Leaflet markers
+// looked like.
+function setMarkers(items, onClick){
+  if (!globe) return;
+  globe.htmlElementsData(items)
+    .htmlElement(d => {
+      const el = document.createElement('div');
+      el.innerHTML = d.html;
+      el.style.pointerEvents = 'auto';
+      el.style.cursor = 'pointer';
+      el.style.transform = 'translate(-50%,-50%)';
+      el.onclick = (e) => { e.stopPropagation(); if (onClick) onClick(d); };
+      return el;
+    });
+}
+
+function stopAutoRotate(){ if (controls) controls.autoRotate = false; }
+
+window.GlobeAPI = { init, pointOfView, setMarkers, resize: onResize, stopAutoRotate };
+</script>
+<script defer src="https://unpkg.com/three-globe@2.45.2/dist/three-globe.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root{
@@ -171,14 +312,18 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .pi-photo-thumb{width:100%;height:54px;object-fit:cover;border-radius:5px;margin-bottom:6px;display:block;border:1px solid var(--border)}
 
 /* ── MAP ── */
-.map-wrap{flex:1;position:relative}
+.map-wrap{flex:1;position:relative;overflow:hidden}
+.globe-wrap{background:#000814}
 #map{width:100%;height:100%}
-:root[data-theme="dark"] #map .leaflet-tile-pane{filter:brightness(.68) contrast(1.15) saturate(.85) invert(1) hue-rotate(180deg)}
 #market-map-el{width:100%;height:100%}
+:root[data-theme="dark"] #market-map-el .leaflet-tile-pane{filter:brightness(.68) contrast(1.15) saturate(.85) invert(1) hue-rotate(180deg)}
 .map-legend{position:absolute;bottom:22px;right:10px;z-index:450;background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;box-shadow:var(--shadow-md);font-size:11px;color:var(--text2);display:flex;flex-direction:column;gap:6px}
 .map-legend-item{display:flex;align-items:center;gap:7px}
 .map-legend-dot{width:11px;height:11px;border-radius:50%;background:#1B3A6B;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25);flex-shrink:0}
 .map-legend-badge{width:14px;height:14px;border-radius:4px;background:#1B3A6B;border:2px solid #1B3A6B;flex-shrink:0}
+.globe-popup-wrap{position:absolute;bottom:20px;left:20px;z-index:460;width:280px;max-width:calc(100% - 40px);max-height:calc(100% - 40px);overflow-y:auto;background:var(--white);border:1.5px solid var(--border);border-top:3px solid var(--navy);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.4)}
+.globe-popup-close{position:absolute;top:8px;right:8px;z-index:2;background:rgba(0,0,0,.4);border:none;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.globe-popup-close:hover{background:rgba(0,0,0,.6)}
 
 /* ── POPUP ── */
 .custom-popup .leaflet-popup-content-wrapper{background:var(--white);border:1.5px solid var(--border);border-top:3px solid var(--navy);border-radius:12px;box-shadow:0 8px 28px rgba(15,23,42,.18);padding:0;min-width:240px;max-width:280px;overflow:hidden}
@@ -699,11 +844,15 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
         <button class="cbtn" onclick="clearFilters()">Clear All</button>
       </div>
     </div>
-    <div class="map-wrap">
+    <div class="map-wrap globe-wrap">
       <div id="map"></div>
       <div class="map-legend">
         <div class="map-legend-item"><span class="map-legend-dot"></span> Conventional</div>
         <div class="map-legend-item"><span class="map-legend-badge"></span> Managed Office</div>
+      </div>
+      <div class="globe-popup-wrap" id="globe-popup-wrap" style="display:none">
+        <button class="globe-popup-close" onclick="closeGlobePopup()"><svg class="icon"><use href="#icon-x"/></svg></button>
+        <div id="globe-popup-content"></div>
       </div>
     </div>
     <div class="list-backdrop" id="list-backdrop" onclick="toggleListPanel(false)"></div>
@@ -1041,7 +1190,7 @@ const DEFAULT_USERS=[
 ];
 
 let USERS=[], EDITS={}, currentUser=null, props=[], filtered=[];
-let map, markerLayer, markers=[], editIdx=null, activeListIdx=null, fiMarkerIndex={};
+let editIdx=null, activeListIdx=null, fiMarkerIndex={};
 let aiFiles=[], mediaFiles=[], editMediaFiles=[], editDocFiles=[], editDocsList=[], bulkFile=null;
 
 // Team accounts live in Supabase (table "team_users") so a member added by
@@ -1473,23 +1622,22 @@ function switchView(view){
   document.getElementById('nav-activity').classList.toggle('active', view==='activity');
   document.getElementById('nav-manage').classList.toggle('active', view==='manage');
   if(view==='activity') renderActivity();
-  if(view==='map' && map) setTimeout(()=>map.invalidateSize(), 50);
+  if(view==='map') setTimeout(()=>window.GlobeAPI&&window.GlobeAPI.resize(), 50);
   if(view==='market') ensureMarketLoaded();
   if(view==='manage') renderManageTable();
 }
 
-function initMap(){
-  map=L.map('map',{center:[18.52,73.855],zoom:12});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(map);
-  markerLayer=L.layerGroup().addTo(map);
+async function initMap(){
+  // GlobeAPI comes from a deferred module <script> in <head> - in the
+  // overwhelmingly common case it's long since finished loading by the
+  // time a login round-trip to Supabase completes, but guard against the
+  // rare case (very fast cached session, slow network for the module
+  // itself) rather than throwing on window.GlobeAPI being undefined.
+  for(var tries=0; !window.GlobeAPI && tries<40; tries++){ await new Promise(function(r){setTimeout(r,50);}); }
+  if(!window.GlobeAPI){ showToast('3D map failed to load - try refreshing the page','error'); return; }
+  window.GlobeAPI.init('map');
   applyFilters();
 }
-
-const mkIcon=(color,sz,border)=>L.divIcon({className:'',
-  html:`<div style="width:${sz}px;height:${sz}px;background:${color};border:2px solid ${border||'#fff'};border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.25)"></div>`,
-  iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
-let iAvail,iRented,iNego;
 function statusColor(s){
   return s==='Available' ? '#1B3A6B' : s==='Under Negotiation' ? '#C9973A' : '#9B2335';
 }
@@ -1517,24 +1665,19 @@ function operatorInitials(name){
 }
 // Managed-office pins get a square logo/initials badge (ringed in the
 // status color) instead of the plain circle, so they read as a distinct
-// category on the map at a glance rather than just another dot.
-var badgeIconCache={};
-function getManagedIcon(p){
+// category on the globe at a glance rather than just another dot. Plain
+// HTML strings (not Leaflet divIcons) - the globe mounts these itself.
+function managedMarkerHtml(p){
   var effectiveLogo=p.logo_url||KNOWN_OPERATOR_LOGOS[p.operator]||'';
-  var key='m|'+(p.operator||'')+'|'+effectiveLogo+'|'+p.status;
-  if(!badgeIconCache[key]){
-    var border=statusColor(p.status);
-    var inner=operatorBadgeInnerHtml(p.operator, effectiveLogo);
-    badgeIconCache[key]=L.divIcon({className:'',
-      html:`<div style="width:22px;height:22px;border-radius:6px;border:2.5px solid ${border};box-shadow:0 1px 4px rgba(0,0,0,.3);overflow:hidden;background:#fff">${inner}</div>`,
-      iconSize:[22,22],iconAnchor:[11,11]});
-  }
-  return badgeIconCache[key];
+  var border=statusColor(p.status);
+  var inner=operatorBadgeInnerHtml(p.operator, effectiveLogo);
+  return '<div style="width:22px;height:22px;border-radius:6px;border:2.5px solid '+border+';box-shadow:0 1px 4px rgba(0,0,0,.4);overflow:hidden;background:#fff">'+inner+'</div>';
 }
-function getIcon(p){
-  if(p.space_type==='Managed') return getManagedIcon(p);
-  if(!iAvail){ iAvail=mkIcon('#1B3A6B',11,'#fff'); iRented=mkIcon('#9B2335',8,'#fff'); iNego=mkIcon('#C9973A',9,'#fff'); }
-  return p.status==='Available'?iAvail:p.status==='Under Negotiation'?iNego:iRented;
+function markerHtml(p){
+  if(p.space_type==='Managed') return managedMarkerHtml(p);
+  var color=p.status==='Available'?'#1B3A6B':p.status==='Under Negotiation'?'#C9973A':'#9B2335';
+  var sz=p.status==='Available'?14:11;
+  return '<div style="width:'+sz+'px;height:'+sz+'px;background:'+color+';border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>';
 }
 
 function statusStyle(s){
@@ -1750,55 +1893,56 @@ function goListingSlide(gid,val,relative){
   if(pos) pos.textContent=(next+1);
 }
 
-var groupIconCache={};
-function getGroupIcon(group){
+function groupMarkerHtml(group){
   var items=group.items;
-  if(items.length===1) return getIcon(items[0]);
+  if(items.length===1) return markerHtml(items[0]);
   var n=items.length;
   var operators=[...new Set(items.map(function(p){return p.operator;}).filter(Boolean))];
   var sameManagedOperator=items.every(function(p){return p.space_type==='Managed';})&&operators.length===1;
-  var key=sameManagedOperator
-    ? 'grp-op|'+operators[0]+'|'+statusColor(items[0].status)+'|'+n+'|'+(items[0].logo_url||'')
-    : 'grp-mixed|'+n;
-  if(groupIconCache[key]) return groupIconCache[key];
-  var icon;
-  var countBadge='<div style="position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#C9973A;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)">'+n+'</div>';
+  var countBadge='<div style="position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#C9973A;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)">'+n+'</div>';
   if(sameManagedOperator){
     var effectiveLogo=items[0].logo_url||KNOWN_OPERATOR_LOGOS[operators[0]]||'';
     var border=statusColor(items[0].status);
     var inner=operatorBadgeInnerHtml(operators[0], effectiveLogo);
-    icon=L.divIcon({className:'',
-      html:'<div style="position:relative;width:24px;height:24px">'+
-             '<div style="width:22px;height:22px;border-radius:6px;border:2.5px solid '+border+';box-shadow:0 1px 4px rgba(0,0,0,.3);overflow:hidden;background:#fff">'+inner+'</div>'+
-             countBadge+'</div>',
-      iconSize:[24,24],iconAnchor:[11,11]});
-  }else{
-    icon=L.divIcon({className:'',
-      html:'<div style="width:24px;height:24px;border-radius:50%;background:#1B3A6B;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700">'+n+'</div>',
-      iconSize:[24,24],iconAnchor:[12,12]});
+    return '<div style="position:relative;width:24px;height:24px">'+
+             '<div style="width:22px;height:22px;border-radius:6px;border:2.5px solid '+border+';box-shadow:0 1px 4px rgba(0,0,0,.4);overflow:hidden;background:#fff">'+inner+'</div>'+
+             countBadge+'</div>';
   }
-  groupIconCache[key]=icon;
-  return icon;
+  return '<div style="width:24px;height:24px;border-radius:50%;background:#1B3A6B;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700">'+n+'</div>';
 }
 
 function renderMarkers(){
-  markerLayer.clearLayers(); markers=[]; fiMarkerIndex={};
+  fiMarkerIndex={};
   var groups=groupByLocation(filtered);
-  groups.forEach((group,gi)=>{
+  var points=groups.map(function(group,gi){
     var gid='g'+gi;
-    const m=L.marker([group.lat,group.lng],{icon:getGroupIcon(group)});
-    if(group.items.length===1){
-      var only=group.items[0];
-      m.bindPopup(makePopup(only,only._origIdx),{className:'custom-popup',maxWidth:280,offset:[0,-2]});
-    }else{
-      m.bindPopup(buildGroupCarouselHtml(gid,group,0),{className:'custom-popup',maxWidth:300,offset:[0,-2]});
-    }
-    m.on('click',()=>highlightItem(group.fis[0]));
     group.fis.forEach(function(fi,idxInGroup){
-      fiMarkerIndex[fi]={marker:m,gid:gid,group:group,idxInGroup:idxInGroup};
+      fiMarkerIndex[fi]={gid:gid,group:group,idxInGroup:idxInGroup};
     });
-    markerLayer.addLayer(m); markers.push(m);
+    return {lat:group.lat,lng:group.lng,html:groupMarkerHtml(group),_group:group,_gid:gid};
   });
+  window.GlobeAPI.setMarkers(points,function(d){
+    showGlobePopup(d._group,d._gid,0);
+    highlightItem(d._group.fis[0]);
+  });
+}
+
+// The globe has no Leaflet-style popup system of its own - property detail
+// content (same makePopup()/buildGroupCarouselHtml() HTML used before) is
+// shown in a floating card docked over the globe instead, toggled by these.
+function showGlobePopup(group,gid,startIdx){
+  var wrap=document.getElementById('globe-popup-wrap');
+  var content=document.getElementById('globe-popup-content');
+  if(group.items.length===1){
+    var only=group.items[0];
+    content.innerHTML=makePopup(only,only._origIdx);
+  }else{
+    content.innerHTML=buildGroupCarouselHtml(gid,group,startIdx||0);
+  }
+  wrap.style.display='block';
+}
+function closeGlobePopup(){
+  document.getElementById('globe-popup-wrap').style.display='none';
 }
 
 function renderList(){
@@ -1840,15 +1984,11 @@ function updateStats(){
 
 function focusProp(fi){
   const p=filtered[fi];
-  map.setView([p.lat,p.lng],15);
+  window.GlobeAPI.pointOfView(p.lat,p.lng,0.7);
+  window.GlobeAPI.stopAutoRotate();
   const info=fiMarkerIndex[fi];
   if(info){
-    info.marker.openPopup();
-    if(info.group.items.length>1){
-      // Popup content already has every slide embedded (bound once at
-      // render time) - just jump the existing carousel to the right one.
-      setTimeout(()=>goListingSlide(info.gid,info.idxInGroup,false),0);
-    }
+    showGlobePopup(info.group,info.gid,info.idxInGroup);
   }
   highlightItem(fi);
 }
