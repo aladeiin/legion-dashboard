@@ -169,6 +169,11 @@ function onResize(){
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
   labelRenderer.setSize(w, h);
+  // A resize alone doesn't move the camera, so render-on-demand wouldn't
+  // otherwise know to redraw at the new size - without this the canvas
+  // sits at its old (now wrong) resolution until something else happens
+  // to move the camera.
+  needsRender = true;
 }
 
 function animate(){
@@ -464,7 +469,18 @@ body,.sidebar,.list-panel,.map-wrap,.pu,.pi,.mg-row,.form-card,.login-box,.edit-
 .sidebar-head{padding:14px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--white)}
 
 /* ── RESULTS PANEL (right side) ── */
-.list-panel{width:300px;background:var(--white);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;box-shadow:-2px 0 8px rgba(27,58,107,.04)}
+.list-panel{width:300px;background:var(--white);border-left:1px solid var(--border);display:flex;flex-direction:row;flex-shrink:0;overflow:hidden;box-shadow:-2px 0 8px rgba(27,58,107,.04);transition:width .22s ease}
+/* Desktop collapse: shrinks to a thin handle strip (the toggle button
+   itself, pinned to the left edge as a row item) instead of vanishing
+   outright, so it stays reachable without a second floating control
+   somewhere else to bring the panel back. */
+.list-panel.collapsed{width:30px}
+.list-panel.collapsed .prop-list,.list-panel.collapsed .sidebar-close{display:none}
+.list-collapse-btn{display:none;align-items:center;justify-content:center;width:30px;flex-shrink:0;background:var(--white);border:none;border-right:1px solid var(--border);color:var(--text3);cursor:pointer}
+.list-collapse-btn:hover{background:var(--bg2);color:var(--navy)}
+.list-collapse-btn .icon{width:15px;height:15px;transition:transform .22s ease}
+.list-panel.collapsed .list-collapse-btn{border-right:none}
+.list-panel.collapsed .list-collapse-btn .icon{transform:rotate(180deg)}
 .sidebar-section-title{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .sidebar-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
 .fg{margin-bottom:8px}
@@ -520,7 +536,10 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
    continuation of the globe's always-dark space background, not something
    that flips with the light/dark toggle the way Market Map's tiles do. */
 #pune-detail-map{width:100%;height:100%;background:#000814}
-.globe-back-btn{position:absolute;top:14px;left:14px;z-index:450;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+/* top-right, not top-left - Leaflet's own zoom (+/-) control sits
+   top-left on the Pune detail map underneath, and this button used to sit
+   right on top of it. */
+.globe-back-btn{position:absolute;top:14px;right:14px;z-index:450;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .globe-back-btn:hover{background:var(--navy-light)}
 .globe-back-btn .icon{width:14px;height:14px}
 
@@ -565,6 +584,11 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .pu-stat{background:var(--bg);border-radius:5px;padding:5px 7px}
 .pu-stat .psl{font-size:9px;color:var(--text3);margin-bottom:1px}
 .pu-stat .psv{font-size:11px;font-weight:600;color:var(--text)}
+.pu-contacts{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.pu-contacts-label{font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.pu-contact-row{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:2px 0}
+.pu-contact-name{color:var(--text);font-weight:600}
+.pu-contact-phone{color:var(--text2)}
 .pu-docs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
 .pu-doc-chip{display:inline-flex;align-items:center;gap:4px;background:var(--info-bg);color:var(--info);font-size:10px;font-weight:600;padding:4px 9px;border-radius:14px;text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pu-doc-chip:hover{filter:brightness(.95)}
@@ -683,6 +707,16 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .doc-item button{background:transparent;border:none;color:var(--text3);width:20px;height:20px;border-radius:5px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .doc-item button:hover{background:var(--rented-bg);color:var(--rented)}
 .doc-item button .icon{width:.85em;height:.85em}
+.contact-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.contact-row{display:flex;align-items:center;gap:6px}
+.contact-row input{flex:1;min-width:0}
+.contact-row button{background:transparent;border:none;color:var(--text3);width:26px;height:26px;border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.contact-row button:hover{background:var(--rented-bg);color:var(--rented)}
+.contact-row button .icon{width:14px;height:14px}
+.contact-empty{font-size:11px;color:var(--text3);padding:2px}
+.add-contact-btn{display:flex;align-items:center;gap:5px;background:transparent;border:1.5px dashed var(--border2);color:var(--navy);border-radius:7px;padding:7px 10px;font-size:11.5px;font-weight:600;cursor:pointer;margin:8px 0 4px}
+.add-contact-btn:hover{background:var(--info-bg);border-color:var(--navy)}
+.add-contact-btn .icon{width:13px;height:13px}
 .submit-btn{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px}
 .submit-btn:disabled{opacity:.4;cursor:not-allowed}
 .clear-btn{width:100%;padding:10px;background:transparent;color:var(--text2);border:1.5px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer}
@@ -732,6 +766,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .mg-contact-name{font-size:11.5px;font-weight:600;color:var(--text)}
 .mg-contact-phone{font-size:11px;color:var(--text2);margin-top:1px}
 .mg-contact-missing{font-size:11px;color:var(--nego);font-weight:600}
+.mg-contact-more{font-size:9.5px;color:var(--info);font-weight:600;margin-top:1px}
 .mg-contact-edit{display:flex;flex-direction:column;gap:5px;min-width:150px}
 .mg-contact-edit input{padding:5px 7px;font-size:11px}
 .mg-contact-edit-actions{display:flex;gap:6px;margin-top:1px}
@@ -747,6 +782,13 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .list-toggle-badge.show{display:flex}
 .sidebar-backdrop,.list-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:499}
 .sidebar-backdrop.show,.list-backdrop.show{display:block}
+
+/* Collapse-to-a-handle is a desktop affordance - on mobile the panel is
+   already a full-screen drawer opened/closed via the FAB and X button, a
+   thin permanent strip doesn't make sense there. */
+@media (min-width: 769px) {
+  .list-collapse-btn{display:flex}
+}
 
 @media (max-width: 768px) {
   .mobile-toggle{display:flex}
@@ -804,6 +846,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
   <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></symbol>
   <symbol id="icon-map" viewBox="0 0 24 24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></symbol>
   <symbol id="icon-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a13.5 13.5 0 0 1 0 18a13.5 13.5 0 0 1 0-18z"/></symbol>
+  <symbol id="icon-chevron" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"/></symbol>
   <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
   <symbol id="icon-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="9" y1="8" x2="9" y2="8.01"/><line x1="15" y1="8" x2="15" y2="8.01"/><line x1="9" y1="13" x2="9" y2="13.01"/><line x1="15" y1="13" x2="15" y2="13.01"/><path d="M9 21v-4h6v4"/></symbol>
   <symbol id="icon-clipboard-list" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="3" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/><line x1="8" y1="19" x2="13" y2="19"/></symbol>
@@ -913,11 +956,9 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           <select id="ef-ac"><option value="100%">100%</option><option value="Provided">Provided</option><option value="Split Units">Split Units</option><option value="Not Provided">Not Provided</option></select>
         </div>
       </div>
-      <div class="ep-section">Owner & Contact</div>
-      <div class="ep-grid">
-        <div class="ep-field"><label>Owner Name</label><input type="text" id="ef-owner"/></div>
-        <div class="ep-field"><label>Contact Number</label><input type="text" id="ef-phone"/></div>
-      </div>
+      <div class="ep-section">Contacts</div>
+      <div class="contact-list" id="ef-contact-list"></div>
+      <button type="button" class="add-contact-btn" onclick="addEditContact()"><svg class="icon"><use href="#icon-plus"/></svg> Add Contact</button>
       <div class="ep-section">Map Pin Location</div>
       <div class="ep-grid">
         <div class="ep-field"><label>Latitude</label><input type="text" id="ef-lat" placeholder="e.g. 18.5515"/></div>
@@ -1063,6 +1104,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     </div>
     <div class="list-backdrop" id="list-backdrop" onclick="toggleListPanel(false)"></div>
     <div class="list-panel" id="list-panel">
+      <button class="list-collapse-btn" id="list-collapse-btn" onclick="toggleListCollapse()" title="Collapse property list"><svg class="icon"><use href="#icon-chevron"/></svg></button>
       <button class="sidebar-close" onclick="toggleListPanel(false)"><svg class="icon"><use href="#icon-x"/></svg></button>
       <div class="prop-list">
         <div class="lc" id="lc"></div>
@@ -1359,7 +1401,7 @@ async function loadPropsFromSupabase() {
       deposit: r.deposit, lockin: r.lockin, tenure: r.tenure, escal: r.escal,
       parking: r.parking, power: r.power, ac: r.ac, owner: r.owner, phone: r.phone,
       video: r.video, floorplan: r.floorplan, maps: r.maps, photo: r.photo,
-      photos: r.photos || [], documents: r.documents || [], notes: r.notes, lat: r.lat, lng: r.lng,
+      photos: r.photos || [], documents: r.documents || [], contacts: r.contacts || [], notes: r.notes, lat: r.lat, lng: r.lng,
       edited_by: r.edited_by, edited_at: r.edited_at,
       created_by: r.created_by, created_at: r.created_at,
       space_type: r.space_type || 'Conventional', operator: r.operator,
@@ -1404,7 +1446,7 @@ let editIdx=null, activeListIdx=null, fiMarkerIndex={};
 let puneMap, puneMarkerLayer, puneMarkerByGid={}, detailModeActive=false, pendingDetailFocus=null;
 const PUNE_CENTER={lat:18.52,lng:73.855};
 const DETAIL_RADIUS_DEG=3.5;
-let aiFiles=[], mediaFiles=[], editMediaFiles=[], editDocFiles=[], editDocsList=[], bulkFile=null;
+let aiFiles=[], mediaFiles=[], editMediaFiles=[], editDocFiles=[], editDocsList=[], editContacts=[], bulkFile=null;
 
 // Team accounts live in Supabase (table "team_users") so a member added by
 // one admin works for that person on any device. Falls back to a
@@ -1976,6 +2018,10 @@ function makePopup(p,idx){
         ${p.cam?`<div class="pu-stat"><div class="psl">CAM</div><div class="psv">₹${p.cam} PSF</div></div>`:''}
         ${p.phone?`<div class="pu-stat"><div class="psl">Phone</div><div class="psv">${p.phone}</div></div>`:''}
       </div>`}
+      ${p.contacts&&p.contacts.length>1?`<div class="pu-contacts">
+        <div class="pu-contacts-label">All Contacts</div>
+        ${p.contacts.map(c=>`<div class="pu-contact-row"><span class="pu-contact-name">${escapeHtml(c.name||'—')}</span>${c.phone?`<span class="pu-contact-phone">${escapeHtml(c.phone)}</span>`:''}</div>`).join('')}
+      </div>`:''}
       ${p.documents&&p.documents.length?`<div class="pu-docs">${p.documents.map(d=>`<a class="pu-doc-chip" href="${d.url}" target="_blank"><svg class="icon"><use href="#icon-file-text"/></svg> ${escapeHtml(d.name)}</a>`).join('')}</div>`:''}
       <div class="pu-actions">
         ${canEdit?`<button class="pu-btn pu-edit" onclick="openEdit(${idx})"><svg class="icon"><use href="#icon-edit"/></svg> Edit</button>`:''}
@@ -2335,7 +2381,7 @@ function openEdit(origIdx){
   const fields={'ef-status':p.status,'ef-furnish':p.furnish,'ef-area':p.area,'ef-rate':p.rate,
     'ef-cam':p.cam,'ef-deposit':p.deposit,'ef-lockin':p.lockin,'ef-tenure':p.tenure,
     'ef-escal':p.escal,'ef-parking':p.parking,'ef-power':p.power,'ef-ac':p.ac,
-    'ef-owner':p.owner,'ef-phone':p.phone,'ef-photo':p.photo,'ef-video':p.video,
+    'ef-photo':p.photo,'ef-video':p.video,
     'ef-floorplan':p.floorplan,'ef-maps':p.maps,'ef-notes':p.notes,
     'ef-lat':p.lat,'ef-lng':p.lng,
     'ef-operator':p.operator,'ef-plantype':p.plan_type,'ef-seats':p.seats,
@@ -2348,11 +2394,37 @@ function openEdit(origIdx){
   editDocFiles=[];
   editDocsList=Array.isArray(p.documents)?p.documents.slice():[];
   renderEditDocs();
+  // Older rows only ever had a single owner/phone pair - fold that in as
+  // the first contact so existing data still shows up here, rather than
+  // looking like it silently vanished the first time this panel opens.
+  editContacts=Array.isArray(p.contacts)&&p.contacts.length
+    ? p.contacts.map(function(c){return {name:c.name||'',phone:c.phone||''};})
+    : ((p.owner||p.phone)?[{name:p.owner||'',phone:p.phone||''}]:[]);
+  renderEditContacts();
   document.getElementById('edit-overlay').classList.remove('hidden');
   document.getElementById('ep-saving').style.display='none';
   document.getElementById('ep-delete-btn').style.display=(currentUser&&currentUser.role==='admin')?'block':'none';
 }
-function closeEdit(){document.getElementById('edit-overlay').classList.add('hidden');editIdx=null;editMediaFiles=[];editDocFiles=[];editDocsList=[];}
+function closeEdit(){document.getElementById('edit-overlay').classList.add('hidden');editIdx=null;editMediaFiles=[];editDocFiles=[];editDocsList=[];editContacts=[];}
+
+function renderEditContacts(){
+  var html=editContacts.map(function(c,i){
+    return '<div class="contact-row">'+
+      '<input type="text" class="fs" placeholder="Name" value="'+escapeHtml(c.name||'')+'" oninput="updateEditContact('+i+',\'name\',this.value)"/>'+
+      '<input type="text" class="fs" placeholder="Phone number" value="'+escapeHtml(c.phone||'')+'" oninput="updateEditContact('+i+',\'phone\',this.value)"/>'+
+      '<button type="button" onclick="removeEditContact('+i+')" title="Remove contact"><svg class="icon"><use href="#icon-x"/></svg></button>'+
+    '</div>';
+  }).join('');
+  document.getElementById('ef-contact-list').innerHTML=html||'<div class="contact-empty">No contacts added yet</div>';
+}
+function updateEditContact(i,field,val){ if(editContacts[i]) editContacts[i][field]=val; }
+function addEditContact(){
+  editContacts.push({name:'',phone:''});
+  renderEditContacts();
+  var rows=document.querySelectorAll('#ef-contact-list .contact-row input');
+  if(rows.length) rows[rows.length-2].focus();
+}
+function removeEditContact(i){ editContacts.splice(i,1); renderEditContacts(); }
 function onEditMedia(files) {
   for (var i = 0; i < files.length; i++) {
     var exists = false;
@@ -2454,10 +2526,12 @@ function escapeHtml(s){
   });
 }
 function contactCellHtml(p){
+  var extra=Array.isArray(p.contacts)&&p.contacts.length>1?'<div class="mg-contact-more">+'+(p.contacts.length-1)+' more</div>':'';
   if(p.owner||p.phone){
     return '<div class="mg-contact-view" onclick="event.stopPropagation();startEditContact('+p._dbId+')">'+
       (p.owner?'<div class="mg-contact-name">'+escapeHtml(p.owner)+'</div>':'')+
       (p.phone?'<div class="mg-contact-phone">'+escapeHtml(p.phone)+'</div>':'')+
+      extra+
     '</div>';
   }
   return '<div class="mg-contact-view mg-contact-missing" onclick="event.stopPropagation();startEditContact('+p._dbId+')">+ Add contact</div>';
@@ -2486,8 +2560,16 @@ function cancelEditContact(dbId){
 async function saveContact(dbId){
   const ownerVal=document.getElementById('mgc-owner-'+dbId).value.trim();
   const phoneVal=document.getElementById('mgc-phone-'+dbId).value.trim();
+  const existing=props.find(x=>x._dbId===dbId);
+  // This quick-edit only ever touches the primary (first) contact - keep
+  // it in sync with the full contacts array from the Edit panel instead
+  // of letting the two drift apart, without disturbing any additional
+  // contacts already on the property.
+  const newContacts=Array.isArray(existing&&existing.contacts)?existing.contacts.slice():[];
+  if(newContacts.length){ newContacts[0]={name:ownerVal,phone:phoneVal}; }
+  else if(ownerVal||phoneVal){ newContacts.push({name:ownerVal,phone:phoneVal}); }
   const result=await patchProperty(dbId,{
-    owner:ownerVal, phone:phoneVal,
+    owner:ownerVal, phone:phoneVal, contacts:newContacts,
     edited_by:currentUser.username, edited_at:new Date().toISOString()
   });
   if(!result.ok){
@@ -2495,9 +2577,9 @@ async function saveContact(dbId){
     return;
   }
   const p=props.find(x=>x._dbId===dbId);
-  if(p){ p.owner=ownerVal; p.phone=phoneVal; p.edited_by=currentUser.username; }
+  if(p){ p.owner=ownerVal; p.phone=phoneVal; p.contacts=newContacts; p.edited_by=currentUser.username; }
   const bp=BASE_PROPS.find(x=>x._dbId===dbId);
-  if(bp){ bp.owner=ownerVal; bp.phone=phoneVal; bp.edited_by=currentUser.username; }
+  if(bp){ bp.owner=ownerVal; bp.phone=phoneVal; bp.contacts=newContacts; bp.edited_by=currentUser.username; }
   const td=document.querySelector('#manage-tbody td.mg-td-contact[data-dbid="'+dbId+'"]');
   if(td&&p) td.innerHTML=contactCellHtml(p);
   // Keep the map view's markers/popups/list in sync too, without a network
@@ -2698,8 +2780,6 @@ async function saveEdit(){
     price_per_seat:document.getElementById('ef-priceperseat').value,
     min_commitment:document.getElementById('ef-mincommitment').value,
     logo_url:document.getElementById('ef-logourl').value,
-    owner:document.getElementById('ef-owner').value,
-    phone:document.getElementById('ef-phone').value,
     photo:document.getElementById('ef-photo').value,
     video:document.getElementById('ef-video').value,
     floorplan:document.getElementById('ef-floorplan').value,
@@ -2709,6 +2789,14 @@ async function saveEdit(){
     edited_by:currentUser.username,
     edited_at:new Date().toISOString(),
   };
+  // Blank rows (added via "+ Add Contact" then left empty, or emptied out
+  // and not removed) don't get saved. owner/phone stay in sync as the
+  // first contact - the Manage table's quick-edit column and the AI
+  // extraction pipeline both still read/write those two plain fields.
+  var finalContacts=editContacts.filter(function(c){return (c.name||'').trim()||(c.phone||'').trim();});
+  updated.contacts=finalContacts;
+  updated.owner=finalContacts.length?finalContacts[0].name:'';
+  updated.phone=finalContacts.length?finalContacts[0].phone:'';
   if(newPhotoUrls.length){
     const existingPhotos=Array.isArray(p.photos)?p.photos:(p.photo?[p.photo]:[]);
     const mergedPhotos=existingPhotos.concat(newPhotoUrls);
@@ -2832,6 +2920,19 @@ function toggleListPanel(force) {
   var newState = (force !== undefined) ? force : !isOpen;
   lp.classList.toggle('open', newState);
   bd.classList.toggle('show', newState);
+}
+
+// Desktop-only collapse of the results panel to a thin handle strip, so
+// the globe/map can have the full width when you don't need the list -
+// separate from toggleListPanel()'s mobile slide-in-drawer behavior above.
+function toggleListCollapse(force) {
+  var lp = document.getElementById('list-panel');
+  var btn = document.getElementById('list-collapse-btn');
+  var isCollapsed = lp.classList.contains('collapsed');
+  var newState = (force !== undefined) ? force : !isCollapsed;
+  lp.classList.toggle('collapsed', newState);
+  btn.title = newState ? 'Expand property list' : 'Collapse property list';
+  if (window.GlobeAPI) setTimeout(function(){ window.GlobeAPI.resize(); }, 230);
 }
 
 // Close sidebar/results panel when a property is clicked on mobile, so the
@@ -3268,6 +3369,8 @@ async function doSubmit() {
       logo_url: document.getElementById('nf-logourl').value,
       owner: document.getElementById('nf-owner').value,
       phone: document.getElementById('nf-phone').value,
+      contacts: (document.getElementById('nf-owner').value||document.getElementById('nf-phone').value)
+        ? [{name:document.getElementById('nf-owner').value,phone:document.getElementById('nf-phone').value}] : [],
       photo: photoUrls[0] || '',
       photos: photoUrls,
       video: videoUrl,
