@@ -3089,20 +3089,45 @@ async function cmpFetchImageBase64(url){
   }catch(e){ return null; }
 }
 
-// Matches the real client templates this replaces: dark navy (#0E2841,
-// lifted directly from their theme) fills the whole label column on
-// every row plus the header row, with white bold text - verified against
-// the uploaded reference files' actual cell styles, not guessed.
+// Matches the real client templates this replaces - verified against the
+// uploaded reference files' actual cell styles, not guessed: dark navy
+// (#0E2841, lifted directly from their theme) fills the whole label
+// column on every row plus the header row, with white bold Georgia 12
+// text; every cell is Georgia 12 with thin black gridlines, and the
+// label column plus the table's outer edge get a heavier medium border.
 var CMP_NAVY='FF0E2841';
+var CMP_FONT_NAME='Georgia';
+var CMP_FONT_SIZE=12;
+var CMP_BORDER_THIN={style:'thin',color:{argb:'FF000000'}};
+var CMP_BORDER_MEDIUM={style:'medium',color:{argb:'FF000000'}};
 var CMP_LOGO_URL='https://static.wixstatic.com/media/2ffd6f_ad3fcde821074fde9c0ba30e616e854d~mv2.png/v1/fill/w_171,h_60,al_c,lg_1,q_85,enc_avif,quality_auto/LEGION%20LOGO%20HI%20RES.png';
 var _cmpLogoImg=null;
 async function cmpGetLogoImage(){
   if(_cmpLogoImg===null) _cmpLogoImg=await cmpFetchImageBase64(CMP_LOGO_URL);
   return _cmpLogoImg;
 }
-function cmpNavyLabelCell(cell){
+// rowIdx0/colIdx0 are 0-based positions within the bordered grid (header
+// row is grid row 0, label column is grid col 0) - the label column and
+// the table's true outer edge (first/last row, first/last column) get
+// the heavier medium border; every other edge is thin.
+function cmpBorderFor(rowIdx0,colIdx0,totalRows,totalCols){
+  return {
+    top: rowIdx0===0 ? CMP_BORDER_MEDIUM : CMP_BORDER_THIN,
+    bottom: rowIdx0===totalRows-1 ? CMP_BORDER_MEDIUM : CMP_BORDER_THIN,
+    left: colIdx0===0 ? CMP_BORDER_MEDIUM : CMP_BORDER_THIN,
+    right: (colIdx0===0||colIdx0===totalCols-1) ? CMP_BORDER_MEDIUM : CMP_BORDER_THIN,
+  };
+}
+function cmpNavyLabelCell(cell,border){
   cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:CMP_NAVY}};
-  cell.font={bold:true,color:{argb:'FFFFFFFF'}};
+  cell.font={name:CMP_FONT_NAME,size:CMP_FONT_SIZE,bold:true,color:{argb:'FFFFFFFF'}};
+  cell.border=border;
+  cell.alignment={wrapText:true,vertical:'top'};
+}
+function cmpDataCell(cell,border){
+  cell.font={name:CMP_FONT_NAME,size:CMP_FONT_SIZE};
+  cell.border=border;
+  cell.alignment={wrapText:true,vertical:'top'};
 }
 
 async function buildComparisonSheet(workbook,sheetName,propsList,rowDefs,startDates){
@@ -3112,7 +3137,8 @@ async function buildComparisonSheet(workbook,sheetName,propsList,rowDefs,startDa
 
   // Row 1 is reserved for the Legion Realty logo, top-left - kept as a
   // dedicated header row rather than overlaid on "Options" so the floating
-  // image never visually collides with cell text.
+  // image never visually collides with cell text. It sits above the
+  // bordered grid, so it isn't part of the border scheme below.
   ws.getRow(1).height=40;
   var logo=await cmpGetLogoImage();
   if(logo){
@@ -3120,20 +3146,30 @@ async function buildComparisonSheet(workbook,sheetName,propsList,rowDefs,startDa
     ws.addImage(logoImageId,{tl:{col:0,row:0},ext:{width:120,height:42}});
   }
 
+  var totalCols=1+propsList.length;
+  var totalRows=1+rowDefs.length; // header row + one row per attribute (the photo row counts as one)
+
   var headerRow=ws.getRow(2);
   headerRow.getCell(1).value='Options';
   propsList.forEach(function(p,idx){ headerRow.getCell(idx+2).value='Option '+(idx+1); });
-  headerRow.eachCell(function(cell){ cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:CMP_NAVY}}; cell.font={bold:true,color:{argb:'FFFFFFFF'}}; });
+  for(var hc=0;hc<totalCols;hc++){
+    var hCell=headerRow.getCell(hc+1);
+    hCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:CMP_NAVY}};
+    hCell.font={name:CMP_FONT_NAME,size:CMP_FONT_SIZE,bold:true,color:{argb:'FFFFFFFF'}};
+    hCell.border=cmpBorderFor(0,hc,totalRows,totalCols);
+  }
 
   for(var ri=0;ri<rowDefs.length;ri++){
     var def=rowDefs[ri];
     var excelRow=ri+3;
+    var gridRow=ri+1;
     var row=ws.getRow(excelRow);
     if(def.label==='__PHOTO__'){
       row.height=90;
       row.getCell(1).value='Photo';
-      cmpNavyLabelCell(row.getCell(1));
+      cmpNavyLabelCell(row.getCell(1),cmpBorderFor(gridRow,0,totalRows,totalCols));
       for(var pi=0;pi<propsList.length;pi++){
+        cmpDataCell(row.getCell(pi+2),cmpBorderFor(gridRow,pi+1,totalRows,totalCols));
         var photoUrl=propsList[pi].photo;
         if(!photoUrl) continue;
         var img=await cmpFetchImageBase64(photoUrl);
@@ -3144,11 +3180,12 @@ async function buildComparisonSheet(workbook,sheetName,propsList,rowDefs,startDa
       continue;
     }
     row.getCell(1).value=def.label;
-    cmpNavyLabelCell(row.getCell(1));
+    cmpNavyLabelCell(row.getCell(1),cmpBorderFor(gridRow,0,totalRows,totalCols));
     propsList.forEach(function(p,idx){
-      row.getCell(idx+2).value=def.get(p,startDates[p._dbId]);
+      var cell=row.getCell(idx+2);
+      cell.value=def.get(p,startDates[p._dbId]);
+      cmpDataCell(cell,cmpBorderFor(gridRow,idx+1,totalRows,totalCols));
     });
-    row.eachCell(function(cell){ cell.alignment={wrapText:true,vertical:'top'}; });
   }
   ws.views=[{state:'frozen',ySplit:2,xSplit:1}];
 }
