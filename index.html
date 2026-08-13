@@ -3073,12 +3073,20 @@ var MANAGED_ROWS=[
   {label:'Notes',get:function(p){return p.notes||'';}},
 ];
 
+// Excel's own image formats are just png/jpeg/gif - anything else (avif,
+// webp...) must not be embedded, since mislabeling those bytes as one of
+// the supported extensions doesn't convert them, it just corrupts the
+// embedded image (this is exactly what happened with the logo: Wix's URL
+// requested an avif rendition, which got waved through as "jpeg" and
+// rendered as a solid black box in Excel).
+var CMP_SUPPORTED_IMAGE_TYPES={'image/png':'png','image/jpeg':'jpeg','image/jpg':'jpeg','image/gif':'gif'};
 async function cmpFetchImageBase64(url){
   try{
     var res=await fetch(url);
     if(!res.ok) return null;
     var blob=await res.blob();
-    var ext=(blob.type==='image/png')?'png':(blob.type==='image/gif'?'gif':'jpeg');
+    var ext=CMP_SUPPORTED_IMAGE_TYPES[blob.type];
+    if(!ext) return null;
     var base64=await new Promise(function(resolve,reject){
       var reader=new FileReader();
       reader.onload=function(){ resolve(reader.result.split(',')[1]); };
@@ -3100,7 +3108,12 @@ var CMP_FONT_NAME='Georgia';
 var CMP_FONT_SIZE=12;
 var CMP_BORDER_THIN={style:'thin',color:{argb:'FF000000'}};
 var CMP_BORDER_MEDIUM={style:'medium',color:{argb:'FF000000'}};
-var CMP_LOGO_URL='https://static.wixstatic.com/media/2ffd6f_ad3fcde821074fde9c0ba30e616e854d~mv2.png/v1/fill/w_171,h_60,al_c,lg_1,q_85,enc_avif,quality_auto/LEGION%20LOGO%20HI%20RES.png';
+// The topbar/login <img> uses a Wix-transformed rendition of this same
+// asset (.../v1/fill/...,enc_avif,.../LEGION%20LOGO...png) - fine for an
+// <img> tag since every modern browser decodes avif natively, but Excel
+// has no avif support at all, so the export needs the plain original
+// media file instead (untransformed, no enc_avif param, real PNG bytes).
+var CMP_LOGO_URL='https://static.wixstatic.com/media/2ffd6f_ad3fcde821074fde9c0ba30e616e854d~mv2.png';
 var _cmpLogoImg=null;
 async function cmpGetLogoImage(){
   if(_cmpLogoImg===null) _cmpLogoImg=await cmpFetchImageBase64(CMP_LOGO_URL);
