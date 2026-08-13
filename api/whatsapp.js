@@ -101,9 +101,19 @@ module.exports = async function handler(req, res) {
       lng: coords.lng
     };
 
+    // This runs server-side only (never shipped to a browser), so unlike
+    // the dashboard's client-side calls it's a legitimate place to use
+    // the service_role key, which bypasses Row Level Security - required
+    // once RLS is on, since an inbound WhatsApp message has no logged-in
+    // team member's session to satisfy the "editor/admin can insert"
+    // policy with. Falls back to SUPABASE_KEY so this doesn't hard-fail
+    // before that env var is added, though inserts will start being
+    // rejected by RLS at that point same as any other unauthenticated
+    // caller.
+    const supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
     const supaHeaders = {
-      apikey: process.env.SUPABASE_KEY,
-      Authorization: 'Bearer ' + process.env.SUPABASE_KEY,
+      apikey: supaKey,
+      Authorization: 'Bearer ' + supaKey,
       'Content-Type': 'application/json',
       Prefer: 'return=minimal'
     };
