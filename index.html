@@ -636,6 +636,8 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .pu-video:hover{filter:brightness(.95)}
 .pu-fp{background:var(--info-bg);color:var(--info);border:none}
 .pu-fp:hover{filter:brightness(.95)}
+.pu-showaround{background:var(--gold-bg,#FDF3E3);color:var(--gold,#B7791F);border:none}
+.pu-showaround:hover{filter:brightness(.95)}
 .pu-code{font-size:9px;color:var(--text3);margin-bottom:5px}
 .edited-tag{font-size:9px;color:var(--nego);background:var(--nego-bg);padding:1px 7px;border-radius:8px;display:inline-block;margin-left:5px;vertical-align:middle}
 
@@ -667,6 +669,25 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 
 /* ── USERS ── */
 .user-panel{background:var(--white);border-radius:14px;box-shadow:0 8px 40px rgba(27,58,107,.18);width:100%;max-width:420px;max-height:85vh;overflow-y:auto;padding:0}
+.sa-panel{background:#0E1526;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.5);width:100%;max-width:960px;max-height:92vh;overflow-y:auto;padding:0;color:#fff}
+.sa-topbar{position:sticky;top:0;z-index:2;background:rgba(14,21,38,.92);backdrop-filter:blur(8px);padding:16px 22px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08)}
+.sa-title{font-size:17px;font-weight:700}
+.sa-sub{font-size:12px;color:rgba(255,255,255,.55);margin-top:2px}
+.sa-body{padding:0 0 24px}
+.sa-hero{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden}
+.sa-hero img{width:100%;height:100%;object-fit:contain;background:#000}
+.sa-hero-label{position:absolute;left:16px;bottom:14px;background:rgba(0,0,0,.55);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.sa-hero-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.sa-hero-arrow:hover{background:rgba(0,0,0,.6)}
+.sa-hero-prev{left:12px}
+.sa-hero-next{right:12px}
+.sa-strip{display:flex;gap:8px;overflow-x:auto;padding:14px 22px}
+.sa-strip-thumb{flex-shrink:0;width:88px;aspect-ratio:4/3;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;position:relative;opacity:.7}
+.sa-strip-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.sa-strip-thumb.active{border-color:#fff;opacity:1}
+.sa-strip-cat{position:absolute;bottom:2px;left:2px;right:2px;font-size:8px;font-weight:700;text-align:center;background:rgba(0,0,0,.55);border-radius:4px;padding:1px 0}
+.sa-section{padding:8px 22px 0}
+.sa-section-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.9);margin-bottom:10px}
 .up-topbar{background:var(--navy);border-radius:14px 14px 0 0;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
 .up-title{font-size:14px;font-weight:600;color:#fff}
 .up-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:6px;font-size:16px;display:flex;align-items:center;justify-content:center}
@@ -736,6 +757,25 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .doc-item{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:11.5px;color:var(--text2)}
 .doc-item .icon{color:var(--info);flex-shrink:0}
 .doc-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sw-section-label{font-size:11px;font-weight:600;color:var(--text2);margin:10px 0 6px}
+.sw-empty{font-size:11.5px;color:var(--text3);padding:6px 2px}
+.sw-media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.sw-tile{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);aspect-ratio:4/3}
+.sw-tile img{width:100%;height:100%;object-fit:cover;display:block}
+.sw-tile-cat{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:9px;font-weight:600;padding:2px 6px;border-radius:20px;letter-spacing:.02em}
+.sw-tile-remove,.sw-tile-add{position:absolute;top:4px;right:4px;border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.sw-tile-remove{background:rgba(0,0,0,.55)}
+.sw-tile-add{background:var(--green)}
+.sw-tile-label{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.75));color:#fff;font-size:10px;padding:12px 6px 5px;line-height:1.25}
+.sw-inc-category{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);margin:10px 0 5px}
+.sw-inc-grid{display:flex;flex-wrap:wrap;gap:6px}
+.sw-inc-item{display:flex;align-items:center;gap:5px;font-size:11px;padding:5px 8px;border-radius:20px;position:relative;padding-right:22px}
+.sw-inc-item .icon{width:12px;height:12px}
+.sw-inc-yes{background:#EAFAF1;color:#1E8449}
+.sw-inc-no{background:#FDECEA;color:#C0392B}
+.sw-inc-item button{position:absolute;right:3px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:inherit;opacity:.55;width:14px;height:14px;padding:0}
+.sw-inc-item button:hover{opacity:1}
+.sw-inc-item button .icon{width:10px;height:10px}
 .doc-item a{color:var(--text2);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .doc-item a:hover{color:var(--navy);text-decoration:underline}
 .doc-item button{background:transparent;border:none;color:var(--text3);width:20px;height:20px;border-radius:5px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
@@ -1100,6 +1140,32 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
   </div>
 </div>
 
+<!-- SHOWAROUND -->
+<div class="overlay hidden" id="showaround-overlay">
+  <div class="sa-panel">
+    <div class="sa-topbar">
+      <div>
+        <div class="sa-title" id="sa-title"></div>
+        <div class="sa-sub" id="sa-sub"></div>
+      </div>
+      <button class="up-close" onclick="closeShowaround()"><svg class="icon"><use href="#icon-x"/></svg></button>
+    </div>
+    <div class="sa-body" id="sa-body">
+      <div class="sa-hero">
+        <img id="sa-hero-img" src=""/>
+        <div class="sa-hero-label" id="sa-hero-label"></div>
+        <button class="sa-hero-arrow sa-hero-prev" onclick="saStep(-1)">‹</button>
+        <button class="sa-hero-arrow sa-hero-next" onclick="saStep(1)">›</button>
+      </div>
+      <div class="sa-strip" id="sa-strip"></div>
+      <div class="sa-section" id="sa-inclusions-section">
+        <div class="sa-section-title">Inclusions &amp; Exclusions</div>
+        <div id="sa-inclusions"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app" style="display:none;flex-direction:column;height:100vh">
   <div class="topbar">
@@ -1361,6 +1427,19 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           </div>
           <div class="media-preview" id="media-preview"></div>
         </div>
+        <div class="form-card" id="showaround-review-card" style="display:none">
+          <div class="form-section">Showaround Photos, Floor Plans &amp; Inclusions</div>
+          <div class="field-hint" style="margin:-6px 0 12px 2px;font-size:11px;color:var(--text3)">Found in the uploaded document(s). Items below are already included with this property; anything the AI wasn't confident belonged to this specific building is shown separately for you to add manually.</div>
+          <div id="sw-auto-media" class="sw-media-grid"></div>
+          <div id="sw-review-wrap" style="display:none">
+            <div class="sw-section-label">Found but not added automatically - tap + if it's really this property:</div>
+            <div id="sw-review-media" class="sw-media-grid"></div>
+          </div>
+          <div id="sw-inclusions-wrap" style="display:none">
+            <div class="sw-section-label" style="margin-top:14px">Inclusions &amp; Exclusions</div>
+            <div id="sw-inclusions-list"></div>
+          </div>
+        </div>
         <div class="prog-wrap" id="prog-wrap">
           <div class="prog-title" id="prog-title">Uploading...</div>
           <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar"></div></div>
@@ -1606,6 +1685,7 @@ async function loadPropsFromSupabase() {
       chargeable_seats: r.chargeable_seats, inclusions: r.inclusions,
       one_time_charges: r.one_time_charges, fit_out_period: r.fit_out_period,
       notice_period: r.notice_period, gst_note: r.gst_note, registration_note: r.registration_note,
+      showaround_media: r.showaround_media || [], inclusions_detail: r.inclusions_detail || [],
       _dbId: r.id
     }));
     MARKETS = [...new Set(BASE_PROPS.map(p => p.market).filter(Boolean))].sort();
@@ -1640,6 +1720,12 @@ let puneMap, puneMarkerLayer, puneMarkerByGid={}, detailModeActive=false, pendin
 const PUNE_CENTER={lat:18.52,lng:73.855};
 const DETAIL_RADIUS_DEG=3.5;
 let aiFiles=[], mediaFiles=[], editMediaFiles=[], editDocFiles=[], editDocsList=[], editContacts=[], newContacts=[], bulkFile=null;
+// Photos/floor-plans the AI confidently matched to the actual property
+// being extracted (auto-included), items it found but wasn't confident
+// belong to this specific property (shown for manual review only - never
+// silently attached), and the structured inclusions/exclusions checklist.
+// All three are populated by doExtract() and consumed by doSubmit().
+let swAutoMedia=[], swReviewMedia=[], swInclusions=[];
 
 // Team membership (role/name, keyed by email) lives in Supabase (table
 // "team_users") so a member's role is the same on every device - but
@@ -2268,6 +2354,7 @@ function makePopup(p,idx){
       ${p.documents&&p.documents.length?`<div class="pu-docs">${p.documents.map(d=>`<a class="pu-doc-chip" href="${d.url}" target="_blank"><svg class="icon"><use href="#icon-file-text"/></svg> ${escapeHtml(d.name)}</a>`).join('')}</div>`:''}
       <div class="pu-actions">
         ${canEdit?`<button class="pu-btn pu-edit" onclick="openEdit(${idx})"><svg class="icon"><use href="#icon-edit"/></svg> Edit</button>`:''}
+        ${isManaged&&p.showaround_media&&p.showaround_media.length?`<button class="pu-btn pu-showaround" onclick="openShowaround(${idx})"><svg class="icon"><use href="#icon-camera"/></svg> Showaround</button>`:''}
         ${p.video?`<button class="pu-btn pu-video" onclick="window.open('${p.video}','_blank')"><svg class="icon"><use href="#icon-play"/></svg> Video</button>`:''}
         ${p.floorplan?`<button class="pu-btn pu-fp" onclick="window.open('${p.floorplan}','_blank')"><svg class="icon"><use href="#icon-ruler"/></svg> Plan</button>`:''}
         <button class="pu-btn pu-maps" onclick="window.open('${mapsUrl}','_blank')"><svg class="icon"><use href="#icon-map"/></svg> Maps</button>
@@ -3123,6 +3210,59 @@ function loadExcelJS(){
   return _exceljsLoadPromise;
 }
 
+// pdf.js, loaded lazily the same way - only needed when a PDF is handed to
+// the AI extractor and we want actual page images out of it (Claude can
+// SEE a PDF's pages when reading one, but its text response can't hand
+// back raw image bytes - so pages the AI flags as a real photo or floor
+// plan get re-rendered here, client-side, into an actual PNG file that
+// then goes through the same Supabase Storage upload path as any other
+// photo). v3.11.x is used specifically because it still ships a classic
+// UMD build loadable via a plain <script> tag; pdf.js 4.x moved to
+// ES-modules-only, which doesn't fit this app's existing lazy-script-tag
+// pattern (used for ExcelJS/ffmpeg above) without a bigger rework.
+var _pdfjsLoadPromise=null;
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve();
+  if(_pdfjsLoadPromise) return _pdfjsLoadPromise;
+  _pdfjsLoadPromise=new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.src='https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';
+    s.onload=function(){
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+      resolve();
+    };
+    s.onerror=function(){ _pdfjsLoadPromise=null; reject(new Error('Failed to load the PDF rendering library')); };
+    document.head.appendChild(s);
+  });
+  return _pdfjsLoadPromise;
+}
+
+// Renders one page of a PDF File to a PNG File, at a resolution reasonable
+// for a photo gallery (not print-quality, which would make every extracted
+// image needlessly huge). Returns null if the page fails to render rather
+// than throwing, so one bad page in a document doesn't abort the whole
+// extraction result.
+async function renderPdfPageToFile(file, pageNum, labelForName){
+  try{
+    await loadPdfJs();
+    var buf = await file.arrayBuffer();
+    var pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+    if(pageNum < 1 || pageNum > pdf.numPages) return null;
+    var pdfPage = await pdf.getPage(pageNum);
+    var viewport = pdfPage.getViewport({ scale: 2 });
+    var canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    var ctx = canvas.getContext('2d');
+    await pdfPage.render({ canvasContext: ctx, viewport: viewport }).promise;
+    var blob = await new Promise(function(resolve){ canvas.toBlob(resolve, 'image/png'); });
+    if(!blob) return null;
+    var safeName = (labelForName||'page').replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,60);
+    return new File([blob], safeName + '_p' + pageNum + '.png', { type: 'image/png' });
+  }catch(e){
+    return null;
+  }
+}
+
 function cmpMonths(v){ v=(v||'').toString().trim(); if(!v) return ''; return /^\d+(\.\d+)?$/.test(v) ? v+' Months' : v; }
 function cmpYears(v){ v=(v||'').toString().trim(); if(!v) return ''; return /^\d+(\.\d+)?$/.test(v) ? v+' Years' : v; }
 function cmpNum(v){ var n=parseFloat((v||'').toString().replace(/,/g,'')); return isNaN(n)?null:n; }
@@ -3496,6 +3636,60 @@ async function openUsers(){
   renderUserList();
 }
 function closeUsers(){document.getElementById('user-overlay').classList.add('hidden');}
+
+let saMedia=[], saIdx=0;
+function openShowaround(idx){
+  const p=props[idx];
+  if(!p) return;
+  saMedia = Array.isArray(p.showaround_media) ? p.showaround_media : [];
+  saIdx = 0;
+  document.getElementById('sa-title').textContent = p.name;
+  document.getElementById('sa-sub').textContent = (p.operator?p.operator+' · ':'')+p.market;
+  saRenderStrip();
+  saShow(0);
+  var incSection = document.getElementById('sa-inclusions-section');
+  var inc = Array.isArray(p.inclusions_detail) ? p.inclusions_detail : [];
+  if(inc.length){
+    incSection.style.display='block';
+    saRenderInclusions(inc);
+  } else {
+    incSection.style.display='none';
+  }
+  document.getElementById('showaround-overlay').classList.remove('hidden');
+}
+function closeShowaround(){ document.getElementById('showaround-overlay').classList.add('hidden'); }
+function saShow(i){
+  if(!saMedia.length) return;
+  saIdx = ((i % saMedia.length) + saMedia.length) % saMedia.length;
+  var m = saMedia[saIdx];
+  document.getElementById('sa-hero-img').src = m.url;
+  document.getElementById('sa-hero-label').textContent = (m.category==='floor_plan'?'Floor Plan · ':'')+(m.label||'');
+  var thumbs = document.querySelectorAll('.sa-strip-thumb');
+  thumbs.forEach(function(t,ti){ t.classList.toggle('active', ti===saIdx); });
+}
+function saStep(dir){ saShow(saIdx+dir); }
+function saRenderStrip(){
+  var strip = document.getElementById('sa-strip');
+  strip.innerHTML = saMedia.map(function(m,i){
+    return '<div class="sa-strip-thumb" onclick="saShow('+i+')"><img src="'+m.url+'"/><span class="sa-strip-cat">'+(m.category==='floor_plan'?'Plan':'Photo')+'</span></div>';
+  }).join('');
+}
+function saRenderInclusions(list){
+  var byCategory = {};
+  list.forEach(function(it){ (byCategory[it.category||'General']=byCategory[it.category||'General']||[]).push(it); });
+  var html = '';
+  Object.keys(byCategory).forEach(function(cat){
+    html += '<div class="sw-inc-category">'+escapeHtml(cat)+'</div><div class="sw-inc-grid">';
+    byCategory[cat].forEach(function(it){
+      html += '<div class="sw-inc-item '+(it.included?'sw-inc-yes':'sw-inc-no')+'">'+
+        '<svg class="icon"><use href="#icon-'+(it.included?'check':'x')+'"/></svg> '+
+        escapeHtml(it.item)+
+        '</div>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('sa-inclusions').innerHTML = html;
+}
 function renderUserList(){
   document.getElementById('user-list').innerHTML=USERS.map((u)=>`
     <div class="user-row">
@@ -3800,6 +3994,33 @@ async function compressVideo(file, onStatus) {
   }
 }
 
+// Building this prompt as a template literal (not a one-line string like
+// the rest of the AI prompts here) since it now covers three distinct
+// jobs - the original text-field extraction, per-page photo/floor-plan
+// classification, and structured inclusions/exclusions - and needs to be
+// legible enough to keep those separate.
+//
+// The page-classification instructions exist because of a real failure
+// mode found while testing against actual BigBox-style proposal decks:
+// these documents routinely include photos of OTHER buildings entirely
+// (a "such-and-such's presence" slide with a grid of unrelated
+// buildings) and fully generic marketing/stock photography (a company's
+// "types of spaces we build" showcase with no building-specific info at
+// all) mixed in with the handful of pages that are actually about the
+// property being proposed. A model that treats every image in the
+// document as "a photo of this property" will misattribute other
+// buildings' photos to this listing - is_target_property exists
+// specifically to force a real judgment call on every page instead of
+// defaulting to "yes, include it."
+function buildExtractPrompt(fileNames){
+  var fileList = fileNames.map(function(n,i){ return i+': '+n; }).join(', ');
+  return 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). Files provided, in order, with a 0-based index for each: ' + fileList + '.\n\n' +
+    'TEXT FIELDS: This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed". NAMING: for a MANAGED OFFICE listing, "name" must be the coworking OPERATOR\'s brand name, NOT the building name - if the document gives both, put the building name in notes instead. For CONVENTIONAL listings, name should be the building/property name as usual. Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range), never put a sale price in the rate field. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.\n\n' +
+    'PAGE CLASSIFICATION (for every page of every PDF provided - be thorough, do not skip pages): this uses TWO independent judgments per page, not one - do not collapse them. First, "category" - what KIND of content is on the page, regardless of whose building it shows: "property_photo" for any real photograph of a physical space (an exterior, a room, furniture, an amenity - even if it turns out to be the wrong building or generic stock photography), "floor_plan" for a technical floor plan / furniture layout / test-fit drawing, or "other" for anything that is not a photo or a drawing at all (cover slides, tables of commercial terms, bar/line charts, customer-logo walls, thank-you slides, text-only pages). A photo of an unrelated building, or a generic "types of spaces we build" stock photo, is still category "property_photo" - it is a photograph, it is just not necessarily one of THIS property, which is the second judgment. Second, "is_target_property" - true ONLY when you are confident this specific photo or floor plan genuinely depicts the exact property this document is proposing/describing - not a generic stock photo, not a different building, not another location shown elsewhere in the same portfolio for marketing/credibility (proposal decks routinely include a "such-and-such\'s presence" style slide with a grid of OTHER buildings the operator has done deals in - those are real photos, correctly category "property_photo", but is_target_property MUST be false for every one of them). When in doubt, set is_target_property to false rather than guessing true - a human reviews every property_photo/floor_plan page you were not confident about, so a false "false" only costs a moment of review, while a false "true" would silently misattribute a stranger\'s building to this listing. For every property_photo or floor_plan page, also set a short human-readable "label" (e.g. "Building Exterior", "4th Floor - Furniture Layout", "Reception") describing what\'s shown, whether or not is_target_property is true - the reviewer needs to know what they\'re looking at either way.\n\n' +
+    'INCLUSIONS: extract every itemized inclusion/exclusion/service line you can find (e.g. "Base Landlord Rental: Included", "CCTV Provision: Included", "Newspaper: Excluded") into inclusions_detail, with its category label if the document groups them into categories (e.g. "Services", "Fit-Outs: Electrical, HVAC", "Civil & Interior") - use "General" if ungrouped. If BOTH a deal-specific inclusions list AND a generic/standard/company-wide inclusions list are present across the documents, prefer the deal-specific entries; only pull from the generic list for items the deal-specific one does not mention, so it fills gaps rather than overriding negotiated specifics.\n\n' +
+    'Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","space_type":"Conventional","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","pages":[{"file_index":0,"page":1,"category":"other","is_target_property":false,"label":""}],"inclusions_detail":[{"item":"","included":true,"category":"General"}]}.';
+}
+
 async function doExtract() {
   var pastedText = document.getElementById('ai-pasted-text').value.trim();
   if (!aiFiles.length && !pastedText) return;
@@ -3809,6 +4030,7 @@ async function doExtract() {
 
   try {
     var files = [];
+    var fileNames = [];
     for (var i = 0; i < aiFiles.length; i++) {
       var f = aiFiles[i];
       var isImage = f.type.indexOf('image') >= 0;
@@ -3825,21 +4047,25 @@ async function doExtract() {
           var b64 = await toB64(f);
           files.push({ type: mediaType, data: b64 });
         }
+        fileNames.push(f.name);
       } else {
         document.getElementById('ai-status-text').textContent = 'Reading ' + f.name + '...';
         var txt = await f.text();
         files.push({ type: 'text/plain', text: txt });
+        fileNames.push(f.name);
       }
     }
     if (pastedText) {
       files.push({ type: 'text/plain', text: pastedText });
+      fileNames.push('pasted message');
     }
 
     document.getElementById('ai-status-text').textContent = 'Extracting data with AI...';
 
     var payload = {
-      prompt: 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed". NAMING: for a MANAGED OFFICE listing, "name" must be the coworking OPERATOR\'s brand name, NOT the building name - if the document gives both, put the building name in notes instead. For CONVENTIONAL listings, name should be the building/property name as usual. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","space_type":"Conventional","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300), only for Conventional space. salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.',
-      files: files
+      prompt: buildExtractPrompt(fileNames),
+      files: files,
+      max_tokens: 4000
     };
 
     var res = await fetch(EXTRACT_API, {
@@ -3874,6 +4100,12 @@ async function doExtract() {
     document.getElementById('nf-spacetype').value = d.space_type === 'Managed' ? 'Managed' : 'Conventional';
     onSpaceTypeChange('nf');
 
+    document.getElementById('ai-status-text').textContent = 'Rendering photos and floor plans...';
+    await processExtractedPages(d.pages, aiFiles);
+    processExtractedInclusions(d.inclusions_detail);
+    renderSwMedia();
+    renderSwInclusions();
+
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('form-section').style.display = 'block';
     showToast('Form filled! Review and submit.', 'success');
@@ -3884,6 +4116,125 @@ async function doExtract() {
     document.getElementById('extract-btn').disabled = false;
     showToast('Could not extract: ' + err.message, 'error');
   }
+}
+
+// Only PDF pages actually get re-rendered (a standalone image file is
+// already a real image - if the AI flags it as the property, it's added
+// directly with no rendering step needed).
+async function processExtractedPages(pages, sourceFiles){
+  if(!Array.isArray(pages)) return;
+  for(var i=0;i<pages.length;i++){
+    var p = pages[i];
+    if(!p || (p.category!=='property_photo' && p.category!=='floor_plan')) continue;
+    var srcFile = sourceFiles[p.file_index];
+    if(!srcFile) continue;
+    var entry = null;
+    if(srcFile.type.indexOf('pdf')>=0){
+      var rendered = await renderPdfPageToFile(srcFile, p.page, p.label || srcFile.name);
+      if(!rendered) continue;
+      entry = { file: rendered, previewUrl: URL.createObjectURL(rendered), label: p.label || (p.category==='floor_plan'?'Floor Plan':'Photo'), category: p.category };
+    } else if(srcFile.type.indexOf('image')>=0){
+      entry = { file: srcFile, previewUrl: URL.createObjectURL(srcFile), label: p.label || (p.category==='floor_plan'?'Floor Plan':'Photo'), category: p.category };
+    }
+    if(!entry) continue;
+    if(p.is_target_property) swAutoMedia.push(entry);
+    else swReviewMedia.push(entry);
+  }
+}
+
+function processExtractedInclusions(list){
+  if(!Array.isArray(list)) return;
+  list.forEach(function(it){
+    if(!it || !it.item) return;
+    swInclusions.push({ item: it.item, included: it.included!==false, category: it.category || 'General' });
+  });
+}
+
+// Falls back to the structured checklist only when the user hasn't typed
+// their own note into the plain-text field - never overwrites what
+// someone deliberately wrote there.
+function summarizeIncludedItems(list){
+  if(!Array.isArray(list) || !list.length) return '';
+  var included = list.filter(function(it){ return it.included; }).map(function(it){ return it.item; });
+  return included.join(', ');
+}
+
+function swMediaTile(entry, idx, isReview){
+  var catLabel = entry.category==='floor_plan' ? 'Floor Plan' : 'Photo';
+  var action = isReview
+    ? '<button class="sw-tile-add" onclick="addSwReviewItem('+idx+')" title="Add to this property"><svg class="icon"><use href="#icon-plus"/></svg></button>'
+    : '<button class="sw-tile-remove" onclick="removeSwMedia(\'auto\','+idx+')" title="Remove"><svg class="icon"><use href="#icon-x"/></svg></button>';
+  return '<div class="sw-tile">'+
+    '<img src="'+entry.previewUrl+'"/>'+
+    '<span class="sw-tile-cat">'+catLabel+'</span>'+
+    action+
+    '<div class="sw-tile-label">'+escapeHtml(entry.label||'')+'</div>'+
+    '</div>';
+}
+
+function renderSwMedia(){
+  var card = document.getElementById('showaround-review-card');
+  var hasAny = swAutoMedia.length || swReviewMedia.length || swInclusions.length;
+  if(card) card.style.display = hasAny ? 'block' : 'none';
+  if(!hasAny) return;
+
+  var autoEl = document.getElementById('sw-auto-media');
+  if(autoEl){
+    autoEl.innerHTML = swAutoMedia.length
+      ? swAutoMedia.map(function(e,i){ return swMediaTile(e,i,false); }).join('')
+      : '<div class="sw-empty">No photos or floor plans were confidently matched to this property yet.</div>';
+  }
+
+  var reviewWrap = document.getElementById('sw-review-wrap');
+  var reviewEl = document.getElementById('sw-review-media');
+  if(reviewWrap) reviewWrap.style.display = swReviewMedia.length ? 'block' : 'none';
+  if(reviewEl) reviewEl.innerHTML = swReviewMedia.map(function(e,i){ return swMediaTile(e,i,true); }).join('');
+}
+
+function addSwReviewItem(i){
+  var entry = swReviewMedia[i];
+  if(!entry) return;
+  swReviewMedia.splice(i,1);
+  swAutoMedia.push(entry);
+  renderSwMedia();
+}
+
+function removeSwMedia(list,i){
+  var arr = list==='review' ? swReviewMedia : swAutoMedia;
+  if(!arr[i]) return;
+  arr.splice(i,1);
+  renderSwMedia();
+}
+
+function renderSwInclusions(){
+  var wrap = document.getElementById('sw-inclusions-wrap');
+  var listEl = document.getElementById('sw-inclusions-list');
+  if(wrap) wrap.style.display = swInclusions.length ? 'block' : 'none';
+  if(!listEl) return;
+  var byCategory = {};
+  swInclusions.forEach(function(it,i){
+    it._idx = i;
+    (byCategory[it.category]=byCategory[it.category]||[]).push(it);
+  });
+  var html = '';
+  Object.keys(byCategory).forEach(function(cat){
+    html += '<div class="sw-inc-category">'+escapeHtml(cat)+'</div><div class="sw-inc-grid">';
+    byCategory[cat].forEach(function(it){
+      html += '<div class="sw-inc-item '+(it.included?'sw-inc-yes':'sw-inc-no')+'">'+
+        '<svg class="icon"><use href="#icon-'+(it.included?'check':'x')+'"/></svg> '+
+        escapeHtml(it.item)+
+        '<button onclick="removeSwInclusion('+it._idx+')" title="Remove"><svg class="icon"><use href="#icon-x"/></svg></button>'+
+        '</div>';
+    });
+    html += '</div>';
+  });
+  listEl.innerHTML = html;
+}
+
+function removeSwInclusion(i){
+  if(!swInclusions[i]) return;
+  swInclusions.splice(i,1);
+  renderSwInclusions();
 }
 
 function onMedia(files) {
@@ -3973,9 +4324,10 @@ async function doSubmit() {
   var propCode = propName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8).toUpperCase() + Date.now().toString().slice(-4);
   document.getElementById('prog-wrap').style.display = 'block';
   var done = 0;
-  var total = mediaFiles.length + 1;
+  var total = mediaFiles.length + swAutoMedia.length + 1;
   var photoUrls = [];
   var videoUrl = '';
+  var showaroundMedia = [];
 
   function updateProg(label) {
     done++;
@@ -3996,6 +4348,15 @@ async function doSubmit() {
       var fileUrl = await uploadToSupabaseStorage(f, path, function(pct){ document.getElementById('prog-title').textContent = 'Uploading ' + f.name + '... ' + pct + '%'; });
       if (isVideo) { if (!videoUrl) videoUrl = fileUrl; }
       else { photoUrls.push(fileUrl); }
+    } catch(e) { updateProg('Skipped'); }
+  }
+  for (var si = 0; si < swAutoMedia.length; si++) {
+    try {
+      var swEntry = swAutoMedia[si];
+      updateProg('Uploading ' + swEntry.label + '...');
+      var swPath = safeFolder + '/showaround/' + Date.now() + '_' + swEntry.file.name;
+      var swUrl = await uploadToSupabaseStorage(swEntry.file, swPath);
+      showaroundMedia.push({ url: swUrl, label: swEntry.label, category: swEntry.category });
     } catch(e) { updateProg('Skipped'); }
   }
 
@@ -4033,7 +4394,9 @@ async function doSubmit() {
       price_per_seat: document.getElementById('nf-priceperseat').value,
       min_commitment: document.getElementById('nf-mincommitment').value,
       logo_url: document.getElementById('nf-logourl').value,
-      inclusions: document.getElementById('nf-inclusions').value,
+      inclusions: document.getElementById('nf-inclusions').value || summarizeIncludedItems(swInclusions),
+      inclusions_detail: swInclusions,
+      showaround_media: showaroundMedia,
       one_time_charges: document.getElementById('nf-onetimecharges').value,
       notice_period: document.getElementById('nf-noticeperiod').value,
       gst_note: document.getElementById('nf-gstnote').value,
@@ -4085,6 +4448,9 @@ function doClear() {
   onSpaceTypeChange('nf');
   mediaFiles = []; renderMedia();
   newContacts = []; renderNewContacts();
+  swAutoMedia.concat(swReviewMedia).forEach(function(e){ URL.revokeObjectURL(e.previewUrl); });
+  swAutoMedia = []; swReviewMedia = []; swInclusions = [];
+  renderSwMedia(); renderSwInclusions();
 }
 
 function doReset() {
