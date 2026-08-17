@@ -757,6 +757,8 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .doc-item{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:11.5px;color:var(--text2)}
 .doc-item .icon{color:var(--info);flex-shrink:0}
 .doc-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sw-media-loading{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text3);padding:8px 2px 16px}
+.spinner-sm{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin 1s linear infinite;flex-shrink:0}
 .sw-section-label{font-size:11px;font-weight:600;color:var(--text2);margin:10px 0 6px}
 .sw-empty{font-size:11.5px;color:var(--text3);padding:6px 2px}
 .sw-media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
@@ -1427,6 +1429,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
           </div>
           <div class="media-preview" id="media-preview"></div>
         </div>
+        <div class="sw-media-loading" id="sw-media-loading" style="display:none"><div class="spinner-sm"></div> Looking for photos, floor plans and inclusions in the uploaded document(s)...</div>
         <div class="form-card" id="showaround-review-card" style="display:none">
           <div class="form-section">Showaround Photos, Floor Plans &amp; Inclusions</div>
           <div class="field-hint" style="margin:-6px 0 12px 2px;font-size:11px;color:var(--text3)">Found in the uploaded document(s). Items below are already included with this property; anything the AI wasn't confident belonged to this specific building is shown separately for you to add manually.</div>
@@ -3994,12 +3997,22 @@ async function compressVideo(file, onStatus) {
   }
 }
 
-// Building this prompt as a template literal (not a one-line string like
-// the rest of the AI prompts here) since it now covers three distinct
-// jobs - the original text-field extraction, per-page photo/floor-plan
-// classification, and structured inclusions/exclusions - and needs to be
-// legible enough to keep those separate.
-//
+// Two independent prompts/API calls instead of one combined one - on
+// purpose. The text-field extraction below is the original, simple,
+// reliable behavior this feature always had; the media/inclusions call is
+// newer and inherently less predictable in size (it scales with how many
+// pages a document has). Combining them into one call meant a truncated
+// media response (stop_reason max_tokens) killed the ENTIRE extraction,
+// including the text fields that used to just work every time - a
+// regression found after a real "response was cut off" failure on a
+// multi-page brochure. Splitting them means a media-call failure only
+// costs the photos/floor-plans/inclusions for that round; the form still
+// gets filled from call 1, which stays small and fast regardless of how
+// many pages the source documents have.
+function buildTextExtractPrompt(){
+  return 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed". NAMING: for a MANAGED OFFICE listing, "name" must be the coworking OPERATOR\'s brand name, NOT the building name - if the document gives both, put the building name in notes instead. For CONVENTIONAL listings, name should be the building/property name as usual. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","space_type":"Conventional","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300), only for Conventional space. salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.';
+}
+
 // The page-classification instructions exist because of a real failure
 // mode found while testing against actual BigBox-style proposal decks:
 // these documents routinely include photos of OTHER buildings entirely
@@ -4012,13 +4025,12 @@ async function compressVideo(file, onStatus) {
 // buildings' photos to this listing - is_target_property exists
 // specifically to force a real judgment call on every page instead of
 // defaulting to "yes, include it."
-function buildExtractPrompt(fileNames){
+function buildMediaExtractPrompt(fileNames){
   var fileList = fileNames.map(function(n,i){ return i+': '+n; }).join(', ');
-  return 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). Files provided, in order, with a 0-based index for each: ' + fileList + '.\n\n' +
-    'TEXT FIELDS: This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed". NAMING: for a MANAGED OFFICE listing, "name" must be the coworking OPERATOR\'s brand name, NOT the building name - if the document gives both, put the building name in notes instead. For CONVENTIONAL listings, name should be the building/property name as usual. Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range), never put a sale price in the rate field. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.\n\n' +
-    'PAGE CLASSIFICATION (for every page of every PDF provided - be thorough, do not skip pages): this uses TWO independent judgments per page, not one - do not collapse them. First, "category" - what KIND of content is on the page, regardless of whose building it shows: "property_photo" for any real photograph of a physical space (an exterior, a room, furniture, an amenity - even if it turns out to be the wrong building or generic stock photography), "floor_plan" for a technical floor plan / furniture layout / test-fit drawing, or "other" for anything that is not a photo or a drawing at all (cover slides, tables of commercial terms, bar/line charts, customer-logo walls, thank-you slides, text-only pages). A photo of an unrelated building, or a generic "types of spaces we build" stock photo, is still category "property_photo" - it is a photograph, it is just not necessarily one of THIS property, which is the second judgment. Second, "is_target_property" - true ONLY when you are confident this specific photo or floor plan genuinely depicts the exact property this document is proposing/describing - not a generic stock photo, not a different building, not another location shown elsewhere in the same portfolio for marketing/credibility (proposal decks routinely include a "such-and-such\'s presence" style slide with a grid of OTHER buildings the operator has done deals in - those are real photos, correctly category "property_photo", but is_target_property MUST be false for every one of them). When in doubt, set is_target_property to false rather than guessing true - a human reviews every property_photo/floor_plan page you were not confident about, so a false "false" only costs a moment of review, while a false "true" would silently misattribute a stranger\'s building to this listing. For every property_photo or floor_plan page, also set a short human-readable "label" (e.g. "Building Exterior", "4th Floor - Furniture Layout", "Reception") describing what\'s shown, whether or not is_target_property is true - the reviewer needs to know what they\'re looking at either way.\n\n' +
+  return 'You are reviewing commercial real estate documents for a Pune CRE company. Files provided, in order, with a 0-based index for each: ' + fileList + '.\n\n' +
+    'PAGE CLASSIFICATION: scan every page of every PDF provided, but ONLY add an entry to the "pages" array for a page that is actually a real photograph or a floor plan - skip cover slides, tables, charts, logo walls, thank-you slides, and any other text-only page entirely, they need no entry at all. This keeps the response a manageable size regardless of how long a document is - do not pad it with entries for pages nobody will use. For every page you DO include, set two independent judgments - do not collapse them. First, "category": "property_photo" for any real photograph of a physical space (an exterior, a room, furniture, an amenity - even if it turns out to be the wrong building or generic stock photography), or "floor_plan" for a technical floor plan / furniture layout / test-fit drawing. Second, "is_target_property" - true ONLY when you are confident this specific photo or floor plan genuinely depicts the exact property these documents are proposing/describing - not a generic stock photo, not a different building, not another location shown elsewhere in the same portfolio for marketing/credibility (proposal decks routinely include a "such-and-such\'s presence" style slide with a grid of OTHER buildings the operator has done deals in - those are real photos, correctly given an entry, but is_target_property MUST be false for every one of them). When in doubt, set is_target_property to false rather than guessing true - a human reviews every page you were not confident about, so a false "false" only costs a moment of review, while a false "true" would silently misattribute a stranger\'s building to this listing. Always set a short human-readable "label" (e.g. "Building Exterior", "4th Floor - Furniture Layout", "Reception") for every included page, whether or not is_target_property is true - the reviewer needs to know what they\'re looking at either way.\n\n' +
     'INCLUSIONS: extract every itemized inclusion/exclusion/service line you can find (e.g. "Base Landlord Rental: Included", "CCTV Provision: Included", "Newspaper: Excluded") into inclusions_detail, with its category label if the document groups them into categories (e.g. "Services", "Fit-Outs: Electrical, HVAC", "Civil & Interior") - use "General" if ungrouped. If BOTH a deal-specific inclusions list AND a generic/standard/company-wide inclusions list are present across the documents, prefer the deal-specific entries; only pull from the generic list for items the deal-specific one does not mention, so it fills gaps rather than overriding negotiated specifics.\n\n' +
-    'Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","space_type":"Conventional","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":"","pages":[{"file_index":0,"page":1,"category":"other","is_target_property":false,"label":""}],"inclusions_detail":[{"item":"","included":true,"category":"General"}]}.';
+    'Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"pages":[{"file_index":0,"page":1,"category":"property_photo","is_target_property":false,"label":""}],"inclusions_detail":[{"item":"","included":true,"category":"General"}]}.';
 }
 
 async function doExtract() {
@@ -4062,23 +4074,18 @@ async function doExtract() {
 
     document.getElementById('ai-status-text').textContent = 'Extracting data with AI...';
 
-    var payload = {
-      prompt: buildExtractPrompt(fileNames),
-      files: files,
-      max_tokens: 4000
-    };
-
-    var res = await fetch(EXTRACT_API, {
+    // Call 1: text fields. Small, fixed-size prompt/response regardless
+    // of how many pages the source documents have - this is the original
+    // behavior of this feature and must keep working exactly as
+    // reliably as it always did, even if call 2 below runs into trouble.
+    var textRes = await fetch(EXTRACT_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ prompt: buildTextExtractPrompt(), files: files, max_tokens: 1000 })
     });
-
-    var result = await res.json();
-
-    if (!result.success) throw new Error(result.error || 'Extraction failed');
-
-    var d = result.extracted;
+    var textResult = await textRes.json();
+    if (!textResult.success) throw new Error(textResult.error || 'Extraction failed');
+    var d = textResult.extracted;
 
     function fill(id, val) {
       if (!val) return;
@@ -4100,15 +4107,37 @@ async function doExtract() {
     document.getElementById('nf-spacetype').value = d.space_type === 'Managed' ? 'Managed' : 'Conventional';
     onSpaceTypeChange('nf');
 
-    document.getElementById('ai-status-text').textContent = 'Rendering photos and floor plans...';
-    await processExtractedPages(d.pages, aiFiles);
-    processExtractedInclusions(d.inclusions_detail);
-    renderSwMedia();
-    renderSwInclusions();
-
+    // Form is filled and safe to show now - everything past this point is
+    // best-effort. A failure in call 2 (photos/floor plans/inclusions)
+    // gets its own toast and never blocks getting here.
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('form-section').style.display = 'block';
     showToast('Form filled! Review and submit.', 'success');
+
+    var hasMedia = aiFiles.some(function(f){ return f.type.indexOf('pdf')>=0 || f.type.indexOf('image')>=0; });
+    if (hasMedia) {
+      var swLoadingEl = document.getElementById('sw-media-loading');
+      swLoadingEl.style.display = 'flex';
+      try {
+        var mediaRes = await fetch(EXTRACT_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: buildMediaExtractPrompt(fileNames), files: files, max_tokens: 8000 })
+        });
+        var mediaResult = await mediaRes.json();
+        if (!mediaResult.success) throw new Error(mediaResult.error || 'Media extraction failed');
+        var md = mediaResult.extracted;
+
+        await processExtractedPages(md.pages, aiFiles);
+        processExtractedInclusions(md.inclusions_detail);
+        renderSwMedia();
+        renderSwInclusions();
+      } catch(mediaErr) {
+        showToast('Form filled, but could not extract photos/floor plans/inclusions: ' + mediaErr.message, 'error');
+      } finally {
+        swLoadingEl.style.display = 'none';
+      }
+    }
 
   } catch(err) {
     document.getElementById('ai-loading').style.display = 'none';
