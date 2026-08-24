@@ -539,6 +539,24 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .pi.active{border-color:var(--navy);box-shadow:0 0 0 3px rgba(27,58,107,.08)}
 .pi-name{font-size:11px;font-weight:600;color:var(--navy);margin-bottom:2px;line-height:1.3}
 .pi-mkt{font-size:10px;color:var(--text3);margin-bottom:5px}
+.cw-metric-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}
+.cw-metric-tile{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 9px}
+.cw-metric-value{font-size:14px;font-weight:700;color:var(--navy)}
+.cw-metric-label{font-size:9px;color:var(--text3);margin-top:1px}
+.cw-amenity-chips{display:flex;flex-wrap:wrap;gap:5px;max-height:120px;overflow-y:auto}
+.cw-amenity-chip{display:flex;align-items:center;gap:4px;font-size:10px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 8px;cursor:pointer;color:var(--text2)}
+.cw-amenity-chip input{margin:0}
+.cw-card{background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:10px;margin-bottom:6px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+.cw-card:hover{border-color:var(--navy-light);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.cw-card.active{border-color:var(--navy);box-shadow:0 0 0 3px rgba(27,58,107,.08)}
+.cw-card-name{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:2px;line-height:1.3}
+.cw-card-loc{font-size:10px;color:var(--text3);margin-bottom:5px;display:flex;align-items:center;gap:4px}
+.cw-card-price{font-size:11.5px;font-weight:600;color:var(--text);margin-bottom:3px}
+.cw-price-note{font-weight:400;color:var(--text3);font-size:10px}
+.cw-card-meta{font-size:10.5px;color:var(--text2);margin-bottom:2px}
+.cw-card-address{font-size:10px;color:var(--text3);margin-bottom:6px}
+.cw-card-actions{display:flex;gap:5px;margin-top:6px}
+.cw-card-actions .pu-btn{flex:1;padding:6px 4px;font-size:10px;font-weight:600;border-radius:6px}
 .pi-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
 .tag{font-size:9px;padding:2px 7px;border-radius:8px;font-weight:600}
 .ta{background:var(--avail-bg);color:var(--avail)}
@@ -666,6 +684,20 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .ep-saving{display:none;text-align:center;font-size:12px;color:var(--text3);padding:8px}
 .ep-delete{width:100%;margin-top:10px;padding:9px;background:transparent;color:var(--rented);border:1.5px solid var(--rented-bg);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
 .ep-delete:hover{background:var(--rented-bg)}
+.ws-section-title{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;padding-bottom:5px;border-bottom:1.5px solid var(--border)}
+.import-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.import-stat{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center}
+.import-stat-value{font-size:20px;font-weight:700;color:var(--navy)}
+.import-stat-label{font-size:9px;color:var(--text3);margin-top:2px}
+.import-section-title{font-size:11px;font-weight:600;color:var(--text2);margin:12px 0 6px}
+.import-excluded-list{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.import-excluded-row{font-size:11px;color:var(--text2);background:var(--bg);border-radius:6px;padding:6px 8px}
+.import-excluded-reason{color:var(--text3)}
+.ws-map{width:100%;height:220px;border-radius:8px;border:1.5px solid var(--border);cursor:crosshair}
+.ws-location-status{font-size:11px;color:var(--text3);margin-top:6px;padding:6px 8px;border-radius:6px;background:var(--bg)}
+.ws-location-status.set{color:var(--avail);background:var(--avail-bg)}
+.ws-location-status.invalid{color:var(--rented);background:var(--rented-bg)}
+.cw-amenity-chip.picked{background:var(--navy);border-color:var(--navy);color:#fff}
 
 /* ── USERS ── */
 .user-panel{background:var(--white);border-radius:14px;box-shadow:0 8px 40px rgba(27,58,107,.18);width:100%;max-width:420px;max-height:85vh;overflow-y:auto;padding:0}
@@ -1168,6 +1200,80 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
   </div>
 </div>
 
+<!-- ADD / EDIT WORKSPACE -->
+<div class="overlay hidden" id="workspace-overlay">
+  <div class="edit-panel">
+    <div class="ep-topbar">
+      <span class="ep-title" id="ws-title">Add New Workspace</span>
+      <button class="ep-close" onclick="closeWorkspaceForm()"><svg class="icon"><use href="#icon-x"/></svg></button>
+    </div>
+    <div class="ep-body">
+      <div class="ep-grid">
+        <div class="ep-field"><label>Workspace Name *</label><input type="text" id="ws-name" placeholder="e.g. WeWork"/></div>
+        <div class="ep-field"><label>Brand / Operator</label><input type="text" id="ws-operator" placeholder="e.g. WeWork"/></div>
+      </div>
+      <div class="ep-grid">
+        <div class="ep-field"><label>Locality / Area *</label><input type="text" id="ws-market" placeholder="e.g. Baner"/></div>
+        <div class="ep-field"><label>City</label><input type="text" id="ws-city" value="Pune"/></div>
+      </div>
+      <div class="ep-grid full">
+        <div class="ep-field"><label>Address</label><input type="text" id="ws-address" placeholder="e.g. Eleven West, Pan Card Club Road"/></div>
+      </div>
+      <div class="ep-grid">
+        <div class="ep-field"><label>Contact Person</label><input type="text" id="ws-contact-name" placeholder=""/></div>
+        <div class="ep-field"><label>Phone</label><input type="text" id="ws-contact-phone" placeholder=""/></div>
+      </div>
+
+      <div class="ws-section-title">Pricing</div>
+      <div class="ep-grid">
+        <div class="ep-field"><label>Starting Price / Seat / Month (₹) *</label><input type="number" min="0" id="ws-price" placeholder="e.g. 8500"/></div>
+        <div class="ep-field"><label>Total Seats</label><input type="number" min="0" id="ws-seats" placeholder="e.g. 120"/></div>
+      </div>
+      <div class="ep-grid full">
+        <div class="ep-field"><label>Pricing Note (optional)</label><input type="text" id="ws-price-note" placeholder="e.g. Price varies by plan, or a price range"/><span class="field-hint">Only needed if a single starting price doesn't tell the full story - shown alongside the price above.</span></div>
+      </div>
+
+      <div class="ws-section-title">Amenities</div>
+      <div class="ep-grid full">
+        <div id="ws-amenity-picker" class="cw-amenity-chips" style="margin-bottom:8px"></div>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="ws-custom-amenity" placeholder="Add a custom amenity..." style="flex:1"/>
+          <button class="cbtn" style="width:auto;margin:0;padding:6px 12px" onclick="addCustomAmenity()">Add</button>
+        </div>
+      </div>
+
+      <div class="ws-section-title">Workspace Location *</div>
+      <div class="field-hint" style="margin-bottom:6px">Search a place, click the map to drop a pin, or type coordinates directly - one of the three. A workspace cannot be saved without a valid location.</div>
+      <div class="ep-grid full">
+        <input type="text" id="ws-location-search" placeholder="Search an address or place..." onkeydown="if(event.key==='Enter'){event.preventDefault();searchWorkspaceLocation();}"/>
+      </div>
+      <div id="ws-map-el" class="ws-map"></div>
+      <div class="ep-grid" style="margin-top:8px">
+        <div class="ep-field"><label>Latitude</label><input type="number" step="any" id="ws-lat" placeholder="18.5xxxxx" oninput="onWsCoordInput()"/></div>
+        <div class="ep-field"><label>Longitude</label><input type="number" step="any" id="ws-lng" placeholder="73.9xxxxx" oninput="onWsCoordInput()"/></div>
+      </div>
+      <div class="ws-location-status" id="ws-location-status">No location set yet</div>
+
+      <div class="ep-saving" id="ws-saving">Saving…</div>
+      <div class="ep-actions">
+        <button class="ep-cancel" onclick="closeWorkspaceForm()">Cancel</button>
+        <button class="ep-save" onclick="saveWorkspace()">Save Workspace</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT SUMMARY -->
+<div class="overlay hidden" id="import-summary-overlay">
+  <div class="user-panel">
+    <div class="up-topbar">
+      <span class="up-title">Import Summary</span>
+      <button class="up-close" onclick="closeImportSummary()"><svg class="icon"><use href="#icon-x"/></svg></button>
+    </div>
+    <div class="up-body" id="import-summary-body"></div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app" style="display:none;flex-direction:column;height:100vh">
   <div class="topbar">
@@ -1185,6 +1291,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     <button class="topbar-btn active" id="nav-map" onclick="switchView('map')"><svg class="icon"><use href="#icon-map"/></svg> Map</button>
     <button class="topbar-btn" id="nav-add" onclick="switchView('add')" style="display:none"><svg class="icon"><use href="#icon-plus"/></svg> Add Property</button>
     <button class="topbar-btn" id="nav-market" onclick="switchView('market')"><svg class="icon"><use href="#icon-building"/></svg> Market Map</button>
+    <button class="topbar-btn" id="nav-coworking" onclick="switchView('coworking')"><svg class="icon"><use href="#icon-armchair"/></svg> Coworking</button>
     <button class="topbar-btn" id="nav-activity" onclick="switchView('activity')"><svg class="icon"><use href="#icon-clipboard-list"/></svg> Activity</button>
     <button class="topbar-btn" id="nav-manage" onclick="switchView('manage')" style="display:none"><svg class="icon"><use href="#icon-check-square"/></svg> Manage</button>
     <button class="topbar-btn" id="users-btn" onclick="openUsers()" style="display:none"><svg class="icon"><use href="#icon-users"/></svg> Team</button>
@@ -1489,6 +1596,55 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     <div class="map-wrap"><div id="market-map-el"></div></div>
   </div>
 
+  <!-- MANAGED COWORKING VIEW -->
+  <div class="main" id="view-coworking" style="display:none">
+    <div class="sidebar-backdrop" id="cw-sidebar-backdrop" onclick="toggleCwSidebar(false)"></div>
+    <div class="sidebar" id="cw-sidebar">
+      <button class="sidebar-close" onclick="toggleCwSidebar(false)"><svg class="icon"><use href="#icon-x"/></svg></button>
+      <div class="sidebar-head">
+        <div class="sidebar-section-title">Managed Coworking</div>
+        <div class="field-hint" style="margin-bottom:10px">Coworking &amp; managed-office spaces with a verified map location - searchable and filterable by area, price, capacity, and amenities.</div>
+
+        <div class="cw-metrics" id="cw-metrics"></div>
+
+        <input class="fs" type="text" id="cw-search" placeholder="Search by name, area, or address..." oninput="renderCoworking()" style="margin-bottom:8px;width:100%"/>
+
+        <div class="fg"><span class="fl">Location</span><select class="fs" id="cw-location-filter" onchange="renderCoworking()"><option value="">All Locations</option></select></div>
+        <div class="fg">
+          <span class="fl">Price / Seat / Month (₹)</span>
+          <div style="display:flex;gap:6px">
+            <input class="fs" type="number" min="0" id="cw-price-min" placeholder="Min" oninput="renderCoworking()"/>
+            <input class="fs" type="number" min="0" id="cw-price-max" placeholder="Max" oninput="renderCoworking()"/>
+          </div>
+        </div>
+        <div class="fg">
+          <span class="fl">Seats</span>
+          <div style="display:flex;gap:6px">
+            <input class="fs" type="number" min="0" id="cw-seats-min" placeholder="Min" oninput="renderCoworking()"/>
+            <input class="fs" type="number" min="0" id="cw-seats-max" placeholder="Max" oninput="renderCoworking()"/>
+          </div>
+        </div>
+        <div class="fg" id="cw-amenity-filter-wrap" style="display:none">
+          <span class="fl">Amenities</span>
+          <div id="cw-amenity-filters" class="cw-amenity-chips"></div>
+        </div>
+        <button class="cbtn" onclick="clearCwFilters()" style="margin-top:2px">Clear Filters</button>
+
+        <div class="fg" id="cw-admin-controls" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+          <button class="fbtn" onclick="openAddWorkspace()"><svg class="icon"><use href="#icon-plus"/></svg> Add New Workspace</button>
+          <button class="cbtn" onclick="document.getElementById('cw-import-input').click()"><svg class="icon"><use href="#icon-download"/></svg> Import Coworking Dataset</button>
+          <input type="file" id="cw-import-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="onCoworkingImportFile(this.files)"/>
+        </div>
+      </div>
+      <div class="prop-list">
+        <div class="lc" id="cw-lc"></div>
+        <div id="cw-list"></div>
+      </div>
+    </div>
+    <button class="mobile-toggle" id="cw-mobile-toggle" onclick="toggleCwSidebar(true)"><svg class="icon"><use href="#icon-menu"/></svg></button>
+    <div class="map-wrap"><div id="cw-map-el"></div></div>
+  </div>
+
   <!-- ACTIVITY VIEW -->
   <div class="view-panel" id="view-activity" style="display:none">
     <div class="view-container">
@@ -1689,6 +1845,7 @@ async function loadPropsFromSupabase() {
       one_time_charges: r.one_time_charges, fit_out_period: r.fit_out_period,
       notice_period: r.notice_period, gst_note: r.gst_note, registration_note: r.registration_note,
       showaround_media: r.showaround_media || [], inclusions_detail: r.inclusions_detail || [],
+      address: r.address, amenities: r.amenities || [], source: r.source, price_note: r.price_note,
       _dbId: r.id
     }));
     MARKETS = [...new Set(BASE_PROPS.map(p => p.market).filter(Boolean))].sort();
@@ -1805,6 +1962,7 @@ async function refreshProps(){
   props = BASE_PROPS.map(p => ({...p}));
   applyFilters();
   renderActivity();
+  if(cwMap) renderCoworking();
 }
 
 // Look up real coordinates for a micro-market so new properties land in
@@ -2056,6 +2214,579 @@ async function addMarketSpace(){
   showToast('Market space added ✓','success');
 }
 
+// ── MANAGED COWORKING ───────────────────────────────
+// Coworking spaces are just `properties` rows with space_type='Managed' -
+// this reuses the existing property data model/admin roles/Edit-Delete
+// flow rather than a parallel table, per the project's own "extend a
+// suitable existing model instead of duplicating it" guidance. Only
+// properties with a valid lat/lng ever appear here or count toward the
+// summary metrics - a Managed property with no coordinates still exists
+// (visible elsewhere in the app), it's just not part of this mapped view.
+let cwMap, cwMarkerLayer, cwMarkersById={}, cwIconCache={};
+
+function canManageCw(){ return currentUser && (currentUser.role==='admin'||currentUser.role==='editor'); }
+
+function getCoworkingSpaces(){
+  return props.filter(function(p){
+    var lat=parseFloat(p.lat), lng=parseFloat(p.lng);
+    return p.space_type==='Managed' && !isNaN(lat) && !isNaN(lng);
+  });
+}
+
+async function ensureCoworkingLoaded(){
+  if(!cwMap){
+    cwMap=L.map('cw-map-el',{center:[18.52,73.855],zoom:12});
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(cwMap);
+    cwMarkerLayer=L.layerGroup().addTo(cwMap);
+  }else{
+    setTimeout(()=>cwMap.invalidateSize(),50);
+  }
+  renderCoworking();
+}
+
+function populateCwLocationFilter(){
+  var sel=document.getElementById('cw-location-filter');
+  var current=sel.value;
+  var markets=[...new Set(getCoworkingSpaces().map(function(p){return p.market;}).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">All Locations</option>'+markets.map(function(m){return '<option value="'+escapeHtml(m)+'">'+escapeHtml(m)+'</option>';}).join('');
+  sel.value=markets.includes(current)?current:'';
+}
+
+function populateCwAmenityFilter(){
+  var wrap=document.getElementById('cw-amenity-filter-wrap');
+  var checked=getSelectedCwAmenities();
+  var all=new Set();
+  getCoworkingSpaces().forEach(function(p){ (Array.isArray(p.amenities)?p.amenities:[]).forEach(function(a){ if(a) all.add(a); }); });
+  var list=[...all].sort();
+  wrap.style.display=list.length?'block':'none';
+  document.getElementById('cw-amenity-filters').innerHTML=list.map(function(a){
+    return '<label class="cw-amenity-chip"><input type="checkbox" value="'+escapeHtml(a)+'"'+(checked.indexOf(a)!==-1?' checked':'')+' onchange="renderCoworking()"/> '+escapeHtml(a)+'</label>';
+  }).join('');
+}
+
+function getSelectedCwAmenities(){
+  return Array.from(document.querySelectorAll('#cw-amenity-filters input:checked')).map(function(el){return el.value;});
+}
+
+function clearCwFilters(){
+  document.getElementById('cw-search').value='';
+  document.getElementById('cw-location-filter').value='';
+  document.getElementById('cw-price-min').value='';
+  document.getElementById('cw-price-max').value='';
+  document.getElementById('cw-seats-min').value='';
+  document.getElementById('cw-seats-max').value='';
+  document.querySelectorAll('#cw-amenity-filters input:checked').forEach(function(el){ el.checked=false; });
+  renderCoworking();
+}
+
+function filteredCoworkingSpaces(){
+  var all=getCoworkingSpaces();
+  var q=(document.getElementById('cw-search').value||'').trim().toLowerCase();
+  var loc=document.getElementById('cw-location-filter').value;
+  var priceMin=parseFloat(document.getElementById('cw-price-min').value);
+  var priceMax=parseFloat(document.getElementById('cw-price-max').value);
+  var seatsMin=parseFloat(document.getElementById('cw-seats-min').value);
+  var seatsMax=parseFloat(document.getElementById('cw-seats-max').value);
+  var amenities=getSelectedCwAmenities();
+
+  return all.filter(function(p){
+    if(q){
+      var hay=[p.name,p.market,p.address].filter(Boolean).join(' ').toLowerCase();
+      if(hay.indexOf(q)===-1) return false;
+    }
+    if(loc && p.market!==loc) return false;
+    var price=parseFloat(p.price_per_seat);
+    if(!isNaN(priceMin) && (isNaN(price)||price<priceMin)) return false;
+    if(!isNaN(priceMax) && (isNaN(price)||price>priceMax)) return false;
+    var seats=parseFloat(p.seats);
+    if(!isNaN(seatsMin) && (isNaN(seats)||seats<seatsMin)) return false;
+    if(!isNaN(seatsMax) && (isNaN(seats)||seats>seatsMax)) return false;
+    if(amenities.length){
+      var pa=Array.isArray(p.amenities)?p.amenities:[];
+      if(!amenities.every(function(a){ return pa.indexOf(a)!==-1; })) return false;
+    }
+    return true;
+  });
+}
+
+// Summary metrics reflect the FULL valid-coordinate set regardless of
+// active filters - an overview of the whole represented market, not just
+// whatever's currently filtered into view below.
+function renderCwMetrics(){
+  var all=getCoworkingSpaces();
+  var prices=all.map(function(p){return parseFloat(p.price_per_seat);}).filter(function(n){return !isNaN(n);});
+  var seatsSum=all.reduce(function(sum,p){ var s=parseFloat(p.seats); return sum+(isNaN(s)?0:s); },0);
+  var locations=new Set(all.map(function(p){return p.market;}).filter(Boolean)).size;
+  var avg=prices.length?Math.round(prices.reduce(function(a,b){return a+b;},0)/prices.length):null;
+  var min=prices.length?Math.min.apply(null,prices):null;
+  var max=prices.length?Math.max.apply(null,prices):null;
+  function tile(label,value){ return '<div class="cw-metric-tile"><div class="cw-metric-value">'+value+'</div><div class="cw-metric-label">'+label+'</div></div>'; }
+  document.getElementById('cw-metrics').innerHTML='<div class="cw-metric-grid">'+
+    tile('Total Workspaces', all.length)+
+    tile('Total Seats', seatsSum || '—')+
+    tile('Avg ₹/Seat', avg!=null?'₹'+avg.toLocaleString('en-IN'):'—')+
+    tile('Lowest ₹/Seat', min!=null?'₹'+min.toLocaleString('en-IN'):'—')+
+    tile('Highest ₹/Seat', max!=null?'₹'+max.toLocaleString('en-IN'):'—')+
+    tile('Locations', locations)+
+  '</div>';
+}
+
+function cwPriceHtml(p){
+  var n=parseFloat(p.price_per_seat);
+  if(!isNaN(n)) return '₹'+Math.round(n).toLocaleString('en-IN')+' / seat / month'+(p.price_note?' <span class="cw-price-note">('+escapeHtml(p.price_note)+')</span>':'');
+  return p.price_note ? escapeHtml(p.price_note) : 'Price not available';
+}
+
+function getCwIcon(p){
+  var key='cw|'+(p.operator||p.name||'')+'|'+(p.logo_url||'');
+  if(!cwIconCache[key]){
+    var effectiveLogo=p.logo_url||KNOWN_OPERATOR_LOGOS[p.operator]||'';
+    var inner=operatorBadgeInnerHtml(p.operator||p.name, effectiveLogo);
+    cwIconCache[key]=L.divIcon({className:'',
+      html:'<div style="width:24px;height:24px;border-radius:6px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);overflow:hidden;background:#fff">'+inner+'</div>',
+      iconSize:[24,24],iconAnchor:[12,12]});
+  }
+  return cwIconCache[key];
+}
+
+function buildCwPopup(p){
+  return '<div class="pu"><div class="pu-body">'+
+    '<div class="pu-name">'+escapeHtml(p.name)+'</div>'+
+    '<div class="pu-mkt"><svg class="icon"><use href="#icon-map-pin"/></svg> '+escapeHtml(p.market||'')+'</div>'+
+    '<div class="pu-code">'+cwPriceHtml(p)+(p.seats?' · '+escapeHtml(String(p.seats))+' seats':'')+'</div>'+
+    (p.address?'<div class="pu-code">'+escapeHtml(p.address)+'</div>':'')+
+    (canManageCw()?('<div class="pu-actions"><button class="pu-btn pu-edit" onclick="openEditWorkspace('+p._dbId+')">Edit</button>'+(currentUser.role==='admin'?'<button class="pu-btn pu-video" onclick="deleteCwWorkspace('+p._dbId+')">Delete</button>':'')+'</div>'):'')+
+  '</div></div>';
+}
+
+function cwCardHtml(p){
+  return '<div class="cw-card" id="cw-card-'+p._dbId+'" onclick="focusCwWorkspace('+p._dbId+')">'+
+    '<div class="cw-card-name">'+escapeHtml(p.name)+'</div>'+
+    '<div class="cw-card-loc"><svg class="icon"><use href="#icon-map-pin"/></svg> '+escapeHtml(p.market||'')+'</div>'+
+    '<div class="cw-card-price">'+cwPriceHtml(p)+'</div>'+
+    (p.seats?'<div class="cw-card-meta">Available seats: <b>'+escapeHtml(String(p.seats))+'</b></div>':'')+
+    (p.address?'<div class="cw-card-address">'+escapeHtml(p.address)+'</div>':'')+
+    (canManageCw()?('<div class="cw-card-actions"><button class="pu-btn pu-edit" onclick="event.stopPropagation();openEditWorkspace('+p._dbId+')">Edit</button>'+(currentUser.role==='admin'?'<button class="pu-btn pu-video" onclick="event.stopPropagation();deleteCwWorkspace('+p._dbId+')">Delete</button>':'')+'</div>'):'')+
+  '</div>';
+}
+
+function renderCoworking(){
+  renderCwMetrics();
+  populateCwLocationFilter();
+  populateCwAmenityFilter();
+  var list=filteredCoworkingSpaces();
+  document.getElementById('cw-lc').textContent=list.length+' workspace'+(list.length===1?'':'s');
+  document.getElementById('cw-list').innerHTML=list.length
+    ? list.map(cwCardHtml).join('')
+    : '<div class="lc" style="padding:20px 8px">No workspaces match these filters.</div>';
+
+  cwMarkerLayer.clearLayers();
+  cwMarkersById={};
+  list.forEach(function(p){
+    var marker=L.marker([parseFloat(p.lat),parseFloat(p.lng)],{icon:getCwIcon(p)});
+    marker.on('click', function(){ highlightCwCard(p._dbId); });
+    marker.bindPopup(function(){ return buildCwPopup(p); },{className:'custom-popup',maxWidth:260});
+    marker.addTo(cwMarkerLayer);
+    cwMarkersById[p._dbId]=marker;
+  });
+}
+
+function highlightCwCard(id){
+  document.querySelectorAll('.cw-card.active').forEach(function(el){ el.classList.remove('active'); });
+  var card=document.getElementById('cw-card-'+id);
+  if(card){ card.classList.add('active'); card.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+}
+
+function focusCwWorkspace(id){
+  var marker=cwMarkersById[id];
+  if(!marker) return;
+  cwMap.setView(marker.getLatLng(), Math.max(cwMap.getZoom(),15));
+  marker.openPopup();
+  highlightCwCard(id);
+}
+
+async function deleteCwWorkspace(id){
+  if(!currentUser||currentUser.role!=='admin') return;
+  var idx=props.findIndex(function(p){ return p._dbId===id; });
+  if(idx===-1) return;
+  editIdx=idx;
+  await deleteProperty();
+}
+
+// ── ADD / EDIT WORKSPACE ────────────────────────────
+// One shared form/schema for both add and edit, per the source spec's own
+// instruction - openEditWorkspace just pre-fills the same fields
+// openAddWorkspace starts blank, and both save through the same
+// saveWorkspace() validation (name, locality, a starting price, and a
+// valid map location are all required - a workspace with no reliable
+// location or price is worse than not having it in this section at all).
+let wsMap, wsMarker, wsEditId=null, wsAmenities=[];
+const WS_AMENITY_OPTIONS=['Wi-Fi','Meeting rooms','Conference rooms','Private cabins','Dedicated desks','Hot desks','Reception','Pantry','Cafeteria','Printing','Parking','Power backup','CCTV','Security','24×7 access','Air conditioning','Phone booths','Lounge','Event space'];
+
+function ensureWsMap(){
+  if(wsMap){ setTimeout(()=>wsMap.invalidateSize(),50); return; }
+  wsMap=L.map('ws-map-el',{center:[18.52,73.855],zoom:12});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(wsMap);
+  wsMap.on('click', function(e){ setWsLocation(e.latlng.lat, e.latlng.lng); });
+}
+
+function setWsLocation(lat,lng){
+  document.getElementById('ws-lat').value=lat.toFixed(6);
+  document.getElementById('ws-lng').value=lng.toFixed(6);
+  updateWsMarker(lat,lng);
+  updateWsLocationStatus();
+}
+
+function updateWsMarker(lat,lng){
+  if(wsMarker) wsMap.removeLayer(wsMarker);
+  wsMarker=L.marker([lat,lng]).addTo(wsMap);
+  wsMap.setView([lat,lng], Math.max(wsMap.getZoom(),14));
+}
+
+function onWsCoordInput(){
+  var lat=parseFloat(document.getElementById('ws-lat').value);
+  var lng=parseFloat(document.getElementById('ws-lng').value);
+  updateWsLocationStatus();
+  if(!isNaN(lat)&&!isNaN(lng)&&lat>=-90&&lat<=90&&lng>=-180&&lng<=180) updateWsMarker(lat,lng);
+}
+
+function updateWsLocationStatus(){
+  var el=document.getElementById('ws-location-status');
+  var lat=parseFloat(document.getElementById('ws-lat').value);
+  var lng=parseFloat(document.getElementById('ws-lng').value);
+  el.classList.remove('set','invalid');
+  if(isNaN(lat)||isNaN(lng)){ el.textContent='No location set yet - search, click the map, or type coordinates.'; return; }
+  if(lat<-90||lat>90||lng<-180||lng>180){
+    el.textContent='Coordinates out of range - latitude must be -90..90, longitude -180..180.';
+    el.classList.add('invalid');
+    return;
+  }
+  el.textContent='Location set: '+lat.toFixed(6)+', '+lng.toFixed(6);
+  el.classList.add('set');
+}
+
+// Deliberately does NOT fall back to a random/approximate pin on failure
+// (unlike geocodeMarket, used elsewhere for a rough auto-placement) - a
+// search the admin explicitly typed for THIS workspace's exact location
+// should say so clearly if it can't be found, not silently guess.
+async function searchWorkspaceLocation(){
+  var q=document.getElementById('ws-location-search').value.trim();
+  if(!q) return;
+  var statusEl=document.getElementById('ws-location-status');
+  statusEl.classList.remove('set','invalid');
+  statusEl.textContent='Searching…';
+  try{
+    var query=encodeURIComponent(q+(q.toLowerCase().indexOf('pune')===-1?', Pune, India':', India'));
+    var res=await fetch('https://nominatim.openstreetmap.org/search?q='+query+'&format=json&limit=1');
+    var data=res.ok?await res.json():[];
+    if(data&&data.length&&data[0].lat&&data[0].lon){
+      setWsLocation(parseFloat(data[0].lat),parseFloat(data[0].lon));
+    }else{
+      statusEl.textContent='Location not found - try a different search, or click the map / enter coordinates directly.';
+      statusEl.classList.add('invalid');
+    }
+  }catch(e){
+    statusEl.textContent='Search failed - try clicking the map or entering coordinates directly.';
+    statusEl.classList.add('invalid');
+  }
+}
+
+function renderWsAmenityPicker(){
+  var extra=wsAmenities.filter(function(a){ return WS_AMENITY_OPTIONS.indexOf(a)===-1; });
+  document.getElementById('ws-amenity-picker').innerHTML=WS_AMENITY_OPTIONS.concat(extra).map(function(a){
+    var picked=wsAmenities.indexOf(a)!==-1;
+    return '<label class="cw-amenity-chip'+(picked?' picked':'')+'"><input type="checkbox" value="'+escapeHtml(a)+'"'+(picked?' checked':'')+' onchange="toggleWsAmenity(this)"/> '+escapeHtml(a)+'</label>';
+  }).join('');
+}
+
+function toggleWsAmenity(el){
+  var v=el.value, i=wsAmenities.indexOf(v);
+  if(el.checked&&i===-1) wsAmenities.push(v);
+  else if(!el.checked&&i!==-1) wsAmenities.splice(i,1);
+  renderWsAmenityPicker();
+}
+
+function addCustomAmenity(){
+  var input=document.getElementById('ws-custom-amenity');
+  var v=input.value.trim();
+  if(!v) return;
+  if(wsAmenities.indexOf(v)===-1) wsAmenities.push(v);
+  input.value='';
+  renderWsAmenityPicker();
+}
+
+function resetWorkspaceForm(){
+  ['ws-name','ws-operator','ws-market','ws-address','ws-contact-name','ws-contact-phone','ws-price','ws-seats','ws-price-note','ws-location-search','ws-lat','ws-lng','ws-custom-amenity'].forEach(function(id){
+    document.getElementById(id).value='';
+  });
+  document.getElementById('ws-city').value='Pune';
+  wsAmenities=[];
+  wsEditId=null;
+  if(wsMap&&wsMarker){ wsMap.removeLayer(wsMarker); wsMarker=null; }
+  updateWsLocationStatus();
+  renderWsAmenityPicker();
+}
+
+function openAddWorkspace(){
+  if(!canManageCw()) return;
+  resetWorkspaceForm();
+  document.getElementById('ws-title').textContent='Add New Workspace';
+  document.getElementById('workspace-overlay').classList.remove('hidden');
+  ensureWsMap();
+}
+
+function openEditWorkspace(id){
+  if(!canManageCw()) return;
+  var p=props.find(function(x){ return x._dbId===id; });
+  if(!p) return;
+  resetWorkspaceForm();
+  wsEditId=id;
+  document.getElementById('ws-title').textContent='Edit Workspace';
+  document.getElementById('ws-name').value=p.name||'';
+  document.getElementById('ws-operator').value=p.operator||'';
+  document.getElementById('ws-market').value=p.market||'';
+  document.getElementById('ws-city').value=p.city||'Pune';
+  document.getElementById('ws-address').value=p.address||'';
+  document.getElementById('ws-contact-name').value=p.owner||'';
+  document.getElementById('ws-contact-phone').value=p.phone||'';
+  document.getElementById('ws-price').value=p.price_per_seat||'';
+  document.getElementById('ws-seats').value=p.seats||'';
+  document.getElementById('ws-price-note').value=p.price_note||'';
+  wsAmenities=Array.isArray(p.amenities)?p.amenities.slice():[];
+  document.getElementById('workspace-overlay').classList.remove('hidden');
+  ensureWsMap();
+  renderWsAmenityPicker();
+  var lat=parseFloat(p.lat), lng=parseFloat(p.lng);
+  if(!isNaN(lat)&&!isNaN(lng)){
+    document.getElementById('ws-lat').value=lat;
+    document.getElementById('ws-lng').value=lng;
+    setTimeout(function(){ updateWsMarker(lat,lng); updateWsLocationStatus(); },60);
+  }else{
+    updateWsLocationStatus();
+  }
+}
+
+function closeWorkspaceForm(){
+  document.getElementById('workspace-overlay').classList.add('hidden');
+}
+
+async function saveWorkspace(){
+  var name=document.getElementById('ws-name').value.trim();
+  var marketVal=document.getElementById('ws-market').value.trim();
+  var priceStr=document.getElementById('ws-price').value;
+  var lat=parseFloat(document.getElementById('ws-lat').value);
+  var lng=parseFloat(document.getElementById('ws-lng').value);
+
+  if(!name){ showToast('Workspace name is required','error'); return; }
+  if(!marketVal){ showToast('Locality / area is required','error'); return; }
+  if(priceStr===''||isNaN(parseFloat(priceStr))){ showToast('A starting price per seat is required','error'); return; }
+  if(isNaN(lat)||isNaN(lng)||lat<-90||lat>90||lng<-180||lng>180){
+    showToast('A valid map location is required for Managed Coworking.','error');
+    return;
+  }
+
+  var saving=document.getElementById('ws-saving');
+  saving.style.display='block';
+  var contactName=document.getElementById('ws-contact-name').value.trim();
+  var contactPhone=document.getElementById('ws-contact-phone').value.trim();
+  var body={
+    name:name,
+    operator:document.getElementById('ws-operator').value.trim(),
+    market:marketVal,
+    city:document.getElementById('ws-city').value.trim()||'Pune',
+    address:document.getElementById('ws-address').value.trim(),
+    owner:contactName,
+    phone:contactPhone,
+    space_type:'Managed',
+    price_per_seat:priceStr,
+    seats:document.getElementById('ws-seats').value.trim(),
+    price_note:document.getElementById('ws-price-note').value.trim(),
+    amenities:wsAmenities,
+    lat:lat,
+    lng:lng
+  };
+  if(contactName||contactPhone) body.contacts=[{name:contactName,phone:contactPhone,role:'Landlord'}];
+
+  var result;
+  if(wsEditId){
+    result=await patchProperty(wsEditId, body);
+  }else{
+    body.status='Available';
+    body.source='Added manually';
+    result=await insertProperty(body);
+  }
+  saving.style.display='none';
+  if(!result.ok){ showToast('Could not save workspace: '+result.error,'error'); return; }
+  closeWorkspaceForm();
+  await refreshProps();
+  showToast(wsEditId?'Workspace updated ✓':'Workspace added ✓','success');
+}
+
+// ── COWORKING DATASET IMPORT ────────────────────────
+// One-time (repeatable) import of a coworking-market CSV/XLSX into
+// properties (space_type='Managed'). Deliberately a plain, deterministic
+// parser rather than the AI-driven bulk-import used elsewhere in the app -
+// the one thing this whole feature depends on being trustworthy is
+// coordinate accuracy, and a hand-written regex either parses real
+// coordinates or doesn't; it can't hallucinate a plausible-looking wrong
+// one the way an LLM asked to "extract lat/lng" plausibly could.
+const CW_IMPORT_COLUMNS={
+  player:'Coworking Player', micromarket:'Micromarket', location:'Precise Location',
+  price:'Cost Per Seat (per month)', coords:'Exact Maps Coordinates',
+};
+
+// Matches strings like "18.55° N, 73.95° E" (also works without the ° or
+// with S/W). Returns null - never a guessed/approximate value - for
+// anything that isn't exactly two well-formed, in-range coordinates.
+function parseCwCoords(raw){
+  if(!raw || !raw.toString().trim()) return null;
+  var re=/(-?\d+\.?\d*)\s*°?\s*([NSEW])/g;
+  var matches=[], m;
+  while((m=re.exec(raw.toString()))) matches.push(m);
+  if(matches.length!==2) return null;
+  var lat=null, lng=null;
+  matches.forEach(function(mm){
+    var v=parseFloat(mm[1]), dir=mm[2];
+    if(dir==='S'||dir==='W') v=-Math.abs(v);
+    if(dir==='N'||dir==='S') lat=v; else lng=v;
+  });
+  if(lat===null||lng===null||isNaN(lat)||isNaN(lng)) return null;
+  if(lat<-90||lat>90||lng<-180||lng>180) return null;
+  return {lat:lat, lng:lng};
+}
+
+// "Price varies", blank, N/A etc. must never become ₹0 - they become no
+// price at all, with the original text preserved as a note. A real
+// number (optionally a range, e.g. "₹7,190 - ₹14,350") becomes a starting
+// price; the note is only kept when it says more than that bare number.
+function parseCwPrice(raw){
+  var s=(raw||'').toString().trim();
+  if(!s || /^price varies$/i.test(s) || /^n\/?a$/i.test(s) || s==='*' || /^not available$/i.test(s)){
+    return { price:null, note: (s && !/^n\/?a$/i.test(s)) ? s : null };
+  }
+  var nums=s.match(/[\d,]+/g);
+  if(!nums||!nums.length) return { price:null, note:s };
+  var starting=parseInt(nums[0].replace(/,/g,''),10);
+  var isBareNumber = new RegExp('^₹?\\s*'+nums[0]+'\\s*$').test(s);
+  return { price:starting, note: isBareNumber ? null : s };
+}
+
+async function onCoworkingImportFile(files){
+  if(!files||!files.length||!canManageCw()) return;
+  var file=files[0];
+  document.getElementById('cw-import-input').value='';
+  try{
+    // CSV is read as text (the browser's own File.text() correctly
+    // UTF-8-decodes it) rather than as raw bytes - SheetJS's byte-level
+    // CSV reader doesn't auto-detect UTF-8, which silently mangled the °
+    // in "18.55° N" into "18.55Â° N" and broke every coordinate in
+    // testing. Binary formats (.xlsx/.xls) still need the byte-array path.
+    var isCsv = file.name.toLowerCase().endsWith('.csv') || file.type==='text/csv';
+    var wb = isCsv ? XLSX.read(await file.text(),{type:'string'}) : XLSX.read(await file.arrayBuffer(),{type:'array'});
+    var sheet=wb.Sheets[wb.SheetNames[0]];
+    var rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+    if(!rows.length){ showToast('That file has no data rows','error'); return; }
+
+    var headers=Object.keys(rows[0]);
+    var required=[CW_IMPORT_COLUMNS.player, CW_IMPORT_COLUMNS.micromarket];
+    var missingHeaders=required.filter(function(h){ return headers.indexOf(h)===-1; });
+    if(missingHeaders.length){
+      showToast('This file is missing expected column(s): '+missingHeaders.join(', ')+'. Expected headers: Coworking Player, Micromarket, Precise Location, Cost Per Seat (per month), Exact Maps Coordinates.','error');
+      return;
+    }
+
+    var toImport=[], excluded=[], coordKey={}, scanned=0;
+    rows.forEach(function(row){
+      var name=(row[CW_IMPORT_COLUMNS.player]||'').toString().trim();
+      if(!name) return; // blank row - not counted at all, nothing to report
+      scanned++;
+      var market=(row[CW_IMPORT_COLUMNS.micromarket]||'').toString().trim();
+      var address=(row[CW_IMPORT_COLUMNS.location]||'').toString().trim();
+      var coordsRaw=(row[CW_IMPORT_COLUMNS.coords]||'').toString();
+
+      var coords=parseCwCoords(coordsRaw);
+      if(!coords){
+        excluded.push({name:name, market:market, reason: coordsRaw.trim() ? 'Invalid/unreadable coordinates' : 'Missing coordinates'});
+        return;
+      }
+      var priceParsed=parseCwPrice(row[CW_IMPORT_COLUMNS.price]);
+      var key=coords.lat.toFixed(4)+','+coords.lng.toFixed(4);
+      (coordKey[key]=coordKey[key]||[]).push(name);
+
+      toImport.push({
+        name:name, operator:name, market:market, city:'Pune', address:address,
+        space_type:'Managed', status:'Available',
+        price_per_seat: priceParsed.price!=null ? String(priceParsed.price) : '',
+        price_note: priceParsed.note || '',
+        amenities: [],
+        source: 'Imported from Pune Coworking Dataset',
+        lat: coords.lat, lng: coords.lng,
+      });
+    });
+
+    var collisions=Object.keys(coordKey).filter(function(k){ return coordKey[k].length>1; })
+      .map(function(k){ return coordKey[k].join(' & ')+' share the coordinates '+k; });
+
+    if(!toImport.length){
+      showImportSummary({total:scanned, imported:0, excluded:excluded, collisions:collisions});
+      return;
+    }
+
+    var result=await bulkInsertProperties(toImport);
+    if(!result.ok){ showToast('Import failed: '+result.error,'error'); return; }
+    await refreshProps();
+    showImportSummary({total:scanned, imported:toImport.length, excluded:excluded, collisions:collisions});
+  }catch(e){
+    showToast('Could not read that file: '+e.message,'error');
+  }
+}
+
+// Same missing-column resilience as insertProperty/insertMarketSpace, just
+// applied to the whole batch at once (all rows share the same shape, so a
+// column stripped from one gets stripped from all before retrying).
+async function bulkInsertProperties(rows){
+  var payload=rows.map(function(r){ return Object.assign({}, r, { created_by: currentUser?currentUser.name:'' }); });
+  for(var attempts=0; attempts<10; attempts++){
+    var res=await fetch(SUPABASE_URL+'/rest/v1/properties',{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':sbAuthHeader(),'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(payload)
+    });
+    if(res.ok) return {ok:true};
+    var errText=await res.text();
+    var m=errText.match(/Could not find the '([^']+)' column/);
+    if(m && payload.length && (m[1] in payload[0])){
+      payload=payload.map(function(p){ var c=Object.assign({},p); delete c[m[1]]; return c; });
+      continue;
+    }
+    return {ok:false, error:errText};
+  }
+  return {ok:false, error:'Too many missing columns - check your properties table schema'};
+}
+
+function showImportSummary(s){
+  var html='<div class="import-summary-grid">'+
+    '<div class="import-stat"><div class="import-stat-value">'+s.total+'</div><div class="import-stat-label">Total Records</div></div>'+
+    '<div class="import-stat"><div class="import-stat-value" style="color:var(--avail)">'+s.imported+'</div><div class="import-stat-label">Imported</div></div>'+
+    '<div class="import-stat"><div class="import-stat-value" style="color:var(--rented)">'+s.excluded.length+'</div><div class="import-stat-label">Excluded - No Valid Coordinates</div></div>'+
+  '</div>';
+  if(s.excluded.length){
+    html+='<div class="import-section-title">Excluded records</div><div class="import-excluded-list">'+
+      s.excluded.map(function(e){ return '<div class="import-excluded-row">'+escapeHtml(e.name)+(e.market?' · '+escapeHtml(e.market):'')+' <span class="import-excluded-reason">— '+escapeHtml(e.reason)+'</span></div>'; }).join('')+
+    '</div>';
+  }
+  if(s.collisions && s.collisions.length){
+    html+='<div class="import-section-title">Worth verifying</div><div class="import-excluded-list">'+
+      s.collisions.map(function(c){ return '<div class="import-excluded-row">'+escapeHtml(c)+' - both were still imported, but this usually means at least one coordinate is only approximate.</div>'; }).join('')+
+    '</div>';
+  }
+  document.getElementById('import-summary-body').innerHTML=html;
+  document.getElementById('import-summary-overlay').classList.remove('hidden');
+}
+function closeImportSummary(){ document.getElementById('import-summary-overlay').classList.add('hidden'); }
+
 async function deleteMarketSpace(id){
   if(!currentUser||(currentUser.role!=='admin'&&currentUser.role!=='editor')) return;
   if(!confirm('Remove this market reference entry?')) return;
@@ -2139,6 +2870,7 @@ async function enterApp(user){
   if(user.role==='admin'||user.role==='editor'){
     document.getElementById('nav-add').style.display='block';
     document.getElementById('market-admin-controls').style.display='block';
+    document.getElementById('cw-admin-controls').style.display='block';
   }
   await ensureDataLoaded();
   initMap();
@@ -2189,6 +2921,7 @@ async function doLogout(){
   document.getElementById('nav-add').style.display='none';
   document.getElementById('nav-manage').style.display='none';
   document.getElementById('market-admin-controls').style.display='none';
+  document.getElementById('cw-admin-controls').style.display='none';
 }
 
 // ── VIEW SWITCHING ──────────────────────────────────
@@ -2199,17 +2932,20 @@ function switchView(view){
   document.getElementById('view-map').style.display = view==='map' ? 'flex' : 'none';
   document.getElementById('view-add').style.display = view==='add' ? 'block' : 'none';
   document.getElementById('view-market').style.display = view==='market' ? 'flex' : 'none';
+  document.getElementById('view-coworking').style.display = view==='coworking' ? 'flex' : 'none';
   document.getElementById('view-activity').style.display = view==='activity' ? 'block' : 'none';
   document.getElementById('view-manage').style.display = view==='manage' ? 'block' : 'none';
   document.getElementById('view-compare').style.display = view==='compare' ? 'block' : 'none';
   document.getElementById('nav-map').classList.toggle('active', view==='map');
   document.getElementById('nav-add').classList.toggle('active', view==='add');
   document.getElementById('nav-market').classList.toggle('active', view==='market');
+  document.getElementById('nav-coworking').classList.toggle('active', view==='coworking');
   document.getElementById('nav-activity').classList.toggle('active', view==='activity');
   document.getElementById('nav-manage').classList.toggle('active', view==='manage');
   if(view==='activity') renderActivity();
   if(view==='map') setTimeout(()=>{ window.GlobeAPI&&window.GlobeAPI.resize(); if(detailModeActive&&puneMap) puneMap.invalidateSize(); }, 50);
   if(view==='market') ensureMarketLoaded();
+  if(view==='coworking') ensureCoworkingLoaded();
   if(view==='manage') renderManageTable();
   if(view==='compare') renderCompareBuilder();
   // No point rendering the globe into a display:none view - pause it the
@@ -3763,6 +4499,15 @@ function toggleTheme(){
 function toggleSidebar(force) {
   var sb = document.getElementById('sidebar');
   var bd = document.getElementById('sidebar-backdrop');
+  var isOpen = sb.classList.contains('open');
+  var newState = (force !== undefined) ? force : !isOpen;
+  sb.classList.toggle('open', newState);
+  bd.classList.toggle('show', newState);
+}
+
+function toggleCwSidebar(force) {
+  var sb = document.getElementById('cw-sidebar');
+  var bd = document.getElementById('cw-sidebar-backdrop');
   var isOpen = sb.classList.contains('open');
   var newState = (force !== undefined) ? force : !isOpen;
   sb.classList.toggle('open', newState);
