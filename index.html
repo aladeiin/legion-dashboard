@@ -753,8 +753,9 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
 .mb-icon{font-size:20px;display:block;margin-bottom:4px}
 .mb-label{font-size:12px;font-weight:600;display:block}
 .mb-sub{font-size:10px;opacity:.7;display:block;margin-top:2px}
-.ai-zone{background:var(--white);border:2px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;margin-bottom:12px}
-.ai-zone:hover{border-color:var(--navy);background:#EEF3FB}
+.ai-zone{background:var(--white);border:2px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;margin-bottom:12px;transition:.15s}
+.ai-zone:hover,.ai-zone.dragover{border-color:var(--navy);background:#EEF3FB}
+.ai-zone.dragover{border-style:solid}
 .az-icon{font-size:36px;display:block;margin-bottom:10px}
 .az-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
 .az-sub{font-size:11px;color:var(--text3);line-height:1.6}
@@ -1388,7 +1389,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
       </div>
 
       <div id="bulk-section" style="display:none">
-        <div class="ai-zone" onclick="document.getElementById('bulk-input').click()">
+        <div class="ai-zone" onclick="document.getElementById('bulk-input').click()" ondragover="aiZoneDragOver(event)" ondragleave="aiZoneDragLeave(event)" ondrop="aiZoneDrop(event, onBulkFile)">
           <input type="file" id="bulk-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="onBulkFile(this.files)"/>
           <span class="az-icon"><svg class="icon"><use href="#icon-bar-chart"/></svg></span>
           <div class="az-title">Upload an Excel sheet of property listings</div>
@@ -1429,11 +1430,11 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
       </div>
 
       <div id="ai-section">
-        <div class="ai-zone" onclick="document.getElementById('ai-input').click()">
+        <div class="ai-zone" onclick="document.getElementById('ai-input').click()" ondragover="aiZoneDragOver(event)" ondragleave="aiZoneDragLeave(event)" ondrop="aiZoneDrop(event, onAIFiles)">
           <input type="file" id="ai-input" multiple accept=".pdf,image/*,.txt,video/*" style="display:none" onchange="onAIFiles(this.files)"/>
           <span class="az-icon"><svg class="icon"><use href="#icon-file-text"/></svg></span>
           <div class="az-title">Upload brochure, pricing sheet or any property document</div>
-          <div class="az-sub">PDF, JPG, PNG - AI will read it and auto-fill the form below. Videos go straight into "Photos and Videos" below instead.</div>
+          <div class="az-sub">PDF, JPG, PNG - AI will read it and auto-fill the form below, or drag and drop files here. Videos go straight into "Photos and Videos" below instead.</div>
           <span class="az-btn">Choose Files</span>
         </div>
         <div class="file-chips" id="ai-chips"></div>
@@ -4574,6 +4575,19 @@ function onSpaceTypeChange(prefix) {
   if (mgd) mgd.style.display = isManaged ? '' : 'none';
 }
 
+// Shared drag-and-drop handlers for every ".ai-zone" upload box (the
+// single-document/photo zone and the bulk-import spreadsheet zone) - drop
+// just forwards the dropped FileList into the same handler the zone's
+// hidden <input type=file> already calls on a normal click-to-browse pick,
+// so both paths stay in sync for free.
+function aiZoneDragOver(e){ e.preventDefault(); e.currentTarget.classList.add('dragover'); }
+function aiZoneDragLeave(e){ e.currentTarget.classList.remove('dragover'); }
+function aiZoneDrop(e, handler){
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) handler(e.dataTransfer.files);
+}
+
 function onAIFiles(files) {
   // Videos can't be read by the AI for data extraction - route them
   // straight into the same "photos and videos" attachment pipeline as the
@@ -4755,7 +4769,12 @@ async function compressVideo(file, onStatus) {
 // gets filled from call 1, which stays small and fast regardless of how
 // many pages the source documents have.
 function buildTextExtractPrompt(){
-  return 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure) and MANAGED OFFICE (a coworking/serviced-office operator like WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard etc. charging per seat/desk - look for words like "seats", "desks", "per seat", "coworking", "serviced office", "managed office", or an operator brand name). Set space_type to exactly "Conventional" or "Managed". NAMING: for a MANAGED OFFICE listing, "name" must be the coworking OPERATOR\'s brand name, NOT the building name - if the document gives both, put the building name in notes instead. For CONVENTIONAL listings, name should be the building/property name as usual. IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","space_type":"Conventional","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300), only for Conventional space. salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.';
+  return 'You are a commercial real estate data extractor for a Pune CRE company. Extract property information from the uploaded document(s). ' +
+    'ALWAYS-FILL RULE: "name" (the building/campus/property name) and "market" (its micromarket/locality, e.g. "Viman Nagar, Pune") must be filled whenever the document identifies them anywhere - a cover page, header, or title counts - regardless of every other rule below. These are the two most basic facts about any listing and must never be left blank just because a classification below is ambiguous or a "Managed" naming rule would otherwise want a different value in "name" (see NAMING below for how to resolve that without leaving name blank).\n\n' +
+    'This company deals with two kinds of space: CONVENTIONAL (leased per sq ft, has area/lock-in/tenure - this includes a landlord/developer\'s own building or campus that markets itself as offering "warm shell", "managed office", and "customized fit-outs" as general leasing FORMAT OPTIONS for prospective tenants, even though that marketing copy uses the words "managed office") and MANAGED OFFICE (the SPECIFIC space being listed in this document is itself operated and priced per-seat/desk by a named coworking/serviced-office brand, e.g. WeWork, Awfis, Smartworks, IndiQube, Cowrks, 91Springboard, BigBox). Only set space_type to "Managed" when the listing itself is priced per seat/desk, or is actually run by one of these named operator brands - a landlord/developer\'s Grade A campus that merely mentions "managed offices" as one of several general services it can offer (alongside warm shell and fit-outs) is still CONVENTIONAL, even though the phrase "managed office" appears in the text. When genuinely unsure, prefer "Conventional". Set space_type to exactly "Conventional" or "Managed".\n\n' +
+    'NAMING: for a genuine MANAGED OFFICE listing, "name" should be the coworking OPERATOR\'s brand name. But if no distinct operator brand exists separate from the building itself, use the building/property name for "name" instead of leaving it blank - never sacrifice the always-fill rule above to this naming preference. For CONVENTIONAL listings, name is the building/property name as usual.\n\n' +
+    'MULTIPLE AVAILABLE UNITS: if the document lists several distinct available spaces (different floors/blocks/areas) within the same building, still fill name/market from the building-level information, and use the largest or first-listed unit\'s floor and area for the floor/area fields rather than leaving them blank because several options exist.\n\n' +
+    'IMPORTANT: Lease rate = monthly rent per sq ft (Rs 50-300 range). Sale rate = total price per sq ft (Rs 5000+ range). Return ONLY raw JSON with no markdown, no backticks, no explanation. Use this exact structure: {"name":"","market":"","status":"Available","space_type":"Conventional","furnishing":"","floor":"","area":"","carpet":"","rate":"","salerate":"","cam":"","deposit":"","lockin":"","tenure":"","escal":"","operator":"","plan_type":"","seats":"","price_per_seat":"","min_commitment":"","owner":"","phone":""}. IMPORTANT: rate = monthly LEASE rate per sq ft (Rs 50-300), only for Conventional space. salerate = OUTRIGHT SALE price per sq ft (Rs 5000+). Never put a sale price in the rate field. For Managed space, leave rate/area/lockin/tenure empty and fill operator/plan_type/seats/price_per_seat/min_commitment instead.';
 }
 
 // The page-classification instructions exist because of a real failure
