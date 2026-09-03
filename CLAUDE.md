@@ -105,6 +105,25 @@ before starting new work here.
   a class like this, scope the selector to a parent id
   (e.g. `#workspace-overlay .ep-save`). When adding new UI, expect this to
   bite existing tests and grep for the class's other usages first.
+- **The scratchpad (`<scratchpad>/test_*.js`, `cdn/node_modules`,
+  background processes) does not survive a container reset either** -
+  same as local git branch state, this has been wiped mid-session more
+  than once. If `ls <scratchpad>` comes back empty when you expect a full
+  test suite, that's why - rebuild the auth helper, CDN mirror, and
+  static servers before assuming tests are missing for any other reason.
+  Also `git fetch`+compare before committing after a gap, since local
+  HEAD can silently be behind what was actually pushed earlier.
+- **CARTO's `basemaps.cartocdn.com` raster tiles now require a paid/free
+  API key** for unauthenticated requests - every unauthenticated tile
+  request renders a diagonal "API KEY REQUIRED" watermark instead of an
+  actual basemap. Fixed by switching every `L.tileLayer()` call to Esri
+  ArcGIS Online's free, no-signup gray-canvas tiles via a shared
+  `addBaseTiles(map, dark)` helper - note Esri's canvas basemaps ship as
+  two stacked layers (an unlabeled `_Base` + a transparent-label
+  `_Reference`), not one single tile like CARTO's, and cap out natively
+  around zoom 16 (down from CARTO's 19) - fine since nothing in the app
+  programmatically zooms past 15, but don't raise `maxZoom` past what
+  Esri actually serves without also setting `maxNativeZoom` to upscale.
 
 ## Architecture quick-reference
 
