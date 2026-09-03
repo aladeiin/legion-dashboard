@@ -2032,11 +2032,24 @@ async function loadMarketSpacesFromSupabase(){
   }
 }
 
+// CARTO's basemaps.cartocdn.com raster tiles now require a (free) account
+// API key for unauthenticated traffic - without one every tile renders
+// with a diagonal "API KEY REQUIRED" watermark instead of the map. Esri's
+// ArcGIS Online gray-canvas basemaps are the closest free, no-signup
+// substitute for the same minimalist light/dark look, but ship as two
+// stacked layers (an unlabeled base + a transparent label overlay) rather
+// than CARTO's single labeled tile, so this wraps both into one call.
+function addBaseTiles(map, dark){
+  var service = dark ? 'World_Dark_Gray' : 'World_Light_Gray';
+  var opts = {attribution:'© Esri, © OpenStreetMap contributors', maxZoom:16};
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/'+service+'_Base/MapServer/tile/{z}/{y}/{x}', opts).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/'+service+'_Reference/MapServer/tile/{z}/{y}/{x}', opts).addTo(map);
+}
+
 async function ensureMarketLoaded(){
   if(!marketMap){
     marketMap=L.map('market-map-el',{center:[18.52,73.855],zoom:12});
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(marketMap);
+    addBaseTiles(marketMap, false);
     marketMarkerLayer=L.layerGroup().addTo(marketMap);
   }else{
     setTimeout(()=>marketMap.invalidateSize(),50);
@@ -2237,8 +2250,7 @@ function getCoworkingSpaces(){
 async function ensureCoworkingLoaded(){
   if(!cwMap){
     cwMap=L.map('cw-map-el',{center:[18.52,73.855],zoom:12});
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(cwMap);
+    addBaseTiles(cwMap, false);
     cwMarkerLayer=L.layerGroup().addTo(cwMap);
   }else{
     setTimeout(()=>cwMap.invalidateSize(),50);
@@ -2428,8 +2440,7 @@ const WS_AMENITY_OPTIONS=['Wi-Fi','Meeting rooms','Conference rooms','Private ca
 function ensureWsMap(){
   if(wsMap){ setTimeout(()=>wsMap.invalidateSize(),50); return; }
   wsMap=L.map('ws-map-el',{center:[18.52,73.855],zoom:12});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(wsMap);
+  addBaseTiles(wsMap, false);
   wsMap.on('click', function(e){ setWsLocation(e.latlng.lat, e.latlng.lng); });
 }
 
@@ -3309,11 +3320,10 @@ function maybeEnterDetailMode(lat,lng){
 function ensurePuneMap(){
   if(puneMap){ setTimeout(function(){puneMap.invalidateSize();},50); return; }
   puneMap=L.map('pune-detail-map',{center:[PUNE_CENTER.lat,PUNE_CENTER.lng],zoom:12});
-  // Dark Matter tiles, not the light ones Market Map uses - this map is
-  // meant to feel like a continuation of the globe's dark space background,
-  // not a jarring flash to a bright basemap every time you zoom in.
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    {attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(puneMap);
+  // Dark tiles, not the light ones Market Map uses - this map is meant to
+  // feel like a continuation of the globe's dark space background, not a
+  // jarring flash to a bright basemap every time you zoom in.
+  addBaseTiles(puneMap, true);
   puneMarkerLayer=L.layerGroup().addTo(puneMap);
 }
 
