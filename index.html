@@ -1763,12 +1763,26 @@ function sbScheduleRefresh(){
 }
 
 async function sbSignInWithPassword(email, password){
-  const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
-    method: 'POST',
-    headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: email, password: password }),
-  });
-  const data = await res.json();
+  let res;
+  try{
+    res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password }),
+    });
+  }catch(networkErr){
+    // A fetch that fails before even getting a response (offline, DNS,
+    // CORS, or a paused/deleted Supabase project) is a different problem
+    // than a wrong password - conflating them into "incorrect email or
+    // password" sends people down the wrong troubleshooting path.
+    throw new Error('Could not reach the login server - check your connection, or the Supabase project may be paused.');
+  }
+  let data;
+  try{
+    data = await res.json();
+  }catch(parseErr){
+    throw new Error('Login server returned an unexpected response (HTTP '+res.status+') - the Supabase project may be paused or unreachable.');
+  }
   if(!res.ok) throw new Error(data.error_description || data.msg || 'Incorrect email or password');
   sbApplySession(data);
   await stSet(SESSION_KEY, { refresh_token: sbRefreshToken, email: sbEmail });
@@ -2913,7 +2927,7 @@ async function doLogin(){
     }
     await enterApp(profile);
   }catch(e){
-    errEl.textContent='Incorrect email or password';
+    errEl.textContent=e.message||'Incorrect email or password';
     errEl.style.display='block';
   }finally{
     btn.disabled=false;
