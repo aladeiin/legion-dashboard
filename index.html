@@ -1293,6 +1293,7 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     <button class="topbar-btn" id="nav-add" onclick="switchView('add')" style="display:none"><svg class="icon"><use href="#icon-plus"/></svg> Add Property</button>
     <button class="topbar-btn" id="nav-market" onclick="switchView('market')"><svg class="icon"><use href="#icon-building"/></svg> Market Map</button>
     <button class="topbar-btn" id="nav-coworking" onclick="switchView('coworking')"><svg class="icon"><use href="#icon-armchair"/></svg> Coworking</button>
+    <button class="topbar-btn" id="nav-gcc" onclick="switchView('gcc')"><svg class="icon"><use href="#icon-bar-chart"/></svg> GCC Scout</button>
     <button class="topbar-btn" id="nav-activity" onclick="switchView('activity')"><svg class="icon"><use href="#icon-clipboard-list"/></svg> Activity</button>
     <button class="topbar-btn" id="nav-manage" onclick="switchView('manage')" style="display:none"><svg class="icon"><use href="#icon-check-square"/></svg> Manage</button>
     <button class="topbar-btn" id="users-btn" onclick="openUsers()" style="display:none"><svg class="icon"><use href="#icon-users"/></svg> Team</button>
@@ -1644,6 +1645,35 @@ select.fs:focus,input.fs:focus{border-color:var(--navy);background:var(--white)}
     </div>
     <button class="mobile-toggle" id="cw-mobile-toggle" onclick="toggleCwSidebar(true)"><svg class="icon"><use href="#icon-menu"/></svg></button>
     <div class="map-wrap"><div id="cw-map-el"></div></div>
+  </div>
+
+  <!-- GCC SCOUT VIEW (new-company lead signals, synced from legionsite's GCC Scout agents) -->
+  <div class="view-panel" id="view-gcc" style="display:none">
+    <div class="view-container" style="max-width:1100px">
+      <div class="field-hint" style="margin-bottom:12px">Companies planning a Global Capability Centre in India, found by GCC Scout's research agents (hiring signals, incorporation filings, news, government sites) and scored 0-100. Decision-maker names aren't collected here - open leadership roles are shown instead.</div>
+      <div class="manage-toolbar" style="grid-template-columns:1.6fr 1fr 1fr">
+        <input class="fs" type="text" id="gcc-search" placeholder="Search by company or city..." oninput="renderGccTable()"/>
+        <select class="fs" id="gcc-confidence" onchange="renderGccTable()">
+          <option value="">All Confidence</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option>
+        </select>
+        <select class="fs" id="gcc-status" onchange="renderGccTable()">
+          <option value="">All Status</option><option value="New">New</option><option value="Contacted">Contacted</option><option value="Meeting">Meeting</option><option value="Lost">Lost</option><option value="Won">Won</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div id="gcc-summary" style="font-size:11px;color:var(--text3)"></div>
+        <a href="https://raw.githubusercontent.com/aladeiin/legionsite/gcc-scout-data/reports/GCC-Scout-latest.xlsx" target="_blank" rel="noopener" class="cbtn" style="width:auto;display:inline-flex;align-items:center;gap:5px;text-decoration:none"><svg class="icon"><use href="#icon-download"/></svg> Download latest Excel</a>
+      </div>
+      <div class="manage-table-wrap">
+        <table class="manage-table" id="gcc-table">
+          <thead>
+            <tr><th style="width:24px"></th><th>Company</th><th>Score</th><th>Confidence</th><th>City</th><th>Est. Seats</th><th>Status</th><th>Last Seen</th></tr>
+          </thead>
+          <tbody id="gcc-tbody"></tbody>
+        </table>
+        <div id="gcc-empty" style="display:none;text-align:center;padding:30px;color:var(--text3);font-size:12px">No companies match your filters</div>
+      </div>
+    </div>
   </div>
 
   <!-- ACTIVITY VIEW -->
@@ -2044,6 +2074,109 @@ async function loadMarketSpacesFromSupabase(){
   }catch(e){
     return null;
   }
+}
+
+// ---------------- GCC Scout (new-company lead signals from legionsite) ----------------
+// Read-only view: the authoritative Pipeline Status / Notes edits still
+// happen in the Excel file (gcc-scout-data branch) per GCC Scout's own
+// workflow - a weekly sync job overwrites gcc_scout_companies from there,
+// so editing status/notes from this dashboard would just get clobbered on
+// the next sync until that round-trip is also built.
+var gccLoaded=false, GCC_COMPANIES=[], GCC_SIGNALS_BY_KEY={}, gccExpanded=new Set();
+var GCC_TYPE_LABELS={leadership_hire:'Leadership hire',hiring_cluster:'Hiring burst',new_entity:'New India entity',planned_centre_news:'News: planned centre',govt_mou:'Govt MoU/approval',policy_note:'Policy note',unreviewed:'Headline (unreviewed)'};
+
+async function loadGccFromSupabase(){
+  try{
+    const headers={apikey:SUPABASE_KEY,Authorization:sbAuthHeader()};
+    const [cRes,sRes]=await Promise.all([
+      fetch(SUPABASE_URL+'/rest/v1/gcc_scout_companies?select=*&order=score.desc', {headers:headers}),
+      fetch(SUPABASE_URL+'/rest/v1/gcc_scout_signals?select=*&order=created_at.desc', {headers:headers}),
+    ]);
+    if(!cRes.ok || !sRes.ok) return false;
+    GCC_COMPANIES=await cRes.json();
+    const sigs=await sRes.json();
+    GCC_SIGNALS_BY_KEY={};
+    sigs.forEach(function(s){
+      (GCC_SIGNALS_BY_KEY[s.company_key]=GCC_SIGNALS_BY_KEY[s.company_key]||[]).push(s);
+    });
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function ensureGccLoaded(){
+  if(gccLoaded) return;
+  document.getElementById('gcc-tbody').innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">Loading…</td></tr>';
+  const ok=await loadGccFromSupabase();
+  gccLoaded=true;
+  if(!ok){ showToast('GCC Scout tables not set up yet in Supabase - see setup instructions','error'); }
+  renderGccTable();
+}
+
+function gccFilteredCompanies(){
+  const q=(document.getElementById('gcc-search').value||'').toLowerCase().trim();
+  const conf=document.getElementById('gcc-confidence').value;
+  const status=document.getElementById('gcc-status').value;
+  return GCC_COMPANIES.filter(function(c){
+    if(conf && c.confidence!==conf) return false;
+    if(status && (c.status||'New')!==status) return false;
+    if(q && !((c.display_name||'').toLowerCase().includes(q) || (c.city||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+
+function gccConfidenceTagHtml(conf){
+  var cls={High:'ta',Medium:'tn',Low:'tr'}[conf];
+  return '<span class="tag '+(cls||'tn')+'">'+escapeHtml(conf||'—')+'</span>';
+}
+
+function gccStatusTagHtml(status){
+  var s=status||'New';
+  var cls={Won:'ta',Lost:'tr',Contacted:'tn',Meeting:'tn'}[s];
+  if(cls) return '<span class="tag '+cls+'">'+escapeHtml(s)+'</span>';
+  return '<span class="tag" style="background:var(--info-bg);color:var(--info)">'+escapeHtml(s)+'</span>';
+}
+
+function gccEvidenceHtml(c,sigs){
+  var reasons=c.reasons?('<div style="margin-bottom:8px;font-size:11px;color:var(--text2)"><b>Why this score:</b> '+escapeHtml(c.reasons)+'</div>'):'';
+  var items=sigs.map(function(s){
+    var bits=[];
+    if(s.published) bits.push(escapeHtml(s.published));
+    if(s.source) bits.push(escapeHtml(s.source));
+    var meta=bits.length?(' ('+bits.join(' · ')+')'):'';
+    var link=s.url?(' <a href="'+escapeHtml(s.url)+'" target="_blank" rel="noopener">source</a>'):'';
+    return '<li style="margin-bottom:6px"><b>'+escapeHtml(GCC_TYPE_LABELS[s.signal_type]||s.signal_type)+'</b>'+meta+': '+escapeHtml(s.summary||s.title||'')+link+'</li>';
+  }).join('');
+  return '<div style="padding:10px 4px">'+reasons+'<ul style="padding-left:18px;font-size:12px;color:var(--text)">'+(items||'<li style="color:var(--text3)">No evidence synced yet</li>')+'</ul></div>';
+}
+
+function toggleGccEvidence(key){
+  if(gccExpanded.has(key)) gccExpanded.delete(key); else gccExpanded.add(key);
+  renderGccTable();
+}
+
+function renderGccTable(){
+  const list=gccFilteredCompanies();
+  const tbody=document.getElementById('gcc-tbody');
+  document.getElementById('gcc-empty').style.display=list.length?'none':'block';
+  document.getElementById('gcc-summary').textContent=GCC_COMPANIES.length?(list.length+' of '+GCC_COMPANIES.length+' companies'):'';
+  tbody.innerHTML=list.map(function(c){
+    var key=c.company_key;
+    var expanded=gccExpanded.has(key);
+    var sigs=GCC_SIGNALS_BY_KEY[key]||[];
+    var evidenceRow=expanded?('<tr class="gcc-evidence-row"><td colspan="8">'+gccEvidenceHtml(c,sigs)+'</td></tr>'):'';
+    return '<tr class="mg-row" onclick="toggleGccEvidence(\''+key.replace(/'/g,"\\'")+'\')">'+
+      '<td><svg class="icon" style="transform:rotate('+(expanded?90:0)+'deg)"><use href="#icon-chevron"/></svg></td>'+
+      '<td><div class="mg-name">'+escapeHtml(c.display_name)+'</div><div class="mg-sub">'+escapeHtml(c.parent_country||'')+'</div></td>'+
+      '<td>'+escapeHtml(c.score)+'/100</td>'+
+      '<td>'+gccConfidenceTagHtml(c.confidence)+'</td>'+
+      '<td>'+escapeHtml(c.city||'—')+'</td>'+
+      '<td>'+escapeHtml(c.seats_estimate||'unknown')+'</td>'+
+      '<td>'+gccStatusTagHtml(c.status)+'</td>'+
+      '<td>'+escapeHtml(c.last_seen||'—')+'</td>'+
+    '</tr>'+evidenceRow;
+  }).join('');
 }
 
 // CARTO's basemaps.cartocdn.com raster tiles now require a (free) account
@@ -2959,6 +3092,7 @@ function switchView(view){
   document.getElementById('view-add').style.display = view==='add' ? 'block' : 'none';
   document.getElementById('view-market').style.display = view==='market' ? 'flex' : 'none';
   document.getElementById('view-coworking').style.display = view==='coworking' ? 'flex' : 'none';
+  document.getElementById('view-gcc').style.display = view==='gcc' ? 'block' : 'none';
   document.getElementById('view-activity').style.display = view==='activity' ? 'block' : 'none';
   document.getElementById('view-manage').style.display = view==='manage' ? 'block' : 'none';
   document.getElementById('view-compare').style.display = view==='compare' ? 'block' : 'none';
@@ -2966,12 +3100,14 @@ function switchView(view){
   document.getElementById('nav-add').classList.toggle('active', view==='add');
   document.getElementById('nav-market').classList.toggle('active', view==='market');
   document.getElementById('nav-coworking').classList.toggle('active', view==='coworking');
+  document.getElementById('nav-gcc').classList.toggle('active', view==='gcc');
   document.getElementById('nav-activity').classList.toggle('active', view==='activity');
   document.getElementById('nav-manage').classList.toggle('active', view==='manage');
   if(view==='activity') renderActivity();
   if(view==='map') setTimeout(()=>{ window.GlobeAPI&&window.GlobeAPI.resize(); if(detailModeActive&&puneMap) puneMap.invalidateSize(); }, 50);
   if(view==='market') ensureMarketLoaded();
   if(view==='coworking') ensureCoworkingLoaded();
+  if(view==='gcc') ensureGccLoaded();
   if(view==='manage') renderManageTable();
   if(view==='compare') renderCompareBuilder();
   // No point rendering the globe into a display:none view - pause it the
